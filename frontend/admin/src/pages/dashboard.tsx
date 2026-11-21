@@ -13,6 +13,17 @@ interface Stats {
   persentase_kehadiran?: number;
 }
 
+interface GrupStats {
+  total_grup: number;
+  menunggu_pembayaran: number;
+  menunggu_verifikasi: number;
+  lunas: number;
+  ditolak: number;
+  total_anggota: number;
+  total_hadir: number;
+  total_revenue: number;
+}
+
 export function Dashboard() {
   const [stats, setStats] = useState<Stats>({
     total: 0,
@@ -23,6 +34,16 @@ export function Dashboard() {
     sudah_hadir: 0,
     belum_hadir: 0,
     persentase_kehadiran: 0,
+  });
+  const [grupStats, setGrupStats] = useState<GrupStats>({
+    total_grup: 0,
+    menunggu_pembayaran: 0,
+    menunggu_verifikasi: 0,
+    lunas: 0,
+    ditolak: 0,
+    total_anggota: 0,
+    total_hadir: 0,
+    total_revenue: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -45,15 +66,36 @@ export function Dashboard() {
     }
   };
 
+  // Ambil statistik Family Camp (grup + revenue)
+  const fetchGrupStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/absensi/stats-grup`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setGrupStats(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch grup stats:', err);
+    }
+  };
+
   useEffect(() => {
     fetchStats(false);
+    fetchGrupStats();
 
     // Polling background setiap 5 detik agar data selalu terbarui otomatis
     const interval = setInterval(() => {
       fetchStats(true);
+      fetchGrupStats();
     }, 5000);
 
-    const handleFocus = () => fetchStats(true);
+    const handleFocus = () => {
+      fetchStats(true);
+      fetchGrupStats();
+    };
     window.addEventListener('focus', handleFocus);
 
     return () => {
@@ -115,6 +157,67 @@ export function Dashboard() {
             </div>
             <p className="text-xs text-sky-100/80 mt-2">
               Akumulasi seluruh pendaftar yang masuk melalui formulir registrasi online.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================== */}
+      {/* FAMILY CAMP: GRUP & REVENUE                              */}
+      {/* ======================================================== */}
+      <section className="space-y-2.5">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          Family Camp — Pendaftaran Grup & Revenue
+        </h2>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Total Grup</span>
+            <span className="block text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+              {loading ? '...' : grupStats.total_grup}
+            </span>
+            <p className="text-[11px] text-slate-400 mt-1">{grupStats.total_anggota} anggota terdaftar</p>
+          </div>
+
+          <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Menunggu Bayar</span>
+            <span className="block text-2xl sm:text-3xl font-black text-amber-950 mt-1">
+              {loading ? '...' : grupStats.menunggu_pembayaran}
+            </span>
+            <p className="text-[11px] text-amber-800/80 mt-1">Belum unggah bukti transfer</p>
+          </div>
+
+          <div className="bg-sky-50/70 border border-sky-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <span className="text-xs font-bold text-sky-900 uppercase tracking-wider">Menunggu Verifikasi</span>
+            <span className="block text-2xl sm:text-3xl font-black text-sky-950 mt-1">
+              {loading ? '...' : grupStats.menunggu_verifikasi}
+            </span>
+            <p className="text-[11px] text-sky-800/80 mt-1">Bukti transfer masuk, perlu ACC</p>
+          </div>
+
+          <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Lunas</span>
+            <span className="block text-2xl sm:text-3xl font-black text-emerald-950 mt-1">
+              {loading ? '...' : grupStats.lunas}
+            </span>
+            <p className="text-[11px] text-emerald-800/80 mt-1">QR tiket telah diterbitkan</p>
+          </div>
+        </div>
+
+        {/* Revenue Card */}
+        <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md relative overflow-hidden">
+          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm sm:text-base font-bold text-emerald-100 uppercase tracking-wide">
+                Total Revenue (Lunas)
+              </span>
+              <div className="text-2xl sm:text-4xl font-black tracking-tight text-white shrink-0">
+                {loading ? '...' : 'Rp ' + grupStats.total_revenue.toLocaleString('id-ID')}
+              </div>
+            </div>
+            <p className="text-xs text-emerald-100/80 mt-2">
+              Akumulasi grand total seluruh grup yang sudah dikonfirmasi lunas.
             </p>
           </div>
         </div>

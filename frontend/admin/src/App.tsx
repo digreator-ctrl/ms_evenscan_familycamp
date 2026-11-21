@@ -8,6 +8,7 @@ import { Dashboard } from './pages/dashboard';
 import { RiwayatScan } from './pages/riwayat-scan';
 import { RiwayatDetail } from './pages/riwayat-detail';
 import { Pengaturan } from './pages/pengaturan';
+import { KelolaAddon } from './pages/kelola-addon';
 import { Layout } from './components/Layout';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
@@ -31,6 +32,7 @@ function App() {
             <Route path="/riwayat-scan" element={<RiwayatScan />} />
             <Route path="/riwayat-scan/:id" element={<RiwayatDetail />} />
             <Route path="/verifikasi" element={<Verifikasi />} />
+            <Route path="/kelola-addon" element={<KelolaAddon />} />
             <Route path="/scanner" element={<Scanner />} />
             <Route path="/pengaturan" element={<Pengaturan />} />
           </Route>

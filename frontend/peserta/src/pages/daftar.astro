@@ -2,937 +2,1019 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Formulir Pendaftaran Acara">
-  <section class="py-12 px-4">
-    <div class="max-w-xl mx-auto">
-      <div class="text-center mb-8">
-        <span class="inline-block px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-xs font-semibold uppercase tracking-wider mb-2">
-          Pendaftaran Online
+<Layout title="Formulir Pendaftaran Family Camp">
+  <section class="py-10 px-4">
+    <div class="max-w-2xl mx-auto space-y-6">
+
+      <!-- Header Acara -->
+      <div class="text-center space-y-2">
+        <span class="inline-block px-3.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold uppercase tracking-wider">
+          ⛺ Pendaftaran Resmi Family Camp
         </span>
-        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Formulir Peserta</h1>
-        <p class="text-slate-500 text-sm mt-1 max-w-md mx-auto">
-          Lengkapi data diri Anda dan unggah bukti tangkapan layar akun HSI untuk diverifikasi oleh panitia.
+        <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+          Formulir Peserta Family Camp
+        </h1>
+        <p class="text-slate-500 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed">
+          Pendaftaran keluarga maupun kelompok/perorangan dengan paket wajib dan opsi perlengkapan tambahan.
         </p>
       </div>
 
-      <!-- Closed Banner -->
-      <div id="closedBanner" class="hidden mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
+      <!-- Closed Banner (jika pendaftaran ditutup admin) -->
+      <div id="closedBanner" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
         <span class="text-xl">⚠️</span>
         <div>
           <h3 class="font-bold text-sm">Pendaftaran Sedang Ditutup</h3>
-          <p class="text-xs text-amber-800 mt-0.5">Mohon maaf, kuota pendaftaran acara saat ini sedang ditutup oleh panitia.</p>
-          <a href="/" class="inline-block mt-2 text-xs font-bold text-[#07407b] hover:underline">← Kembali ke Beranda</a>
+          <p class="text-xs text-amber-800 mt-0.5">Mohon maaf, kuota pendaftaran Family Camp saat ini sedang ditutup oleh panitia.</p>
+          <a href="/" class="inline-block mt-2 text-xs font-bold text-primary-700 hover:underline">← Kembali ke Beranda</a>
         </div>
       </div>
 
-      <!-- Form Card -->
-      <form id="formDaftar" class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 sm:p-8 space-y-6">
-        <!-- 1. Nama Lengkap (Minimal 3 Huruf, Indikator Merah Interaktif) -->
-        <div>
-          <label for="nama" class="block text-sm font-semibold text-slate-700 mb-1.5">
-            1. Nama Lengkap <span class="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="nama"
-            name="nama"
-            required
-            placeholder="Contoh: Abdullah Fulan"
-            class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
-          />
-          <p id="namaError" class="hidden text-xs text-red-600 mt-1.5 flex items-center gap-1 font-medium">
-            <span>⚠️</span>
-            <span>Nama lengkap wajib minimal 3 huruf.</span>
-          </p>
-        </div>
-
-        <!-- 2. Ikhwan / Akhwat (Tanpa Ikon, Warna Menonjol Sesuai Tema) -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-700 mb-1.5">
-            2. Ikhwan / Akhwat <span class="text-red-500">*</span>
-          </label>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="cursor-pointer">
-              <input type="radio" name="jenis_kelamin" value="Ikhwan" required class="peer sr-only" />
-              <div class="flex items-center justify-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50/70 text-slate-700 font-bold text-sm tracking-wide transition duration-150 peer-checked:border-[#07407b] peer-checked:bg-[#07407b] peer-checked:text-white peer-checked:shadow-md peer-checked:shadow-[#07407b]/25 hover:border-slate-300 hover:bg-slate-100">
-                <span>IKHWAN</span>
-              </div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="jenis_kelamin" value="Akhwat" required class="peer sr-only" />
-              <div class="flex items-center justify-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50/70 text-slate-700 font-bold text-sm tracking-wide transition duration-150 peer-checked:border-[#07407b] peer-checked:bg-[#07407b] peer-checked:text-white peer-checked:shadow-md peer-checked:shadow-[#07407b]/25 hover:border-slate-300 hover:bg-slate-100">
-                <span>AKHWAT</span>
-              </div>
-            </label>
+      <!-- Wizard Step Indicator -->
+      <div id="wizardHeader" class="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-xs">
+        <div class="grid grid-cols-4 gap-1.5 sm:gap-2 text-center">
+          <div id="stepTab1" class="step-tab active py-2 px-1 rounded-xl transition font-bold text-[11px] sm:text-xs">
+            <span class="block text-[10px] sm:text-[11px] text-primary-600 font-mono">1</span>
+            <span>Tipe & PIC</span>
+          </div>
+          <div id="stepTab2" class="step-tab py-2 px-1 rounded-xl transition font-semibold text-[11px] sm:text-xs text-slate-400">
+            <span class="block text-[10px] sm:text-[11px] font-mono">2</span>
+            <span>Biodata</span>
+          </div>
+          <div id="stepTab3" class="step-tab py-2 px-1 rounded-xl transition font-semibold text-[11px] sm:text-xs text-slate-400">
+            <span class="block text-[10px] sm:text-[11px] font-mono">3</span>
+            <span>Paket & Sewa</span>
+          </div>
+          <div id="stepTab4" class="step-tab py-2 px-1 rounded-xl transition font-semibold text-[11px] sm:text-xs text-slate-400">
+            <span class="block text-[10px] sm:text-[11px] font-mono">4</span>
+            <span>Ringkasan</span>
           </div>
         </div>
+      </div>
 
-        <!-- 3. NIP (Nomor Induk Peserta / Santri) -->
-        <div>
-          <label for="nip" class="block text-sm font-semibold text-slate-700 mb-1.5">
-            3. NIP (Contoh: ARN/ART) <span class="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="nip"
-            name="nip"
-            required
-            placeholder="Contoh: ARN211-12345 atau ART211-12345"
-            class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition uppercase font-mono tracking-wide"
-          />
-          <p class="text-xs text-slate-400 mt-1">
-            Gunakan awalan ARN untuk Ikhwan atau ART untuk Akhwat.
-          </p>
-        </div>
+      <!-- Form Card Multi-Step -->
+      <form id="formFamilyCamp" class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6">
 
-        <!-- Nomor WhatsApp Aktif (Hanya Bisa Diinput Angka) -->
-        <div>
-          <label for="no_whatsapp" class="block text-sm font-semibold text-slate-700 mb-1.5">
-            Nomor WhatsApp Aktif <span class="text-red-500">*</span>
-          </label>
-          <input
-            type="tel"
-            id="no_whatsapp"
-            name="no_whatsapp"
-            required
-            inputmode="numeric"
-            pattern="[0-9]*"
-            placeholder="Contoh: 081234567890"
-            class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono"
-          />
-          <p class="text-xs text-slate-400 mt-1">
-            📱 Hanya angka. Wajib aktif untuk menerima notifikasi, pengiriman tiket QR, dan cek status mandiri.
-          </p>
-        </div>
-
-        <!-- 4. Domisili (Provinsi, Kota/Kabupaten, Kecamatan, Kelurahan/Desa - Opsional) -->
-        <div class="space-y-3">
+        <!-- ======================================================== -->
+        <!-- STEP 1: PILIH TIPE PENDAFTARAN & KONTAK PIC               -->
+        <!-- ======================================================== -->
+        <div id="stepContent1" class="step-content space-y-6">
           <div>
-            <label class="block text-sm font-semibold text-slate-700">
-              4. Domisili: Provinsi, Kota/Kabupaten, Kecamatan, Kelurahan/Desa <span class="text-xs text-slate-400 font-normal">(Opsional)</span>
-            </label>
-            <p class="text-xs text-slate-400 mt-0.5">
-              Opsional. Boleh dikosongkan atau diisi dengan memilih dropdown / mengetik nama wilayah.
-            </p>
+            <h2 class="text-base font-extrabold text-slate-900 mb-1">1. Pilih Kategori Pendaftaran</h2>
+            <p class="text-xs text-slate-500">Tentukan apakah Anda mendaftar bersama keluarga atau perorangan/rombongan.</p>
           </div>
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <!-- Level 1: Provinsi -->
-            <div class="relative" id="field_provinsi">
-              <label for="search_provinsi" class="block text-[11px] font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Provinsi
-              </label>
-              <div class="relative">
-                <input
-                  type="text"
-                  id="search_provinsi"
-                  autocomplete="off"
-                  placeholder="Ketik / pilih Provinsi..."
-                  class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm pr-9 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition cursor-pointer"
-                />
-                <div class="chevron-icon absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer p-0.5 hover:text-primary-600 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
+            <!-- Pilihan Keluarga -->
+            <label class="cursor-pointer">
+              <input type="radio" name="tipe_pendaftaran" value="keluarga" checked class="peer sr-only" />
+              <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
+                <span class="text-2xl block">👨‍👩‍👧‍👦</span>
+                <span class="font-extrabold text-sm text-slate-900 block">Keluarga</span>
+                <p class="text-[11px] text-slate-500 leading-relaxed">
+                  Pendaftaran untuk Ayah, Ibu, dan Anak-anak dalam satu tenda/grup keluarga.
+                </p>
               </div>
-              <ul id="list_provinsi" class="hidden absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 text-xs divide-y divide-slate-50">
-                <li class="p-3 text-slate-400 text-center">Memuat daftar provinsi...</li>
+            </label>
+
+            <!-- Pilihan Non-Keluarga -->
+            <label class="cursor-pointer">
+              <input type="radio" name="tipe_pendaftaran" value="non_keluarga" class="peer sr-only" />
+              <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
+                <span class="text-2xl block">🎒</span>
+                <span class="font-extrabold text-sm text-slate-900 block">Non-Keluarga / Rombongan</span>
+                <p class="text-[11px] text-slate-500 leading-relaxed">
+                  Pendaftaran untuk perorangan atau bersama teman/komunitas.
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <!-- Data Kontak Penanggung Jawab (PIC) -->
+          <div class="pt-4 border-t border-slate-100 space-y-4">
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-900">Kontak Penanggung Jawab (PIC)</h3>
+              <p class="text-xs text-slate-500">Nomor ini akan menerima invoice pembayaran & link tiket QR resmi.</p>
+            </div>
+
+            <div>
+              <label for="pic_nama" class="block text-xs font-bold text-slate-700 mb-1">
+                Nama Lengkap PIC <span class="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="pic_nama"
+                name="pic_nama"
+                required
+                placeholder="Contoh: Budi Santoso"
+                class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
+              />
+            </div>
+
+            <div>
+              <label for="pic_whatsapp" class="block text-xs font-bold text-slate-700 mb-1">
+                Nomor WhatsApp Aktif PIC <span class="text-rose-500">*</span>
+              </label>
+              <input
+                type="tel"
+                id="pic_whatsapp"
+                name="pic_whatsapp"
+                required
+                inputmode="numeric"
+                pattern="[0-9]*"
+                placeholder="Contoh: 081234567890"
+                class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
+              />
+              <p class="text-[11px] text-slate-400 mt-1">📱 Wajib aktif di WhatsApp untuk menerima notifikasi & link tiket.</p>
+            </div>
+
+            <div>
+              <label for="pic_email" class="block text-xs font-bold text-slate-700 mb-1">
+                Alamat Email <span class="text-slate-400 font-normal">(Opsional)</span>
+              </label>
+              <input
+                type="email"
+                id="pic_email"
+                name="pic_email"
+                placeholder="nama@email.com"
+                class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
+              />
+            </div>
+          </div>
+
+          <div class="pt-2 flex justify-end">
+            <button
+              type="button"
+              id="btnNextStep1"
+              class="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
+            >
+              Lanjut ke Biodata Anggota →
+            </button>
+          </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- STEP 2: BIODATA DINAMIS SETIAP ANGGOTA                    -->
+        <!-- ======================================================== -->
+        <div id="stepContent2" class="step-content hidden space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 class="text-base font-extrabold text-slate-900 mb-0.5">2. Biodata Seluruh Peserta</h2>
+              <p class="text-xs text-slate-500">Lengkapi data diri setiap anggota yang ikut dalam acara.</p>
+            </div>
+            <button
+              type="button"
+              id="btnAddAnggota"
+              class="self-start sm:self-auto inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer"
+            >
+              <span>+ Tambah Anggota</span>
+            </button>
+          </div>
+
+          <!-- Container Kartu-kartu Anggota Dinamis -->
+          <div id="anggotaContainer" class="space-y-4">
+            <!-- Rendered via JS -->
+          </div>
+
+          <!-- Alert Khusus Balita -->
+          <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-start gap-3">
+            <span class="text-lg">👶</span>
+            <div>
+              <span class="font-bold block">Kebijakan Anak & Balita:</span>
+              <p class="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                Anak balita di bawah usia <b>3 tahun</b> mendapatkan tiket <b>GRATIS</b> (tidak dikenakan biaya wajib). Anak usia 3 tahun ke atas dikenakan paket penuh Rp 200.000 dengan fasilitas lengkap.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-2 flex items-center justify-between">
+            <button
+              type="button"
+              id="btnPrevStep2"
+              class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+            >
+              ← Kembali
+            </button>
+            <button
+              type="button"
+              id="btnNextStep2"
+              class="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
+            >
+              Lanjut ke Pilihan Paket →
+            </button>
+          </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- STEP 3: PAKET WAJIB & SEWA ADD-ON                         -->
+        <!-- ======================================================== -->
+        <div id="stepContent3" class="step-content hidden space-y-6">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900 mb-1">3. Paket & Perlengkapan Acara</h2>
+            <p class="text-xs text-slate-500">Pilih fasilitas wajib dan perlengkapan sewa tambahan jika diperlukan.</p>
+          </div>
+
+          <!-- Card Paket Wajib -->
+          <div class="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-primary-900 to-slate-900 text-white space-y-4 shadow-sm">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <span class="inline-block px-2.5 py-0.5 bg-white/20 text-white rounded text-[10px] font-black uppercase tracking-wider mb-1">
+                  Paket Pendaftaran Wajib
+                </span>
+                <h3 class="text-lg font-black text-amber-300">Rp 200.000 <span class="text-xs text-white/70 font-normal">/ orang</span></h3>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-300 uppercase tracking-wider block">Peserta Berbayar</span>
+                <span class="text-lg font-black text-white font-mono" id="txtTotalBerbayarBadge">0 Orang</span>
+              </div>
+            </div>
+
+            <!-- Fasilitas yang Didapat -->
+            <div class="pt-3 border-t border-white/10 space-y-2 text-xs">
+              <span class="font-bold text-slate-200 block text-[11px] uppercase tracking-wider">Fasilitas yang Didapatkan:</span>
+              <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+                <li class="flex items-center gap-1.5"><span>✓</span><span>Akses Kavling Campground</span></li>
+                <li class="flex items-center gap-1.5"><span>✓</span><span>Konsumsi 3x Makan & Snack</span></li>
+                <li class="flex items-center gap-1.5"><span>✓</span><span>Kaos Eksklusif Family Camp</span></li>
+                <li class="flex items-center gap-1.5"><span>✓</span><span>Kit Acara & ID Card QR</span></li>
+                <li class="flex items-center gap-1.5"><span>✓</span><span>Outbound & Fun Games Keluarga</span></li>
+                <li class="flex items-center gap-1.5"><span>✓</span><span>Kajian Tematik & Api Unggun</span></li>
               </ul>
-              <input type="hidden" id="val_provinsi_id" />
-              <input type="hidden" id="val_provinsi_name" />
             </div>
 
-            <!-- Level 2: Kota / Kabupaten -->
-            <div class="relative" id="field_kota">
-              <label for="search_kota" class="block text-[11px] font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Kota / Kabupaten
-              </label>
-              <div class="relative">
-                <input
-                  type="text"
-                  id="search_kota"
-                  autocomplete="off"
-                  disabled
-                  placeholder="Pilih Provinsi terlebih dahulu"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm pr-9 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
-                <div class="chevron-icon absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer p-0.5 hover:text-primary-600 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
-              </div>
-              <ul id="list_kota" class="hidden absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 text-xs divide-y divide-slate-50"></ul>
-              <input type="hidden" id="val_kota_id" />
-              <input type="hidden" id="val_kota_name" />
+            <!-- Kalkulasi Subtotal Wajib -->
+            <div class="pt-3 border-t border-white/10 flex justify-between items-center text-xs">
+              <span class="text-slate-300">Subtotal Biaya Wajib:</span>
+              <span class="text-base font-black text-amber-300 font-mono" id="txtSubtotalWajibStep3">Rp 0</span>
+            </div>
+          </div>
+
+          <!-- Pertanyaan Opsi Sewa Add-on -->
+          <div class="space-y-4 pt-2">
+            <div>
+              <h3 class="text-sm font-extrabold text-slate-900">Apakah Anda Memerlukan Sewa Perlengkapan Tambahan?</h3>
+              <p class="text-xs text-slate-500 mt-0.5">Jika Anda membawa tenda dan perlengkapan sendiri, pilih "Hanya Paket Wajib".</p>
             </div>
 
-            <!-- Level 3: Kecamatan -->
-            <div class="relative" id="field_kecamatan">
-              <label for="search_kecamatan" class="block text-[11px] font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Kecamatan
-              </label>
-              <div class="relative">
-                <input
-                  type="text"
-                  id="search_kecamatan"
-                  autocomplete="off"
-                  disabled
-                  placeholder="Pilih Kota/Kabupaten dahulu"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm pr-9 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
-                <div class="chevron-icon absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer p-0.5 hover:text-primary-600 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="cursor-pointer">
+                <input type="radio" name="opt_sewa" value="tidak" checked class="peer sr-only" />
+                <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
+                  <span class="text-xl block">🏕️</span>
+                  <span class="font-extrabold text-xs text-slate-900 block">Hanya Paket Wajib</span>
+                  <p class="text-[11px] text-slate-500">Membawa tenda & perlengkapan tidur sendiri dari rumah.</p>
                 </div>
-              </div>
-              <ul id="list_kecamatan" class="hidden absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 text-xs divide-y divide-slate-50"></ul>
-              <input type="hidden" id="val_kecamatan_id" />
-              <input type="hidden" id="val_kecamatan_name" />
+              </label>
+
+              <label class="cursor-pointer">
+                <input type="radio" name="opt_sewa" value="ya" class="peer sr-only" />
+                <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
+                  <span class="text-xl block">🛒</span>
+                  <span class="font-extrabold text-xs text-slate-900 block">Tambah Sewa Perlengkapan</span>
+                  <p class="text-[11px] text-slate-500">Sewa tenda, matras, sleeping bag, dll dari panitia.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Katalog Add-on Dinamis (Tampil saat pilih "ya") -->
+          <div id="containerAddons" class="hidden space-y-3 pt-2">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Katalog Perlengkapan Sewa</h4>
+              <span class="text-[10px] text-slate-400">Pilih jumlah item sesuai kebutuhan</span>
             </div>
 
-            <!-- Level 4: Kelurahan / Desa -->
-            <div class="relative" id="field_desa">
-              <label for="search_desa" class="block text-[11px] font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                Kelurahan / Desa
-              </label>
-              <div class="relative">
-                <input
-                  type="text"
-                  id="search_desa"
-                  autocomplete="off"
-                  disabled
-                  placeholder="Pilih Kecamatan dahulu"
-                  class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm pr-9 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                />
-                <div class="chevron-icon absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 cursor-pointer p-0.5 hover:text-primary-600 transition">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </div>
-              </div>
-              <ul id="list_desa" class="hidden absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl z-30 py-1 text-xs divide-y divide-slate-50"></ul>
-              <input type="hidden" id="val_desa_id" />
-              <input type="hidden" id="val_desa_name" />
+            <div id="listAddonsCards" class="space-y-2.5">
+              <!-- Rendered via JS dari endpoint /api/peserta/addon-items -->
             </div>
+          </div>
+
+          <!-- Total Biaya Floating Box -->
+          <div class="p-4 rounded-2xl bg-slate-100 border border-slate-200/90 flex justify-between items-center text-xs">
+            <div>
+              <span class="text-slate-500 font-semibold block">Total Sementara (Wajib + Sewa):</span>
+              <span class="text-[11px] text-slate-400">*Belum termasuk 3 digit kode unik</span>
+            </div>
+            <span class="text-lg font-black text-slate-900 font-mono" id="txtTotalSementara">Rp 0</span>
+          </div>
+
+          <div class="pt-2 flex items-center justify-between">
+            <button
+              type="button"
+              id="btnPrevStep3"
+              class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+            >
+              ← Kembali
+            </button>
+            <button
+              type="button"
+              id="btnNextStep3"
+              class="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-xs active:scale-95 cursor-pointer"
+            >
+              Lihat Ringkasan & Konfirmasi →
+            </button>
           </div>
         </div>
 
-        <!-- 5. Alasan Mengikuti Acara -->
-        <div>
-          <label for="alasan" class="block text-sm font-semibold text-slate-700 mb-1.5">
-            5. Mengapa Anda ingin mengikuti acara ini? (Jelaskan singkat) <span class="text-red-500">*</span>
-          </label>
-          <textarea
-            id="alasan"
-            name="alasan"
-            rows="3"
-            required
-            placeholder="Tuliskan alasan atau motivasi singkat Anda mengikuti kegiatan ini..."
-            class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition resize-y"
-          ></textarea>
-        </div>
+        <!-- ======================================================== -->
+        <!-- STEP 4: RINGKASAN & SUBMIT PENDAFTARAN                    -->
+        <!-- ======================================================== -->
+        <div id="stepContent4" class="step-content hidden space-y-6">
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900 mb-1">4. Ringkasan Pendaftaran</h2>
+            <p class="text-xs text-slate-500">Periksa kembali data diri dan paket sebelum melanjutkan ke pembayaran.</p>
+          </div>
 
-        <!-- 6. Lampirkan Foto SS Akun HSI -->
-        <div>
-          <label class="block text-sm font-semibold text-slate-700 mb-1.5">
-            6. Lampirkan Foto SS Akun HSI <span class="text-red-500">*</span>
-          </label>
-          <div
-            id="dropZone"
-            class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center cursor-pointer hover:border-primary-500 hover:bg-primary-50/20 transition group"
-          >
-            <div id="uploadPlaceholder" class="space-y-2">
-              <div class="w-12 h-12 bg-primary-50 text-primary-600 rounded-full flex items-center justify-center mx-auto group-hover:scale-110 transition">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+          <!-- Card Rekapitulasi Data -->
+          <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-4 text-xs">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-200">
+              <div>
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">Kategori</span>
+                <span class="font-extrabold text-slate-900 text-sm" id="rekapTipe">-</span>
               </div>
-              <p class="text-sm font-medium text-slate-700">
-                Klik atau seret file tangkapan layar akun HSI ke sini
-              </p>
-              <p class="text-xs text-slate-400">
-                Format JPG, PNG, atau WebP
-              </p>
+              <div class="text-right">
+                <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">PIC Pendaftaran</span>
+                <span class="font-bold text-slate-800" id="rekapPicNama">-</span>
+                <span class="text-[11px] text-slate-500 block font-mono" id="rekapPicWa">-</span>
+              </div>
             </div>
 
-            <!-- Preview Container -->
-            <div id="uploadPreview" class="hidden">
-              <img id="previewImage" class="max-h-56 mx-auto rounded-xl shadow-sm border border-slate-200" alt="Preview Akun HSI" />
-              <div class="mt-3 flex items-center justify-center gap-3">
-                <span id="fileName" class="text-xs text-slate-600 font-medium truncate max-w-xs"></span>
-                <button type="button" id="removeFile" class="text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 px-2.5 py-1 rounded-lg transition">
-                  Ganti Foto
-                </button>
+            <!-- Rekap Anggota -->
+            <div>
+              <span class="text-[10px] text-slate-400 uppercase tracking-wider font-bold block mb-1.5">Daftar Anggota (<span id="rekapJmlAnggota">0</span> Peserta):</span>
+              <ul id="rekapAnggotaList" class="space-y-1.5 divide-y divide-slate-100 bg-white p-3 rounded-xl border border-slate-200">
+                <!-- Dinamis via JS -->
+              </ul>
+            </div>
+
+            <!-- Rekap Biaya -->
+            <div class="pt-2 border-t border-slate-200 space-y-2">
+              <div class="flex justify-between text-slate-600">
+                <span>Biaya Paket Wajib (<span id="rekapHitungWajib">0</span> x Rp 200.000):</span>
+                <span class="font-bold text-slate-900" id="rekapBiayaWajib">Rp 0</span>
+              </div>
+
+              <div id="rekapAddonsList" class="space-y-1 pl-3 border-l-2 border-slate-200">
+                <!-- Dinamis via JS -->
+              </div>
+
+              <div class="flex justify-between text-slate-600">
+                <span class="flex items-center gap-1">
+                  <span>Estimasi Kode Unik Transfer:</span>
+                  <span class="text-[10px] text-amber-600">(3 digit acak otomatis)</span>
+                </span>
+                <span class="font-mono text-amber-600 font-bold">+Rp ~100-999</span>
               </div>
             </div>
           </div>
-          <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" class="hidden" />
+
+          <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-start gap-3">
+            <span class="text-lg">ℹ️</span>
+            <div>
+              <span class="font-bold block">Setelah Klik Daftar:</span>
+              <p class="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                Anda akan langsung dialihkan ke halaman konfirmasi pembayaran yang memuat rekening bank panitia, total nominal transfer, tombol kirim bukti transfer, serta tombol simpan link ke WhatsApp Anda.
+              </p>
+            </div>
+          </div>
+
+          <!-- Alert Error Submit -->
+          <div id="submitError" class="hidden p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold"></div>
+
+          <div class="pt-2 flex items-center justify-between">
+            <button
+              type="button"
+              id="btnPrevStep4"
+              class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+            >
+              ← Kembali
+            </button>
+            <button
+              type="submit"
+              id="btnFinalSubmit"
+              class="px-7 py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-sm rounded-xl transition shadow-md active:scale-95 cursor-pointer"
+            >
+              Daftar & Lanjut ke Pembayaran →
+            </button>
+          </div>
         </div>
 
-        <!-- Error Alert -->
-        <div id="errorState" class="hidden bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm flex items-start gap-3">
-          <span class="text-base">⚠️</span>
-          <span id="errorMessage" class="flex-1"></span>
-        </div>
-
-        <!-- Submit Button -->
-        <button
-          type="submit"
-          id="submitBtn"
-          class="w-full bg-primary-600 hover:bg-primary-700 active:scale-[0.99] text-white font-bold py-3.5 px-6 rounded-xl transition duration-150 shadow-md shadow-primary-600/20"
-        >
-          Kirim Pendaftaran
-        </button>
-
-        <!-- Loading State -->
-        <div id="loadingState" class="hidden text-center py-3 space-y-2">
-          <div class="inline-block animate-spin rounded-full h-7 w-7 border-3 border-primary-600 border-t-transparent"></div>
-          <p class="text-sm font-medium text-slate-600">Mengirim pendaftaran...</p>
-        </div>
       </form>
+
     </div>
   </section>
 
   <script>
-    interface RegionItem {
+    const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
+
+    interface AnggotaItem {
+      nama: string;
+      peran: string;
+      jenis_kelamin: string;
+      usia: number | null;
+      ukuran_kaos: string;
+      catatan_medis: string;
+    }
+
+    interface AddonItem {
       id: string;
-      name: string;
+      nama: string;
+      deskripsi: string;
+      harga: number;
+      stok: number;
+      aktif: number;
+      urutan: number;
     }
 
-    function toTitleCase(str: string): string {
-      return str
-        .toLowerCase()
-        .split(' ')
-        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-        .join(' ');
+    let currentStep = 1;
+    let catalogAddons: AddonItem[] = [];
+    let selectedAddonQty: { [addonId: string]: number } = {};
+
+    let anggotaData: AnggotaItem[] = [
+      { nama: '', peran: 'Ayah', jenis_kelamin: 'Ikhwan', usia: 35, ukuran_kaos: 'L', catatan_medis: '' }
+    ];
+
+    async function initFamilyCampForm() {
+      checkQuotaStatus();
+      await fetchAddonCatalog();
+      setupStepNavigation();
+      renderAnggotaForms();
+      setupAddonInteractions();
+      setupFinalSubmit();
     }
 
-    function formatFileSize(bytes: number): string {
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    }
-
-    class SearchableDropdown {
-      private wrapper: HTMLElement;
-      private input: HTMLInputElement;
-      private list: HTMLUListElement;
-      private hiddenId: HTMLInputElement;
-      private hiddenName: HTMLInputElement;
-      private items: RegionItem[] = [];
-      private onSelectCallback?: (item: RegionItem) => void;
-      private onClearCallback?: () => void;
-
-      constructor(
-        fieldId: string,
-        onSelect?: (item: RegionItem) => void,
-        onClear?: () => void
-      ) {
-        this.wrapper = document.getElementById(`field_${fieldId}`) as HTMLElement;
-        this.input = document.getElementById(`search_${fieldId}`) as HTMLInputElement;
-        this.list = document.getElementById(`list_${fieldId}`) as HTMLUListElement;
-        this.hiddenId = document.getElementById(`val_${fieldId}_id`) as HTMLInputElement;
-        this.hiddenName = document.getElementById(`val_${fieldId}_name`) as HTMLInputElement;
-        this.onSelectCallback = onSelect;
-        this.onClearCallback = onClear;
-
-        if (!this.input || !this.list) return;
-
-        const openDropdown = () => {
-          if (!this.input.disabled && this.items.length > 0) {
-            // Tampilkan seluruh daftar pilihan saat diklik / difokuskan
-            this.renderList('');
-            this.openList();
-          }
-        };
-
-        this.input.addEventListener('focus', openDropdown);
-        this.input.addEventListener('click', openDropdown);
-
-        this.input.addEventListener('input', () => {
-          this.hiddenId.value = '';
-          this.hiddenName.value = '';
-          this.renderList(this.input.value);
-          this.openList();
-        });
-
-        // Klik panah chevron untuk buka/tutup dropdown
-        const iconWrapper = this.wrapper?.querySelector('.chevron-icon');
-        if (iconWrapper) {
-          iconWrapper.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!this.input.disabled && this.items.length > 0) {
-              if (this.list.classList.contains('hidden')) {
-                this.renderList('');
-                this.openList();
-                this.input.focus();
-              } else {
-                this.closeList();
-              }
-            }
-          });
+    async function checkQuotaStatus() {
+      try {
+        const res = await fetch(`${API_URL}/api/peserta/config`);
+        const config = await res.json();
+        if (config && config.pendaftaran_buka === false) {
+          const banner = document.getElementById('closedBanner');
+          const form = document.getElementById('formFamilyCamp');
+          const wizard = document.getElementById('wizardHeader');
+          if (banner) banner.classList.remove('hidden');
+          if (form) form.classList.add('hidden');
+          if (wizard) wizard.classList.add('hidden');
         }
+      } catch (err) {}
+    }
 
-        // Tutup jika klik di luar dropdown
-        document.addEventListener('click', (e) => {
-          if (this.wrapper && !this.wrapper.contains(e.target as Node)) {
-            this.closeList();
-            // Jika user mengetik namun tidak klik list, cocokkan nama terdekat
-            if (this.input.value && !this.hiddenName.value) {
-              const match = this.items.find(
-                (i) => toTitleCase(i.name).toLowerCase() === this.input.value.trim().toLowerCase()
-              );
-              if (match) {
-                this.selectItem(match);
-              } else {
-                this.hiddenName.value = this.input.value.trim();
-              }
-            }
-          }
-        });
+    async function fetchAddonCatalog() {
+      try {
+        const res = await fetch(`${API_URL}/api/peserta/addon-items`);
+        const json = await res.json();
+        if (res.ok && Array.isArray(json.data)) {
+          catalogAddons = json.data;
+          renderAddonsCatalog();
+        }
+      } catch (err) {
+        console.warn('Gagal load addon items:', err);
       }
+    }
 
-      setItems(items: RegionItem[]) {
-        // Urut abjad secara alfabetis
-        this.items = [...items].sort((a, b) => a.name.localeCompare(b.name, 'id'));
-        this.enable('Pilih atau ketik untuk mencari...');
-        this.renderList('');
-      }
+    function setupStepNavigation() {
+      const btnNextStep1 = document.getElementById('btnNextStep1');
+      const btnNextStep2 = document.getElementById('btnNextStep2');
+      const btnPrevStep2 = document.getElementById('btnPrevStep2');
+      const btnNextStep3 = document.getElementById('btnNextStep3');
+      const btnPrevStep3 = document.getElementById('btnPrevStep3');
+      const btnPrevStep4 = document.getElementById('btnPrevStep4');
 
-      setLoading(message = 'Memuat data...') {
-        this.items = [];
-        this.input.value = '';
-        this.hiddenId.value = '';
-        this.hiddenName.value = '';
-        this.input.placeholder = message;
-        this.input.disabled = true;
-        this.input.classList.remove('bg-white');
-        this.input.classList.add('bg-slate-100', 'cursor-not-allowed');
-        this.closeList();
-      }
+      btnNextStep1?.addEventListener('click', () => {
+        const picNama = (document.getElementById('pic_nama') as HTMLInputElement).value.trim();
+        const picWa = (document.getElementById('pic_whatsapp') as HTMLInputElement).value.trim();
 
-      enable(placeholder = 'Pilih atau ketik untuk mencari...') {
-        this.input.disabled = false;
-        this.input.placeholder = placeholder;
-        this.input.classList.remove('bg-slate-100', 'cursor-not-allowed');
-        this.input.classList.add('bg-white');
-      }
-
-      reset(placeholder = 'Pilih data sebelumnya dahulu') {
-        this.items = [];
-        this.input.value = '';
-        this.hiddenId.value = '';
-        this.hiddenName.value = '';
-        this.input.disabled = true;
-        this.input.placeholder = placeholder;
-        this.input.classList.remove('bg-white');
-        this.input.classList.add('bg-slate-100', 'cursor-not-allowed');
-        this.closeList();
-        if (this.onClearCallback) this.onClearCallback();
-      }
-
-      getValue(): string {
-        return this.hiddenName.value || this.input.value.trim();
-      }
-
-      getId(): string {
-        return this.hiddenId.value;
-      }
-
-      private openList() {
-        this.list.classList.remove('hidden');
-      }
-
-      private closeList() {
-        this.list.classList.add('hidden');
-      }
-
-      private renderList(filterQuery = '') {
-        const q = filterQuery.trim().toLowerCase();
-        const filtered = q
-          ? this.items.filter((item) => item.name.toLowerCase().includes(q))
-          : this.items;
-
-        this.list.innerHTML = '';
-
-        if (filtered.length === 0) {
-          const li = document.createElement('li');
-          li.className = 'px-3.5 py-3 text-slate-400 text-center text-xs';
-          li.textContent = 'Wilayah tidak ditemukan';
-          this.list.appendChild(li);
+        if (picNama.length < 2) {
+          alert('Harap isi Nama Lengkap PIC (minimal 2 huruf).');
+          document.getElementById('pic_nama')?.focus();
           return;
         }
 
-        filtered.forEach((item) => {
-          const li = document.createElement('li');
-          li.className =
-            'px-3.5 py-2.5 hover:bg-primary-50 hover:text-primary-800 cursor-pointer font-medium transition text-xs flex items-center justify-between';
-          li.textContent = toTitleCase(item.name);
-          li.addEventListener('click', () => {
-            this.selectItem(item);
-          });
-          this.list.appendChild(li);
+        const cleanWa = picWa.replace(/\D/g, '');
+        if (cleanWa.length < 9) {
+          alert('Harap masukkan nomor WhatsApp PIC yang aktif dan valid (minimal 9 angka).');
+          document.getElementById('pic_whatsapp')?.focus();
+          return;
+        }
+
+        // Set nama anggota pertama otomatis sama dengan PIC jika masih kosong
+        if (anggotaData[0] && !anggotaData[0].nama) {
+          anggotaData[0].nama = picNama;
+          renderAnggotaForms();
+        }
+
+        goToStep(2);
+      });
+
+      btnPrevStep2?.addEventListener('click', () => goToStep(1));
+      btnNextStep2?.addEventListener('click', () => {
+        // Validasi setiap anggota
+        syncAnggotaFromDOM();
+        for (let i = 0; i < anggotaData.length; i++) {
+          const a = anggotaData[i];
+          if (!a.nama || a.nama.trim().length < 2) {
+            alert(`Harap lengkapi nama peserta ke-${i + 1}.`);
+            return;
+          }
+        }
+        updateStep3Summary();
+        goToStep(3);
+      });
+
+      btnPrevStep3?.addEventListener('click', () => goToStep(2));
+      btnNextStep3?.addEventListener('click', () => {
+        updateStep4Review();
+        goToStep(4);
+      });
+
+      btnPrevStep4?.addEventListener('click', () => goToStep(3));
+
+      // Radio tipe change (Keluarga vs Non-Keluarga)
+      const radioTipe = document.querySelectorAll('input[name="tipe_pendaftaran"]');
+      radioTipe.forEach((r) => {
+        r.addEventListener('change', () => {
+          const tipe = getSelectedTipe();
+          if (tipe === 'non_keluarga') {
+            anggotaData.forEach((a) => (a.peran = 'Peserta'));
+          } else {
+            if (anggotaData[0]) anggotaData[0].peran = 'Ayah';
+            if (anggotaData[1]) anggotaData[1].peran = 'Ibu';
+            for (let i = 2; i < anggotaData.length; i++) {
+              anggotaData[i].peran = 'Anak';
+            }
+          }
+          renderAnggotaForms();
         });
+      });
+
+      // Tombol tambah anggota
+      document.getElementById('btnAddAnggota')?.addEventListener('click', () => {
+        syncAnggotaFromDOM();
+        const tipe = getSelectedTipe();
+        let peranBaru = 'Peserta';
+        let jkBaru = 'Ikhwan';
+
+        if (tipe === 'keluarga') {
+          if (anggotaData.length === 1) {
+            peranBaru = 'Ibu';
+            jkBaru = 'Akhwat';
+          } else {
+            peranBaru = 'Anak';
+          }
+        }
+
+        anggotaData.push({
+          nama: '',
+          peran: peranBaru,
+          jenis_kelamin: jkBaru,
+          usia: 10,
+          ukuran_kaos: 'M',
+          catatan_medis: '',
+        });
+        renderAnggotaForms();
+      });
+    }
+
+    function getSelectedTipe(): 'keluarga' | 'non_keluarga' {
+      const el = document.querySelector('input[name="tipe_pendaftaran"]:checked') as HTMLInputElement | null;
+      return el && el.value === 'non_keluarga' ? 'non_keluarga' : 'keluarga';
+    }
+
+    function goToStep(step: number) {
+      currentStep = step;
+      for (let i = 1; i <= 4; i++) {
+        const content = document.getElementById(`stepContent${i}`);
+        const tab = document.getElementById(`stepTab${i}`);
+        if (content && tab) {
+          if (i === step) {
+            content.classList.remove('hidden');
+            tab.className = 'step-tab active py-2 px-1 rounded-xl transition font-extrabold text-[11px] sm:text-xs text-primary-800 bg-primary-50 border border-primary-200';
+          } else if (i < step) {
+            content.classList.add('hidden');
+            tab.className = 'step-tab py-2 px-1 rounded-xl transition font-bold text-[11px] sm:text-xs text-emerald-700 bg-emerald-50/60 border border-emerald-200';
+          } else {
+            content.classList.add('hidden');
+            tab.className = 'step-tab py-2 px-1 rounded-xl transition font-semibold text-[11px] sm:text-xs text-slate-400';
+          }
+        }
+      }
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+    }
+
+    function syncAnggotaFromDOM() {
+      const cards = document.querySelectorAll('.anggota-card');
+      cards.forEach((card, idx) => {
+        if (!anggotaData[idx]) return;
+        const inputNama = card.querySelector('.input-nama') as HTMLInputElement | null;
+        const selectPeran = card.querySelector('.select-peran') as HTMLSelectElement | null;
+        const inputJk = card.querySelector('input[name^="jk_"]:checked') as HTMLInputElement | null;
+        const inputUsia = card.querySelector('.input-usia') as HTMLInputElement | null;
+        const selectKaos = card.querySelector('.select-kaos') as HTMLSelectElement | null;
+        const inputMedis = card.querySelector('.input-medis') as HTMLInputElement | null;
+
+        if (inputNama) anggotaData[idx].nama = inputNama.value.trim();
+        if (selectPeran) anggotaData[idx].peran = selectPeran.value;
+        if (inputJk) anggotaData[idx].jenis_kelamin = inputJk.value;
+        if (inputUsia) anggotaData[idx].usia = inputUsia.value ? parseInt(inputUsia.value, 10) : null;
+        if (selectKaos) anggotaData[idx].ukuran_kaos = selectKaos.value;
+        if (inputMedis) anggotaData[idx].catatan_medis = inputMedis.value.trim();
+      });
+    }
+
+    function renderAnggotaForms() {
+      const container = document.getElementById('anggotaContainer');
+      if (!container) return;
+
+      const tipe = getSelectedTipe();
+
+      container.innerHTML = anggotaData.map((a, idx) => {
+        const isBalita = a.usia !== null && a.usia < 3;
+        return `
+          <div class="anggota-card bg-slate-50/80 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4" data-index="${idx}">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-lg bg-primary-100 text-primary-800 font-mono font-bold text-xs flex items-center justify-center">${idx + 1}</span>
+                <span class="font-extrabold text-xs sm:text-sm text-slate-800">Peserta #${idx + 1}</span>
+                ${isBalita ? `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">Balita (Gratis)</span>` : ''}
+              </div>
+              ${anggotaData.length > 1 ? `
+                <button type="button" class="btn-hapus-anggota text-xs text-rose-600 hover:text-rose-800 font-bold transition cursor-pointer" data-index="${idx}">
+                  Hapus ✕
+                </button>
+              ` : ''}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                  Nama Lengkap <span class="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value="${a.nama}"
+                  placeholder="Nama Peserta"
+                  class="input-nama w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                  Peran / Status <span class="text-rose-500">*</span>
+                </label>
+                ${tipe === 'keluarga' ? `
+                  <select class="select-peran w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold text-slate-800">
+                    <option value="Ayah" ${a.peran === 'Ayah' ? 'selected' : ''}>Ayah (Kepala Keluarga)</option>
+                    <option value="Ibu" ${a.peran === 'Ibu' ? 'selected' : ''}>Ibu</option>
+                    <option value="Anak" ${a.peran === 'Anak' ? 'selected' : ''}>Anak</option>
+                    <option value="Peserta" ${a.peran === 'Peserta' ? 'selected' : ''}>Lainnya (Kakek/Nenek/Keluarga)</option>
+                  </select>
+                ` : `
+                  <input type="text" readonly value="Peserta" class="select-peran w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs bg-slate-100 text-slate-600 font-bold cursor-not-allowed" />
+                `}
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                  Jenis Kelamin <span class="text-rose-500">*</span>
+                </label>
+                <div class="grid grid-cols-2 gap-2">
+                  <label class="cursor-pointer">
+                    <input type="radio" name="jk_${idx}" value="Ikhwan" ${a.jenis_kelamin === 'Ikhwan' ? 'checked' : ''} class="peer sr-only" />
+                    <div class="text-center p-2 rounded-xl border border-slate-200 bg-white font-bold text-xs peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-600 transition">
+                      IKHWAN
+                    </div>
+                  </label>
+                  <label class="cursor-pointer">
+                    <input type="radio" name="jk_${idx}" value="Akhwat" ${a.jenis_kelamin === 'Akhwat' ? 'checked' : ''} class="peer sr-only" />
+                    <div class="text-center p-2 rounded-xl border border-slate-200 bg-white font-bold text-xs peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-600 transition">
+                      AKHWAT
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Usia (Tahun)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="${a.usia !== null ? a.usia : ''}"
+                    placeholder="Contoh: 7"
+                    class="input-usia w-full border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Ukuran Kaos</label>
+                  <select class="select-kaos w-full border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono font-bold">
+                    <option value="S" ${a.ukuran_kaos === 'S' ? 'selected' : ''}>S</option>
+                    <option value="M" ${a.ukuran_kaos === 'M' ? 'selected' : ''}>M</option>
+                    <option value="L" ${a.ukuran_kaos === 'L' ? 'selected' : ''}>L</option>
+                    <option value="XL" ${a.ukuran_kaos === 'XL' ? 'selected' : ''}>XL</option>
+                    <option value="XXL" ${a.ukuran_kaos === 'XXL' ? 'selected' : ''}>XXL</option>
+                    <option value="Anak" ${a.ukuran_kaos === 'Anak' ? 'selected' : ''}>Anak (All Size)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                  Catatan Medis / Alergi <span class="text-slate-400 font-normal">(Opsional)</span>
+                </label>
+                <input
+                  type="text"
+                  value="${a.catatan_medis}"
+                  placeholder="Contoh: Alergi udang, asma dingin, dll."
+                  class="input-medis w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
+                />
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Pasang event listener tombol hapus
+      container.querySelectorAll('.btn-hapus-anggota').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          syncAnggotaFromDOM();
+          const target = e.currentTarget as HTMLElement;
+          const idx = parseInt(target.getAttribute('data-index') || '0', 10);
+          if (anggotaData.length > 1) {
+            anggotaData.splice(idx, 1);
+            renderAnggotaForms();
+          }
+        });
+      });
+    }
+
+    function setupAddonInteractions() {
+      const radioSewa = document.querySelectorAll('input[name="opt_sewa"]');
+      const containerAddons = document.getElementById('containerAddons');
+
+      radioSewa.forEach((r) => {
+        r.addEventListener('change', () => {
+          const isYa = (document.querySelector('input[name="opt_sewa"]:checked') as HTMLInputElement)?.value === 'ya';
+          if (containerAddons) {
+            if (isYa) {
+              containerAddons.classList.remove('hidden');
+            } else {
+              containerAddons.classList.add('hidden');
+              selectedAddonQty = {};
+              renderAddonsCatalog();
+            }
+          }
+          calcTotalSementara();
+        });
+      });
+    }
+
+    function renderAddonsCatalog() {
+      const list = document.getElementById('listAddonsCards');
+      if (!list) return;
+
+      if (catalogAddons.length === 0) {
+        list.innerHTML = `<div class="p-4 bg-slate-50 text-slate-400 text-xs rounded-xl text-center">Belum ada item sewa tersedia.</div>`;
+        return;
       }
 
-      private selectItem(item: RegionItem) {
-        const formatted = toTitleCase(item.name);
-        this.input.value = formatted;
-        this.hiddenId.value = item.id;
-        this.hiddenName.value = formatted;
-        this.closeList();
-        if (this.onSelectCallback) this.onSelectCallback(item);
+      list.innerHTML = catalogAddons.map((item) => {
+        const qty = selectedAddonQty[item.id] || 0;
+        return `
+          <div class="p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3">
+            <div class="space-y-0.5">
+              <h5 class="text-xs font-extrabold text-slate-900">${item.nama}</h5>
+              <p class="text-[11px] text-slate-500">${item.deskripsi || ''}</p>
+              <span class="text-xs font-black text-primary-700 font-mono block">Rp ${item.harga.toLocaleString('id-ID')} <span class="text-[10px] font-normal text-slate-400">/ unit</span></span>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                class="btn-addon-dec w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center transition active:scale-95 cursor-pointer"
+                data-id="${item.id}"
+              >-</button>
+              <span class="w-8 text-center font-bold text-xs font-mono addon-qty-text" data-id="${item.id}">${qty}</span>
+              <button
+                type="button"
+                class="btn-addon-inc w-8 h-8 rounded-lg bg-primary-600 text-white font-bold hover:bg-primary-700 flex items-center justify-center transition active:scale-95 cursor-pointer"
+                data-id="${item.id}"
+              >+</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Bind inc / dec buttons
+      list.querySelectorAll('.btn-addon-dec').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+          if (!id) return;
+          const current = selectedAddonQty[id] || 0;
+          if (current > 0) {
+            selectedAddonQty[id] = current - 1;
+            updateAddonQtyDisplay(id);
+            calcTotalSementara();
+          }
+        });
+      });
+
+      list.querySelectorAll('.btn-addon-inc').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
+          if (!id) return;
+          const current = selectedAddonQty[id] || 0;
+          selectedAddonQty[id] = current + 1;
+          updateAddonQtyDisplay(id);
+          calcTotalSementara();
+        });
+      });
+    }
+
+    function updateAddonQtyDisplay(id: string) {
+      const el = document.querySelector(`.addon-qty-text[data-id="${id}"]`);
+      if (el) el.textContent = String(selectedAddonQty[id] || 0);
+    }
+
+    function getAnggotaBerbayarCount(): number {
+      return anggotaData.filter((a) => a.usia === null || a.usia >= 3).length;
+    }
+
+    function updateStep3Summary() {
+      const berbayar = getAnggotaBerbayarCount();
+      const subtotalWajib = berbayar * 200000;
+
+      const txtBadge = document.getElementById('txtTotalBerbayarBadge');
+      if (txtBadge) txtBadge.textContent = `${berbayar} Orang`;
+
+      const txtSubtotalWajib = document.getElementById('txtSubtotalWajibStep3');
+      if (txtSubtotalWajib) txtSubtotalWajib.textContent = `Rp ${subtotalWajib.toLocaleString('id-ID')}`;
+
+      calcTotalSementara();
+    }
+
+    function calcTotalSementara(): number {
+      const berbayar = getAnggotaBerbayarCount();
+      const subtotalWajib = berbayar * 200000;
+
+      let subtotalAddon = 0;
+      for (const item of catalogAddons) {
+        const qty = selectedAddonQty[item.id] || 0;
+        subtotalAddon += item.harga * qty;
+      }
+
+      const total = subtotalWajib + subtotalAddon;
+      const el = document.getElementById('txtTotalSementara');
+      if (el) el.textContent = `Rp ${total.toLocaleString('id-ID')}`;
+
+      return total;
+    }
+
+    function updateStep4Review() {
+      const tipe = getSelectedTipe();
+      const picNama = (document.getElementById('pic_nama') as HTMLInputElement).value.trim();
+      const picWa = (document.getElementById('pic_whatsapp') as HTMLInputElement).value.trim();
+
+      const rekapTipe = document.getElementById('rekapTipe');
+      if (rekapTipe) rekapTipe.textContent = tipe === 'keluarga' ? 'Pendaftaran Keluarga' : 'Pendaftaran Rombongan / Non-Keluarga';
+
+      const rekapPicNama = document.getElementById('rekapPicNama');
+      if (rekapPicNama) rekapPicNama.textContent = picNama;
+
+      const rekapPicWa = document.getElementById('rekapPicWa');
+      if (rekapPicWa) rekapPicWa.textContent = `WA: ${picWa}`;
+
+      const rekapJmlAnggota = document.getElementById('rekapJmlAnggota');
+      if (rekapJmlAnggota) rekapJmlAnggota.textContent = String(anggotaData.length);
+
+      const rekapAnggotaList = document.getElementById('rekapAnggotaList');
+      if (rekapAnggotaList) {
+        rekapAnggotaList.innerHTML = anggotaData.map((a, idx) => {
+          const isBalita = a.usia !== null && a.usia < 3;
+          return `
+            <li class="pt-1.5 flex justify-between items-center text-xs">
+              <div>
+                <span class="font-bold text-slate-800">${idx + 1}. ${a.nama}</span>
+                <span class="text-[10px] text-slate-500">(${a.peran} • ${a.jenis_kelamin}${a.usia ? ' • ' + a.usia + ' th' : ''})</span>
+              </div>
+              <span class="font-bold font-mono ${isBalita ? 'text-emerald-600' : 'text-slate-700'}">
+                ${isBalita ? 'GRATIS (Balita)' : 'Rp 200.000'}
+              </span>
+            </li>
+          `;
+        }).join('');
+      }
+
+      const berbayar = getAnggotaBerbayarCount();
+      const biayaWajib = berbayar * 200000;
+
+      const rekapHitungWajib = document.getElementById('rekapHitungWajib');
+      if (rekapHitungWajib) rekapHitungWajib.textContent = String(berbayar);
+
+      const rekapBiayaWajib = document.getElementById('rekapBiayaWajib');
+      if (rekapBiayaWajib) rekapBiayaWajib.textContent = `Rp ${biayaWajib.toLocaleString('id-ID')}`;
+
+      const rekapAddonsList = document.getElementById('rekapAddonsList');
+      if (rekapAddonsList) {
+        const chosen = catalogAddons.filter((it) => (selectedAddonQty[it.id] || 0) > 0);
+        if (chosen.length === 0) {
+          rekapAddonsList.innerHTML = `<span class="text-slate-400 text-[11px] italic">Tidak ada sewa perlengkapan tambahan.</span>`;
+        } else {
+          rekapAddonsList.innerHTML = chosen.map((it) => {
+            const qty = selectedAddonQty[it.id] || 0;
+            const sub = it.harga * qty;
+            return `
+              <div class="flex justify-between text-slate-600 text-xs">
+                <span>${it.nama} (x${qty}):</span>
+                <span class="font-bold text-slate-800 font-mono">Rp ${sub.toLocaleString('id-ID')}</span>
+              </div>
+            `;
+          }).join('');
+        }
       }
     }
 
-    let isSubmitting = false;
+    function setupFinalSubmit() {
+      const form = document.getElementById('formFamilyCamp') as HTMLFormElement | null;
+      const btnFinalSubmit = document.getElementById('btnFinalSubmit') as HTMLButtonElement | null;
+      const submitError = document.getElementById('submitError');
 
-    function initDaftarPage() {
-      const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
-
-      const form = document.getElementById('formDaftar') as HTMLFormElement | null;
       if (!form) return;
 
-      // Idempotency: Cegah inisialisasi ganda dari astro:page-load atau DOMContentLoaded
-      if (form.dataset.initialized === 'true') return;
-      form.dataset.initialized = 'true';
-      isSubmitting = false;
-
-      // Cek status kuota pendaftaran
-      fetch(`${API_URL}/api/peserta/config`)
-        .then((res) => res.json())
-        .then((data: any) => {
-          if (data && data.pendaftaran_buka === false) {
-            const banner = document.getElementById('closedBanner');
-            if (banner) banner.classList.remove('hidden');
-            if (submitBtn) {
-              submitBtn.disabled = true;
-              submitBtn.textContent = 'Kuota Acara Ditutup';
-              submitBtn.classList.remove('bg-primary-600', 'hover:bg-primary-700');
-              submitBtn.classList.add('bg-slate-300', 'text-slate-500', 'cursor-not-allowed', 'shadow-none');
-            }
-            form.querySelectorAll('input, textarea').forEach((el) => {
-              (el as HTMLInputElement).disabled = true;
-            });
-          }
-        })
-        .catch((err) => console.warn('Cek config gagal:', err));
-
-      const inputNama = document.getElementById('nama') as HTMLInputElement | null;
-      const namaError = document.getElementById('namaError');
-      const inputWA = document.getElementById('no_whatsapp') as HTMLInputElement | null;
-
-      const dropZone = document.getElementById('dropZone');
-      const fileInput = document.getElementById('fileInput') as HTMLInputElement | null;
-      const uploadPlaceholder = document.getElementById('uploadPlaceholder');
-      const uploadPreview = document.getElementById('uploadPreview');
-      const previewImage = document.getElementById('previewImage') as HTMLImageElement | null;
-      const fileNameEl = document.getElementById('fileName');
-      const removeFileBtn = document.getElementById('removeFile');
-
-      const submitBtn = document.getElementById('submitBtn') as HTMLButtonElement | null;
-      const loadingState = document.getElementById('loadingState');
-      const errorState = document.getElementById('errorState');
-      const errorMessage = document.getElementById('errorMessage');
-
-      if (!inputNama || !inputWA || !dropZone || !fileInput || !uploadPlaceholder || !uploadPreview || !previewImage || !fileNameEl || !removeFileBtn || !submitBtn || !loadingState || !errorState || !errorMessage) return;
-
-      // ==========================================
-      // 1. VALIDASI NAMA LENGKAP MINIMAL 3 HURUF
-      // ==========================================
-      function validateNama(): boolean {
-        if (!inputNama) return false;
-        const val = inputNama.value.trim();
-        if (val.length < 3) {
-          inputNama.classList.remove('border-slate-300', 'focus:border-primary-600', 'focus:ring-primary-500/20');
-          inputNama.classList.add('border-red-500', 'bg-red-50/20', 'focus:border-red-500', 'focus:ring-red-500/20');
-          namaError?.classList.remove('hidden');
-          return false;
-        } else {
-          resetNamaStyle();
-          return true;
-        }
-      }
-
-      function resetNamaStyle() {
-        if (!inputNama) return;
-        inputNama.classList.remove('border-red-500', 'bg-red-50/20', 'focus:border-red-500', 'focus:ring-red-500/20');
-        inputNama.classList.add('border-slate-300', 'focus:border-primary-600', 'focus:ring-primary-500/20');
-        namaError?.classList.add('hidden');
-      }
-
-      // Saat blur (keluar kolom): jika kurang dari 3 huruf maka kolom jadi merah & ada notif
-      inputNama.addEventListener('blur', () => {
-        if (inputNama.value.trim().length > 0) {
-          validateNama();
-        }
-      });
-
-      // Saat diklik / fokus kembali: kembali normal tidak merah
-      inputNama.addEventListener('focus', resetNamaStyle);
-      inputNama.addEventListener('click', resetNamaStyle);
-      inputNama.addEventListener('input', () => {
-        if (inputNama.value.trim().length >= 3) {
-          resetNamaStyle();
-        }
-      });
-
-      // ==========================================
-      // 2. NOMOR WA HANYA BISA DIINPUT ANGKA
-      // ==========================================
-      inputWA.addEventListener('input', (e) => {
-        const target = e.target as HTMLInputElement;
-        target.value = target.value.replace(/\D/g, '');
-      });
-
-      inputWA.addEventListener('keypress', (e) => {
-        if (!/[0-9]/.test(e.key)) {
-          e.preventDefault();
-        }
-      });
-
-      inputWA.addEventListener('paste', (e) => {
+      form.onsubmit = async (e) => {
         e.preventDefault();
-        const pasteData = e.clipboardData?.getData('text') || '';
-        const digitsOnly = pasteData.replace(/\D/g, '');
-        document.execCommand('insertText', false, digitsOnly);
-      });
+        syncAnggotaFromDOM();
 
-      // ==========================================
-      // 3. WILAYAH INDONESIA API & SEARCHABLE DROPDOWN
-      // ==========================================
-      const WILAYAH_API = 'https://www.emsifa.com/api-wilayah-indonesia/api';
+        if (submitError) submitError.classList.add('hidden');
 
-      // 38 Provinsi Resmi Indonesia sebagai default lokal instan (0ms delay)
-      const DEFAULT_PROVINCES: RegionItem[] = [
-        { id: '11', name: 'ACEH' },
-        { id: '12', name: 'SUMATERA UTARA' },
-        { id: '13', name: 'SUMATERA BARAT' },
-        { id: '14', name: 'RIAU' },
-        { id: '15', name: 'JAMBI' },
-        { id: '16', name: 'SUMATERA SELATAN' },
-        { id: '17', name: 'BENGKULU' },
-        { id: '18', name: 'LAMPUNG' },
-        { id: '19', name: 'KEPULAUAN BANGKA BELITUNG' },
-        { id: '21', name: 'KEPULAUAN RIAU' },
-        { id: '31', name: 'DKI JAKARTA' },
-        { id: '32', name: 'JAWA BARAT' },
-        { id: '33', name: 'JAWA TENGAH' },
-        { id: '34', name: 'DI YOGYAKARTA' },
-        { id: '35', name: 'JAWA TIMUR' },
-        { id: '36', name: 'BANTEN' },
-        { id: '51', name: 'BALI' },
-        { id: '52', name: 'NUSA TENGGARA BARAT' },
-        { id: '53', name: 'NUSA TENGGARA TIMUR' },
-        { id: '61', name: 'KALIMANTAN BARAT' },
-        { id: '62', name: 'KALIMANTAN TENGAH' },
-        { id: '63', name: 'KALIMANTAN SELATAN' },
-        { id: '64', name: 'KALIMANTAN TIMUR' },
-        { id: '65', name: 'KALIMANTAN UTARA' },
-        { id: '71', name: 'SULAWESI UTARA' },
-        { id: '72', name: 'SULAWESI TENGAH' },
-        { id: '73', name: 'SULAWESI SELATAN' },
-        { id: '74', name: 'SULAWESI TENGGARA' },
-        { id: '75', name: 'GORONTALO' },
-        { id: '76', name: 'SULAWESI BARAT' },
-        { id: '81', name: 'MALUKU' },
-        { id: '82', name: 'MALUKU UTARA' },
-        { id: '91', name: 'PAPUA BARAT' },
-        { id: '92', name: 'PAPUA BARAT DAYA' },
-        { id: '93', name: 'PAPUA SELATAN' },
-        { id: '94', name: 'PAPUA' },
-        { id: '95', name: 'PAPUA TENGAH' },
-        { id: '96', name: 'PAPUA PEGUNUNGAN' }
-      ];
-
-      const ddDesa = new SearchableDropdown('desa');
-      const ddKecamatan = new SearchableDropdown(
-        'kecamatan',
-        async (kec) => {
-          ddDesa.setLoading('Memuat daftar kelurahan/desa...');
-          try {
-            const res = await fetch(`${WILAYAH_API}/villages/${kec.id}.json`);
-            if (!res.ok) throw new Error();
-            const data: RegionItem[] = await res.json();
-            ddDesa.setItems(data);
-          } catch {
-            ddDesa.enable('Ketik nama kelurahan/desa manual');
-          }
-        },
-        () => ddDesa.reset('Pilih Kecamatan dahulu')
-      );
-
-      const ddKota = new SearchableDropdown(
-        'kota',
-        async (kota) => {
-          ddKecamatan.setLoading('Memuat daftar kecamatan...');
-          ddDesa.reset('Pilih Kecamatan dahulu');
-          try {
-            const res = await fetch(`${WILAYAH_API}/districts/${kota.id}.json`);
-            if (!res.ok) throw new Error();
-            const data: RegionItem[] = await res.json();
-            ddKecamatan.setItems(data);
-          } catch {
-            ddKecamatan.enable('Ketik nama kecamatan manual');
-          }
-        },
-        () => {
-          ddKecamatan.reset('Pilih Kota/Kabupaten dahulu');
-          ddDesa.reset('Pilih Kecamatan dahulu');
-        }
-      );
-
-      const ddProvinsi = new SearchableDropdown(
-        'provinsi',
-        async (prov) => {
-          ddKota.setLoading('Memuat daftar kota/kabupaten...');
-          ddKecamatan.reset('Pilih Kota/Kabupaten dahulu');
-          ddDesa.reset('Pilih Kecamatan dahulu');
-          try {
-            const res = await fetch(`${WILAYAH_API}/regencies/${prov.id}.json`);
-            if (!res.ok) throw new Error();
-            const data: RegionItem[] = await res.json();
-            ddKota.setItems(data);
-          } catch {
-            ddKota.enable('Ketik nama kota/kabupaten manual');
-          }
-        },
-        () => {
-          ddKota.reset('Pilih Provinsi dahulu');
-          ddKecamatan.reset('Pilih Kota/Kabupaten dahulu');
-          ddDesa.reset('Pilih Kecamatan dahulu');
-        }
-      );
-
-      // Langsung muat default 38 provinsi seketika agar saat input diklik langsung muncul
-      ddProvinsi.setItems(DEFAULT_PROVINCES);
-
-      // Sinkronisasi data provinsi online di background
-      async function loadProvinces() {
-        try {
-          const res = await fetch(`${WILAYAH_API}/provinces.json`);
-          if (res.ok) {
-            const data: RegionItem[] = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-              ddProvinsi.setItems(data);
-            }
-          }
-        } catch {
-          // Tetap menggunakan DEFAULT_PROVINCES
-        }
-      }
-      loadProvinces();
-
-      // ==========================================
-      // 4. UPLOAD & STANDAR KOMPRESI OTOMATIS FOTO
-      // ==========================================
-      let selectedFile: File | Blob | null = null;
-      let originalFileName = '';
-
-      dropZone.addEventListener('click', () => fileInput.click());
-      dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.classList.add('border-primary-500', 'bg-primary-50/30');
-      });
-      dropZone.addEventListener('dragleave', () => {
-        dropZone.classList.remove('border-primary-500', 'bg-primary-50/30');
-      });
-      dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.classList.remove('border-primary-500', 'bg-primary-50/30');
-        const files = e.dataTransfer?.files;
-        if (files && files.length > 0) handleFile(files[0]);
-      });
-
-      fileInput.addEventListener('change', () => {
-        if (fileInput.files && fileInput.files.length > 0) handleFile(fileInput.files[0]);
-      });
-
-      removeFileBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectedFile = null;
-        originalFileName = '';
-        uploadPlaceholder.classList.remove('hidden');
-        uploadPreview.classList.add('hidden');
-        fileInput.value = '';
-      });
-
-      // Standar Kompresi Otomatis: Resolusi Maks 1280px, format JPEG 0.78 (target ~150-350 KB)
-      async function compressImage(file: File): Promise<Blob> {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-            const maxDim = 1280; // Standar optimal teks & NIP tetap tajam
-
-            if (width > maxDim || height > maxDim) {
-              if (width > height) {
-                height = Math.round((height * maxDim) / width);
-                width = maxDim;
-              } else {
-                width = Math.round((width * maxDim) / height);
-                height = maxDim;
-              }
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, width, height);
-              ctx.drawImage(img, 0, 0, width, height);
-            }
-
-            canvas.toBlob(
-              (blob) => {
-                resolve(blob || file);
-              },
-              'image/jpeg',
-              0.78 // Kompresi optimal
-            );
-          };
-          img.src = URL.createObjectURL(file);
-        });
-      }
-
-      async function handleFile(file: File) {
-        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-          showError('Format file tidak didukung. Harap pilih gambar JPG, PNG, atau WebP.');
-          return;
+        if (btnFinalSubmit) {
+          btnFinalSubmit.disabled = true;
+          btnFinalSubmit.textContent = 'Memproses Pendaftaran...';
+          btnFinalSubmit.className = 'px-7 py-3.5 bg-slate-400 text-white font-extrabold text-sm rounded-xl transition cursor-wait';
         }
 
-        originalFileName = file.name;
-        hideError();
+        const tipe = getSelectedTipe();
+        const picNama = (document.getElementById('pic_nama') as HTMLInputElement).value.trim();
+        const picWa = (document.getElementById('pic_whatsapp') as HTMLInputElement).value.trim();
+        const picEmail = (document.getElementById('pic_email') as HTMLInputElement).value.trim();
 
-        const originalSize = file.size;
+        // Siapkan array addon
+        const addonsPayload: { addon_id: string; qty: number }[] = [];
+        for (const item of catalogAddons) {
+          const qty = selectedAddonQty[item.id] || 0;
+          if (qty > 0) {
+            addonsPayload.push({ addon_id: item.id, qty });
+          }
+        }
 
-        // Kompresi otomatis untuk menjaga standar penyimpanan
-        selectedFile = await compressImage(file);
-        const compressedSize = selectedFile.size;
-
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (previewImage) previewImage.src = e.target?.result as string;
-          if (fileNameEl) fileNameEl.textContent = originalFileName;
-
-          uploadPlaceholder?.classList.add('hidden');
-          uploadPreview?.classList.remove('hidden');
+        const payload = {
+          tipe,
+          pic_nama: picNama,
+          pic_whatsapp: picWa,
+          pic_email: picEmail,
+          anggota: anggotaData,
+          addons: addonsPayload,
         };
-        reader.readAsDataURL(selectedFile);
-      }
-
-      function showError(msg: string) {
-        if (errorMessage) errorMessage.textContent = msg;
-        errorState?.classList.remove('hidden');
-      }
-      function hideError() {
-        errorState?.classList.add('hidden');
-      }
-
-      // ==========================================
-      // 5. SUBMIT FORM
-      // ==========================================
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        hideError();
-
-        // Cegah pengiriman ganda jika sedang dalam proses submit
-        if (isSubmitting) return;
-
-        if (!validateNama()) {
-          inputNama.focus();
-          showError('Nama lengkap minimal 3 huruf.');
-          return;
-        }
-
-        const nama = inputNama.value.trim();
-        const jenisKelaminEl = form.querySelector('input[name="jenis_kelamin"]:checked') as HTMLInputElement | null;
-        const jenisKelamin = jenisKelaminEl ? jenisKelaminEl.value : '';
-        const nip = (form.querySelector('#nip') as HTMLInputElement).value.trim().toUpperCase();
-        const noWa = inputWA.value.trim();
-
-        const prov = ddProvinsi.getValue();
-        const kota = ddKota.getValue();
-        const kec = ddKecamatan.getValue();
-        const desa = ddDesa.getValue();
-
-        const domisili = [desa, kec ? `Kec. ${kec}` : '', kota, prov ? `Prov. ${prov}` : '']
-          .filter(Boolean)
-          .join(', ');
-
-        const alasan = (form.querySelector('#alasan') as HTMLTextAreaElement).value.trim();
-
-        if (!jenisKelamin) {
-          showError('Harap pilih kategori Ikhwan atau Akhwat.');
-          return;
-        }
-
-        if (!nip) {
-          showError('Harap masukkan NIP HSI Anda (contoh: ARN... atau ART...).');
-          return;
-        }
-
-        const cleanWa = noWa.replace(/\D/g, '');
-        if (!/^(08|628)\d{7,13}$/.test(cleanWa)) {
-          showError('Format nomor WhatsApp tidak valid. Masukkan nomor telepon aktif yang benar (contoh: 08123456789).');
-          return;
-        }
-
-        if (!alasan) {
-          showError('Harap jelaskan singkat alasan Anda ingin mengikuti acara ini.');
-          return;
-        }
-
-        if (!selectedFile) {
-          showError('Harap lampirkan foto/screenshot bukti akun HSI sebelum mengirim formulir.');
-          return;
-        }
-
-        // Kunci submit button dan tampilkan status loading
-        isSubmitting = true;
-        submitBtn.disabled = true;
-        submitBtn.classList.add('hidden');
-        loadingState.classList.remove('hidden');
 
         try {
-          const formData = new FormData();
-          formData.append('nama', nama);
-          formData.append('jenis_kelamin', jenisKelamin);
-          formData.append('nip', nip);
-          formData.append('no_whatsapp', noWa);
-          formData.append('domisili', domisili);
-          formData.append('alasan', alasan);
-
-          const lokasi = [kota, prov].filter(Boolean).join(', ');
-          const instansi = [jenisKelamin, `NIP: ${nip}`, lokasi].filter(Boolean).join(' | ');
-          formData.append('instansi', instansi || 'Peserta');
-          formData.append('screenshot', selectedFile, originalFileName || 'ss_akun_hsi.jpg');
-
-          const res = await fetch(`${API_URL}/api/peserta/daftar`, {
+          const res = await fetch(`${API_URL}/api/peserta/daftar-grup`, {
             method: 'POST',
-            body: formData,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
           });
 
-          const data = await res.json();
+          const json = await res.json();
           if (!res.ok) {
-            throw new Error(data.error || 'Gagal mengirim formulir pendaftaran');
+            throw new Error(json.error || 'Gagal menyimpan data pendaftaran');
           }
 
-          window.location.href = `/sukses?wa=${encodeURIComponent(noWa)}`;
+          // Sukses! Redirect langsung ke halaman konfirmasi pembayaran
+          if (json.payment_url) {
+            window.location.href = json.payment_url;
+          } else if (json.payment_token) {
+            window.location.href = `/pembayaran?token=${encodeURIComponent(json.payment_token)}`;
+          } else {
+            alert('Pendaftaran berhasil disimpan!');
+            window.location.href = '/status';
+          }
         } catch (err: any) {
-          showError(err.message || 'Terjadi kesalahan sistem saat mengirim data.');
-          isSubmitting = false;
-          submitBtn.disabled = false;
-          submitBtn.classList.remove('hidden');
-          loadingState.classList.add('hidden');
+          if (submitError) {
+            submitError.textContent = err.message || 'Terjadi kesalahan sistem saat mengirim data.';
+            submitError.classList.remove('hidden');
+          }
+          if (btnFinalSubmit) {
+            btnFinalSubmit.disabled = false;
+            btnFinalSubmit.textContent = 'Daftar & Lanjut ke Pembayaran →';
+            btnFinalSubmit.className = 'px-7 py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-sm rounded-xl transition shadow-md active:scale-95 cursor-pointer';
+          }
         }
-      });
+      };
     }
 
-    // Inisialisasi aman untuk Astro View Transitions / ClientRouter
-    document.addEventListener('astro:page-load', initDaftarPage);
+    document.addEventListener('astro:page-load', initFamilyCampForm);
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initDaftarPage);
+      document.addEventListener('DOMContentLoaded', initFamilyCampForm);
     } else {
-      initDaftarPage();
+      initFamilyCampForm();
     }
   </script>
 </Layout>

@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { pesertaRoutes } from './routes/peserta';
 import { adminRoutes } from './routes/admin';
 import { absensiRoutes } from './routes/absensi';
+import { ensureFamilyCampTables } from './db/db-init';
 
 type Bindings = {
   DB: D1Database;
@@ -20,9 +21,17 @@ app.use('*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// Auto-init database tables on first request
+app.use('*', async (c, next) => {
+  if (c.env.DB) {
+    await ensureFamilyCampTables(c.env.DB);
+  }
+  await next();
+});
+
 // Health check
 app.get('/', (c) => {
-  return c.json({ message: 'MS EvenScan API is running', status: 'ok' });
+  return c.json({ message: 'MS EvenScan Family Camp API is running', status: 'ok' });
 });
 
 // Routes

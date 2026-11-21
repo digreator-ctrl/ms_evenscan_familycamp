@@ -95,7 +95,18 @@ export function Layout() {
               <span>Verification</span>
             </Link>
 
-            {/* 5. Settings */}
+            {/* 5. Kelola Add-on */}
+            <Link
+              to="/kelola-addon"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs transition duration-150 ${isActiveDesktop('/kelola-addon')}`}
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              <span>Kelola Add-on</span>
+            </Link>
+
+            {/* 6. Settings */}
             <Link
               to="/pengaturan"
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs transition duration-150 ${isActiveDesktop('/pengaturan')}`}

@@ -581,3 +581,386 @@ adminRoutes.patch('/settings/pendaftaran', async (c) => {
     return c.json({ error: 'Gagal memperbarui status pendaftaran: ' + err.message }, 500);
   }
 });
+
+// =========================================================================
+// ENDPOINT ADMIN: Kelola Grup Pendaftar Family Camp & Add-on
+// =========================================================================
+
+/**
+ * GET /api/admin/grup
+ * Mengambil daftar pendaftaran grup Family Camp
+ */
+adminRoutes.get('/grup', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  const status = c.req.query('status');
+  const search = c.req.query('search')?.trim();
+
+  try {
+    let sql = `SELECT * FROM pendaftaran_grup WHERE 1=1`;
+    const params: any[] = [];
+
+    if (status && status !== 'semua') {
+      sql += ` AND status = ?`;
+      params.push(status);
+    }
+
+    if (search) {
+      sql += ` AND (pic_nama LIKE ? OR pic_whatsapp LIKE ? OR id LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    sql += ` ORDER BY created_at DESC`;
+
+    const stmt = db.prepare(sql);
+    const result = params.length > 0 ? await stmt.bind(...params).all<any>() : await stmt.all<any>();
+    const groups = result.results || [];
+
+    // Sertakan preview anggota ringkas
+    const enriched = [];
+    for (const g of groups) {
+      const anggotaRes = await db
+        .prepare(`SELECT id, nama, peran, jenis_kelamin, usia, is_gratis, qr_token, status_hadir FROM anggota WHERE grup_id = ?`)
+        .bind(g.id)
+        .all();
+      enriched.push({
+        ...g,
+        anggota: anggotaRes.results || [],
+      });
+    }
+
+    c.header('x-total-count', String(enriched.length));
+    return c.json({
+      data: enriched,
+      total: enriched.length,
+    });
+  } catch (err: any) {
+    console.error('Error list pendaftaran grup:', err);
+    return c.json({ error: 'Gagal mengambil data pendaftaran grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * GET /api/admin/grup/:id
+ * Detail pendaftaran grup beserta seluruh anggota dan add-on yang dipilih
+ */
+adminRoutes.get('/grup/:id', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  const id = c.req.param('id');
+
+  try {
+    const grup = await db.prepare(`SELECT * FROM pendaftaran_grup WHERE id = ?`).bind(id).first<any>();
+    if (!grup) {
+      return c.json({ error: 'Pendaftaran grup tidak ditemukan' }, 404);
+    }
+
+    const anggotaRes = await db
+      .prepare(`SELECT * FROM anggota WHERE grup_id = ? ORDER BY created_at ASC`)
+      .bind(id)
+      .all();
+
+    const addonsRes = await db
+      .prepare(`SELECT * FROM pendaftaran_addons WHERE grup_id = ?`)
+      .bind(id)
+      .all();
+
+    return c.json({
+      data: {
+        ...grup,
+        anggota: anggotaRes.results || [],
+        addons: addonsRes.results || [],
+      },
+    });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal mengambil detail grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * PATCH /api/admin/grup/:id/konfirmasi
+ * Konfirmasi pendaftaran grup: set lunas & generate QR token untuk setiap anggota
+ */
+adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  const id = c.req.param('id');
+  const user = c.get('user');
+  const confirmedBy = user?.nama || user?.username || 'Panitia';
+
+  try {
+    const grup = await db
+      .prepare(`SELECT * FROM pendaftaran_grup WHERE id = ?`)
+      .bind(id)
+      .first<any>();
+
+    if (!grup) {
+      return c.json({ error: 'Pendaftaran grup tidak ditemukan' }, 404);
+    }
+
+    // 1. Update status grup menjadi 'lunas'
+    await db
+      .prepare(
+        `UPDATE pendaftaran_grup
+         SET status = 'lunas',
+             confirmed_at = CURRENT_TIMESTAMP,
+             confirmed_by = ?
+         WHERE id = ?`
+      )
+      .bind(confirmedBy, id)
+      .run();
+
+    // 2. Generate QR token untuk setiap anggota jika belum punya
+    const anggotaRes = await db
+      .prepare(`SELECT id, nama, peran, qr_token FROM anggota WHERE grup_id = ?`)
+      .bind(id)
+      .all<any>();
+
+    const anggotaList = anggotaRes.results || [];
+    for (const a of anggotaList) {
+      if (!a.qr_token) {
+        const qrToken = 'qr_' + nanoid(12);
+        const qrCodeUrl = `/api/peserta/qr/${qrToken}`;
+        await db
+          .prepare(`UPDATE anggota SET qr_token = ?, qr_code_url = ? WHERE id = ?`)
+          .bind(qrToken, qrCodeUrl, a.id)
+          .run();
+      }
+    }
+
+    // 3. Generate Link WhatsApp untuk PIC
+    const cleanPhone = WALinkService.normalizePhoneNumber(grup.pic_whatsapp);
+    const siteUrl = c.req.header('Origin') || 'http://localhost:3001';
+    const linkTiket = `${siteUrl}/pembayaran?token=${grup.payment_token}`;
+
+    const pesanWa = `بسم الله
+السلام عليكم ورحمة الله وبركاته
+Halo *${grup.pic_nama}*,
+
+Alhamdulillah, pendaftaran *Family Camp* Anda telah *BERHASIL DIKONFIRMASI & LUNAS* ✅
+
+Total Peserta: ${grup.jumlah_anggota} orang
+Total Pembayaran: Rp ${grup.grand_total.toLocaleString('id-ID')}
+
+Silakan akses tiket dan QR Code kehadiran untuk seluruh anggota keluarga/rombongan Anda melalui tautan berikut:
+🔗 ${linkTiket}
+
+Mohon simpan dan tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
+
+جزاكم الله خيرا`;
+
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(pesanWa)}`;
+
+    return c.json({
+      success: true,
+      message: 'Pendaftaran grup berhasil dikonfirmasi dan QR tiket telah diterbitkan',
+      wa_url: waUrl,
+    });
+  } catch (err: any) {
+    console.error('Error konfirmasi grup:', err);
+    return c.json({ error: 'Gagal mengonfirmasi grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * PATCH /api/admin/grup/:id/tolak
+ * Tolak pendaftaran grup dengan alasan tertentu
+ */
+adminRoutes.patch('/grup/:id/tolak', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+  const alasan = (body.alasan as string)?.trim() || 'Bukti transfer tidak valid atau belum sesuai';
+
+  try {
+    await db
+      .prepare(
+        `UPDATE pendaftaran_grup
+         SET status = 'ditolak',
+             alasan_tolak = ?
+         WHERE id = ?`
+      )
+      .bind(alasan, id)
+      .run();
+
+    return c.json({
+      success: true,
+      message: 'Pendaftaran grup telah ditolak',
+    });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal menolak pendaftaran grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * DELETE /api/admin/grup/:id
+ * Hapus data grup, anggota, dan addons
+ */
+adminRoutes.delete('/grup/:id', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  const id = c.req.param('id');
+  const storage = new StorageService(c.env.STORAGE);
+
+  try {
+    const grup = await db
+      .prepare(`SELECT id, pic_nama, bukti_url FROM pendaftaran_grup WHERE id = ?`)
+      .bind(id)
+      .first<{ id: string; pic_nama: string; bukti_url: string | null }>();
+
+    if (!grup) {
+      return c.json({ error: 'Pendaftaran grup tidak ditemukan' }, 404);
+    }
+
+    if (grup.bukti_url) {
+      try {
+        const match = grup.bukti_url.match(/\/api\/peserta\/screenshot\/(.+)$/);
+        if (match) {
+          const key = decodeURIComponent(match[1]);
+          await storage.delete(key);
+        }
+      } catch (fileErr) {}
+    }
+
+    await db.prepare(`DELETE FROM pendaftaran_addons WHERE grup_id = ?`).bind(id).run();
+    await db.prepare(`DELETE FROM anggota WHERE grup_id = ?`).bind(id).run();
+    await db.prepare(`DELETE FROM pendaftaran_grup WHERE id = ?`).bind(id).run();
+
+    return c.json({
+      success: true,
+      message: `Pendaftaran grup ${grup.pic_nama} berhasil dihapus`,
+    });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal menghapus pendaftaran grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * CRUD ADD-ON ITEMS (Kelola Katalog Barang Sewa)
+ */
+
+// GET /api/admin/addon-items (Semua item termasuk non-aktif)
+adminRoutes.get('/addon-items', async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  try {
+    const result = await db
+      .prepare(`SELECT * FROM addon_items ORDER BY urutan ASC, created_at ASC`)
+      .all();
+    return c.json({ data: result.results || [] });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal mengambil add-on: ' + err.message }, 500);
+  }
+});
+
+// POST /api/admin/addon-items (Tambah item baru)
+adminRoutes.post('/addon-items', async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  const body = await c.req.json().catch(() => ({}));
+  const nama = (body.nama as string)?.trim();
+  const deskripsi = ((body.deskripsi as string) || '').trim();
+  const harga = parseInt(body.harga, 10);
+  const stok = body.stok !== undefined ? parseInt(body.stok, 10) : -1;
+  const aktif = body.aktif !== undefined ? (body.aktif ? 1 : 0) : 1;
+  const urutan = body.urutan !== undefined ? parseInt(body.urutan, 10) : 0;
+
+  if (!nama) {
+    return c.json({ error: 'Nama item add-on wajib diisi' }, 400);
+  }
+  if (isNaN(harga) || harga < 0) {
+    return c.json({ error: 'Harga item wajib berupa angka positif' }, 400);
+  }
+
+  const id = 'addon_' + nanoid(8);
+
+  try {
+    await db
+      .prepare(
+        `INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(id, nama, deskripsi, harga, stok, aktif, urutan)
+      .run();
+
+    return c.json({
+      success: true,
+      message: 'Item add-on berhasil ditambahkan',
+      data: { id, nama, deskripsi, harga, stok, aktif, urutan },
+    }, 201);
+  } catch (err: any) {
+    return c.json({ error: 'Gagal menambahkan add-on: ' + err.message }, 500);
+  }
+});
+
+// PATCH /api/admin/addon-items/:id (Edit item)
+adminRoutes.patch('/addon-items/:id', async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+
+  try {
+    const existing = await db.prepare(`SELECT * FROM addon_items WHERE id = ?`).bind(id).first<any>();
+    if (!existing) {
+      return c.json({ error: 'Item add-on tidak ditemukan' }, 404);
+    }
+
+    const nama = body.nama !== undefined ? (body.nama as string).trim() : existing.nama;
+    const deskripsi = body.deskripsi !== undefined ? (body.deskripsi as string).trim() : existing.deskripsi;
+    const harga = body.harga !== undefined ? parseInt(body.harga, 10) : existing.harga;
+    const stok = body.stok !== undefined ? parseInt(body.stok, 10) : existing.stok;
+    const aktif = body.aktif !== undefined ? (body.aktif ? 1 : 0) : existing.aktif;
+    const urutan = body.urutan !== undefined ? parseInt(body.urutan, 10) : existing.urutan;
+
+    await db
+      .prepare(
+        `UPDATE addon_items
+         SET nama = ?, deskripsi = ?, harga = ?, stok = ?, aktif = ?, urutan = ?
+         WHERE id = ?`
+      )
+      .bind(nama, deskripsi, harga, stok, aktif, urutan, id)
+      .run();
+
+    return c.json({
+      success: true,
+      message: 'Item add-on berhasil diperbarui',
+    });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal memperbarui add-on: ' + err.message }, 500);
+  }
+});
+
+// DELETE /api/admin/addon-items/:id (Hapus item)
+adminRoutes.delete('/addon-items/:id', async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  const id = c.req.param('id');
+
+  try {
+    await db.prepare(`DELETE FROM addon_items WHERE id = ?`).bind(id).run();
+    return c.json({ success: true, message: 'Item add-on berhasil dihapus' });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal menghapus add-on: ' + err.message }, 500);
+  }
+});

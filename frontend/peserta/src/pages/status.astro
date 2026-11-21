@@ -37,18 +37,18 @@ import Layout from '../layouts/Layout.astro';
         <form id="formStatus" novalidate class="space-y-4">
           <div>
             <label for="inputKode" class="block text-xs font-bold text-slate-700 mb-1.5">
-              Kode Akses Tiket (NIP + 4 Digit Terakhir No. WhatsApp)
+              Nomor WhatsApp PIC, Token Pembayaran, atau Kode Akses Tiket
             </label>
             <input
               type="text"
               id="inputKode"
-              placeholder="Contoh: ARN212-000017890"
+              placeholder="Contoh: 081234567890 atau pay_xxxx atau ARN..."
               required
-              class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition uppercase font-mono tracking-wide"
+              class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono tracking-wide"
             />
             <p class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <span>💡</span>
-              <span>Masukkan kode akses yang tercantum pada pesan WhatsApp konfirmasi dari panitia.</span>
+              <span>Masukkan nomor WhatsApp yang didaftarkan, link/token pembayaran, atau kode akses konfirmasi.</span>
             </p>
           </div>
 
@@ -154,7 +154,30 @@ import Layout from '../layouts/Layout.astro';
         </div>
       </div>
 
-      <!-- Result 5: Tidak Ditemukan -->
+      <!-- Result 5: Status Pendaftaran Family Camp (Grup) -->
+      <div id="resultFamilyCamp" class="hidden bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 text-center space-y-4 shadow-sm">
+        <div class="w-14 h-14 bg-primary-100 text-primary-700 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
+          ⛺
+        </div>
+        <div>
+          <span id="fcStatusBadge" class="inline-block px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+            Status: Menunggu Pembayaran
+          </span>
+          <h2 class="text-xl font-black text-slate-900" id="fcPicNama">-</h2>
+          <p class="text-xs text-slate-500 mt-1" id="fcRincian">-</p>
+        </div>
+        <div class="pt-2">
+          <a
+            id="fcLinkPembayaran"
+            href="#"
+            class="inline-block w-full py-3.5 px-6 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-xs sm:text-sm transition shadow-md shadow-primary-600/20 active:scale-95"
+          >
+            Buka Halaman Pembayaran & Tiket Keluarga →
+          </a>
+        </div>
+      </div>
+
+      <!-- Result 6: Tidak Ditemukan -->
       <div id="resultNotFound" class="hidden bg-slate-100/90 border border-slate-200 rounded-3xl p-6 sm:p-8 text-center space-y-3">
         <div class="w-16 h-16 bg-slate-200 text-slate-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
           🔍
@@ -188,6 +211,11 @@ import Layout from '../layouts/Layout.astro';
       const resultDitolak = document.getElementById('resultDitolak');
       const resultHadir = document.getElementById('resultHadir');
       const resultNotFound = document.getElementById('resultNotFound');
+      const resultFamilyCamp = document.getElementById('resultFamilyCamp');
+      const fcStatusBadge = document.getElementById('fcStatusBadge');
+      const fcPicNama = document.getElementById('fcPicNama');
+      const fcRincian = document.getElementById('fcRincian');
+      const fcLinkPembayaran = document.getElementById('fcLinkPembayaran') as HTMLAnchorElement | null;
 
       const namaMenunggu = document.getElementById('namaMenunggu');
       const pesertaNama = document.getElementById('pesertaNama');
@@ -226,15 +254,61 @@ import Layout from '../layouts/Layout.astro';
       }
 
       function hideAll() {
-        [resultMenunggu, resultDikonfirmasi, resultDitolak, resultHadir, resultNotFound].forEach((el) =>
+        [resultMenunggu, resultDikonfirmasi, resultDitolak, resultHadir, resultNotFound, resultFamilyCamp].forEach((el) =>
           el?.classList.add('hidden')
         );
+      }
+
+      async function checkFamilyCamp(inputVal: string): Promise<boolean> {
+        try {
+          const res = await fetch(`${API_URL}/api/peserta/status-grup?wa=${encodeURIComponent(inputVal)}&token=${encodeURIComponent(inputVal)}`);
+          if (res.ok) {
+            const json = await res.json();
+            if (json.data && json.data.length > 0) {
+              const g = json.data[0];
+              if (fcPicNama) fcPicNama.textContent = `${g.tipe === 'keluarga' ? 'Keluarga' : 'Rombongan'} ${g.pic_nama}`;
+              if (fcRincian) fcRincian.textContent = `Total Anggota: ${g.jumlah_anggota} orang • Total Biaya: Rp ${g.grand_total.toLocaleString('id-ID')}`;
+              if (fcLinkPembayaran) fcLinkPembayaran.href = `/pembayaran?token=${encodeURIComponent(g.payment_token)}`;
+              
+              if (fcStatusBadge) {
+                if (g.status === 'lunas') {
+                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
+                  fcStatusBadge.textContent = 'Status: LUNAS & TIKET TERBIT ✓';
+                } else if (g.status === 'menunggu_verifikasi') {
+                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-sky-100 text-sky-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
+                  fcStatusBadge.textContent = 'Status: MENUNGGU VERIFIKASI PANITIA';
+                } else if (g.status === 'ditolak') {
+                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
+                  fcStatusBadge.textContent = 'Status: PEMBAYARAN DITOLAK';
+                } else {
+                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
+                  fcStatusBadge.textContent = 'Status: MENUNGGU PEMBAYARAN';
+                }
+              }
+
+              resultFamilyCamp?.classList.remove('hidden');
+              return true;
+            }
+          }
+        } catch (err) {}
+        return false;
       }
 
       async function checkStatus(nipParam = '', wa4Param = '', waFullParam = '', kodeParam = '') {
         if (!nipParam && !wa4Param && !waFullParam && !kodeParam) return;
         hideAll();
         loading?.classList.remove('hidden');
+
+        // Jika input berupa nomor WA / token langsung coba cek family camp dulu
+        const rawInput = kodeParam || waFullParam || '';
+        const digitsOnly = rawInput.replace(/\D/g, '');
+        if (digitsOnly.length >= 9 || rawInput.startsWith('pay_') || rawInput.startsWith('grp_')) {
+          const foundFc = await checkFamilyCamp(rawInput);
+          if (foundFc) {
+            loading?.classList.add('hidden');
+            return;
+          }
+        }
 
         try {
           let url = `${API_URL}/api/peserta/status`;
@@ -250,7 +324,11 @@ import Layout from '../layouts/Layout.astro';
           loading?.classList.add('hidden');
 
           if (res.status === 404) {
-            resultNotFound?.classList.remove('hidden');
+            // Fallback cek family camp jika ada
+            const foundFc = await checkFamilyCamp(kodeParam || waFullParam || '');
+            if (!foundFc) {
+              resultNotFound?.classList.remove('hidden');
+            }
             return;
           }
 
@@ -300,12 +378,25 @@ import Layout from '../layouts/Layout.astro';
         const cleanKode = rawKode.replace(/[()]/g, '').trim();
 
         if (!cleanKode) {
-          showToast('Harap masukkan kode akses tiket Anda terlebih dahulu.', 'Kode Akses Wajib Diisi', inputKode);
+          showToast('Harap masukkan nomor WhatsApp, token pembayaran, atau kode akses tiket Anda.', 'Kolom Wajib Diisi', inputKode);
+          return;
+        }
+
+        const digitsOnly = cleanKode.replace(/\D/g, '');
+        const isPhoneNumber = digitsOnly.length >= 9 && (cleanKode.startsWith('08') || cleanKode.startsWith('62') || cleanKode.startsWith('+62'));
+        const isPaymentToken = cleanKode.startsWith('pay_') || cleanKode.startsWith('grp_');
+
+        if (isPhoneNumber || isPaymentToken) {
+          // Update URL tanpa reload
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.set('wa', cleanKode);
+          window.history.pushState({}, '', newUrl.toString());
+          checkStatus('', '', cleanKode, cleanKode);
           return;
         }
 
         if (cleanKode.length < 5) {
-          showToast('Kode akses harus berisi gabungan NIP dan 4 digit terakhir nomor WhatsApp.', 'Format Kode Tidak Sesuai', inputKode);
+          showToast('Kode akses harus berisi gabungan NIP dan 4 digit terakhir nomor WhatsApp, atau masukkan nomor WhatsApp lengkap.', 'Format Tidak Sesuai', inputKode);
           return;
         }
 

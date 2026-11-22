@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { authMiddleware, createAdminToken, getJwtSecret, requireRole, AdminJwtPayload } from '../middlewares/auth';
-import { WALinkService } from '../services/wa-link';
+import { WALinkService, renderWaTemplate } from '../services/wa-link';
 import { verifyPassword, hashPassword } from '../services/auth-helper';
 import { StorageService } from '../services/storage';
 import { getKategoriUsia, getKategoriUsiaLabel, isBerbayar, KATEGORI_USIA } from '../services/peserta-rules';
@@ -671,7 +671,18 @@ adminRoutes.get('/grup/:id', async (c) => {
 
 /**
  * PATCH /api/admin/grup/:id/konfirmasi
- * Konfirmasi pendaftaran grup: set lunas & generate QR token untuk setiap anggota
+ * Konfirmasi pendaftaran grup: set lunas, generate QR token semua anggota,
+ * dan catat pemasukan kas otomatis (idempotent).
+ *
+ * Body (opsional):
+ *   - nominal_dibayar: nominal uang yang benar-benar diterima (default = grand_total)
+ *   - dompet_id: dompet tujuan (default = dmp_bca_syariah / dompet rekening aktif pertama)
+ *
+ * Aturan selisih:
+ *   - nominal > 0 & < grand_total: pemasukan sebesar nominal, status tetap lunas,
+ *     selisih negatif (kekurangan) disimpan di selisih_bayar.
+ *   - nominal > grand_total: pendaftaran sebesar grand_total, kelebihannya dicatat
+ *     ke pos "Kelebihan Bayar".
  */
 adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
   const db = c.env.DB;
@@ -682,6 +693,7 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
   const id = c.req.param('id');
   const user = c.get('user');
   const confirmedBy = user?.nama || user?.username || 'Panitia';
+  const body = await c.req.json().catch(() => ({}));
 
   try {
     const grup = await db
@@ -693,19 +705,118 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
       return c.json({ error: 'Pendaftaran grup tidak ditemukan' }, 404);
     }
 
+    if (grup.status === 'lunas') {
+      return c.json({ error: 'Grup sudah berstatus LUNAS. Gunakan Batalkan Lunas bila perlu perubahan.' }, 409);
+    }
+
+    const grandTotal = Number(grup.grand_total) || 0;
+    let nominalDibayar =
+      body.nominal_dibayar !== undefined && body.nominal_dibayar !== null && body.nominal_dibayar !== ''
+        ? parseInt(body.nominal_dibayar, 10)
+        : grandTotal;
+
+    if (!Number.isFinite(nominalDibayar) || nominalDibayar <= 0) {
+      return c.json({ error: 'Nominal diterima harus angka lebih dari 0' }, 400);
+    }
+
+    // Dompet tujuan
+    let dompetId: string | undefined = (body.dompet_id as string)?.trim() || undefined;
+    if (!dompetId) {
+      const d = await db
+        .prepare(`SELECT id FROM dompet WHERE aktif = 1 AND jenis = 'rekening' ORDER BY urutan ASC LIMIT 1`)
+        .first<{ id: string }>();
+      dompetId = d?.id;
+    }
+    if (!dompetId) {
+      return c.json({ error: 'Belum ada dompet rekening aktif. Atur dompet pada menu Keuangan.' }, 400);
+    }
+    const dompetTujuanId = dompetId;
+    const dompet = await db.prepare(`SELECT id, nama FROM dompet WHERE id = ?`).bind(dompetTujuanId).first<any>();
+    if (!dompet) {
+      return c.json({ error: 'Dompet tujuan tidak ditemukan' }, 400);
+    }
+
+    const posPendaftaran = await db.prepare(`SELECT id FROM kas_pos WHERE id = 'pos_pendaftaran'`).first<{ id: string }>();
+    const posKelebihan = await db.prepare(`SELECT id FROM kas_pos WHERE id = 'pos_kelebihan_bayar'`).first<{ id: string }>();
+
+    if (!posPendaftaran?.id || !posKelebihan?.id) {
+      return c.json({ error: 'Pos kas "Pendaftaran" / "Kelebihan Bayar" tidak ditemukan.' }, 500);
+    }
+
+    const selisih = nominalDibayar - grandTotal;
+    const nominalPendaftaran = selisih > 0 ? grandTotal : nominalDibayar;
+    const nominalKelebihan = selisih > 0 ? selisih : 0;
+    const tanggal = new Date().toISOString().slice(0, 10);
+
     // 1. Update status grup menjadi 'lunas'
     await db
       .prepare(
         `UPDATE pendaftaran_grup
          SET status = 'lunas',
+             nominal_dibayar = ?,
+             selisih_bayar = ?,
              confirmed_at = CURRENT_TIMESTAMP,
              confirmed_by = ?
          WHERE id = ?`
       )
-      .bind(confirmedBy, id)
+      .bind(nominalDibayar, selisih, confirmedBy, id)
       .run();
 
-    // 2. Generate QR token untuk setiap anggota jika belum punya
+    // 2. Catat pemasukan kas. Baris yang sudah dibalik (memiliki reversal) diabaikan
+    //    sehingga konfirmasi ulang setelah batal-lunas mencatat baris baru dengan benar.
+    const existingKas = await db
+      .prepare(
+        `SELECT id FROM kas_transaksi
+         WHERE grup_id = ? AND reversal_of IS NULL
+           AND id NOT IN (SELECT reversal_of FROM kas_transaksi WHERE reversal_of IS NOT NULL)
+         LIMIT 1`
+      )
+      .bind(id)
+      .first<{ id: string }>();
+
+    if (!existingKas) {
+      const kasId = 'kas_' + nanoid(10);
+      const kat = grup.pic_nama || grup.nomor_grup || id;
+      const statements: D1PreparedStatement[] = [
+        db
+          .prepare(
+            `INSERT INTO kas_transaksi (id, tipe, pos_id, dompet_id, nominal, keterangan, grup_id, tanggal, created_by)
+             VALUES (?, 'pemasukan', ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(
+            kasId,
+            posPendaftaran.id,
+            dompetTujuanId,
+            nominalPendaftaran,
+            `Pendaftaran ${grup.nomor_grup || ''} - ${kat}`.trim(),
+            id,
+            tanggal,
+            confirmedBy
+          ),
+      ];
+      if (nominalKelebihan > 0) {
+        statements.push(
+          db
+            .prepare(
+              `INSERT INTO kas_transaksi (id, tipe, pos_id, dompet_id, nominal, keterangan, grup_id, tanggal, created_by)
+               VALUES (?, 'pemasukan', ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .bind(
+              'kas_' + nanoid(10),
+              posKelebihan.id,
+              dompetTujuanId,
+              nominalKelebihan,
+              `Kelebihan bayar ${grup.nomor_grup || ''} - ${kat}`.trim(),
+              id,
+              tanggal,
+              confirmedBy
+            )
+        );
+      }
+      await db.batch(statements);
+    }
+
+    // 3. Generate QR token untuk setiap anggota jika belum punya
     const anggotaRes = await db
       .prepare(`SELECT id, nama, peran, qr_token FROM anggota WHERE grup_id = ?`)
       .bind(id)
@@ -723,37 +834,129 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
       }
     }
 
-    // 3. Generate Link Cek Status untuk PIC (halaman status ada di FE Peserta)
+    // 4. Link cek status untuk PIC (halaman status ada di FE Peserta)
     const cleanPhone = WALinkService.normalizePhoneNumber(grup.pic_whatsapp);
     const pesertaUrl = (c.env.PESERTA_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
     const linkTiket = `${pesertaUrl}/status?wa=${encodeURIComponent(grup.pic_whatsapp)}`;
 
-    const pesanWa = `بسم الله
+    let pesanWa: string;
+    const tpl = await db.prepare(`SELECT body FROM wa_templates WHERE id = 'wa_lunas' AND aktif = 1`).first<{ body: string }>();
+    if (tpl?.body) {
+      pesanWa = renderWaTemplate(tpl.body, {
+        nama_pic: grup.pic_nama || '',
+        nama_acara: 'Family Camp',
+        total: `Rp ${grandTotal.toLocaleString('id-ID')}`,
+        jumlah_anggota: String(grup.jumlah_anggota ?? anggotaList.length),
+        nomor_grup: grup.nomor_grup || '',
+        link_status: linkTiket,
+        link_pembayaran: linkTiket,
+      });
+    } else {
+      pesanWa = `بسم الله
 السلام عليكم ورحمة الله وبركاته
 Halo *${grup.pic_nama}*,
 
 Alhamdulillah, pendaftaran *Family Camp* Anda telah *BERHASIL DIKONFIRMASI & LUNAS* ✅
 
 Total Peserta: ${grup.jumlah_anggota} orang
-Total Pembayaran: Rp ${grup.grand_total.toLocaleString('id-ID')}
+Total Pembayaran: Rp ${grandTotal.toLocaleString('id-ID')}
 
-Silakan cek status pendaftaran dan unduh ID/QR kehadiran seluruh anggota keluarga/rombongan Anda melalui tautan berikut:
+Silakan cek status pendaftaran dan unduh ID/QR kehadiran seluruh anggota melalui tautan berikut:
 🔗 ${linkTiket}
 
-Mohon simpan dan tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
-
 جزاكم الله خيرا`;
+    }
 
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(pesanWa)}`;
 
     return c.json({
       success: true,
-      message: 'Pendaftaran grup berhasil dikonfirmasi dan QR tiket telah diterbitkan',
+      message: 'Pendaftaran grup berhasil dikonfirmasi, kas tercatat, dan QR tiket telah diterbitkan',
       wa_url: waUrl,
+      nominal_dibayar: nominalDibayar,
+      selisih_bayar: selisih,
+      dompet: dompet.nama,
     });
   } catch (err: any) {
     console.error('Error konfirmasi grup:', err);
     return c.json({ error: 'Gagal mengonfirmasi grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * PATCH /api/admin/grup/:id/batal-lunas
+ * Batalkan konfirmasi LUNAS: status kembali ke menunggu_verifikasi dan
+ * seluruh pemasukan kas terkait grup dicatat sebagai jurnal pembalik.
+ */
+adminRoutes.patch('/grup/:id/batal-lunas', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  const id = c.req.param('id');
+  const user = c.get('user');
+  const actor = user?.nama || user?.username || 'Panitia';
+
+  try {
+    const grup = await db.prepare(`SELECT * FROM pendaftaran_grup WHERE id = ?`).bind(id).first<any>();
+    if (!grup) return c.json({ error: 'Pendaftaran grup tidak ditemukan' }, 404);
+    if (grup.status !== 'lunas') {
+      return c.json({ error: 'Grup tidak dalam status LUNAS.' }, 400);
+    }
+
+    // Pulihkan status grup
+    await db
+      .prepare(
+        `UPDATE pendaftaran_grup
+         SET status = 'menunggu_verifikasi', confirmed_at = NULL, confirmed_by = NULL
+         WHERE id = ?`
+      )
+      .bind(id)
+      .run();
+
+    // Buat jurnal pembalik untuk setiap pemasukan aktif terkait grup ini
+    const rows = await db
+      .prepare(
+        `SELECT * FROM kas_transaksi
+         WHERE grup_id = ? AND dibatalkan = 0 AND reversal_of IS NULL
+           AND id NOT IN (SELECT reversal_of FROM kas_transaksi WHERE reversal_of IS NOT NULL)`
+      )
+      .bind(id)
+      .all<any>();
+
+    const existing = rows.results || [];
+    const tanggal = new Date().toISOString().slice(0, 10);
+    const stmts: D1PreparedStatement[] = [];
+    for (const t of existing) {
+      // Jurnal pembalik bertipe berkebalikan; baris asli tetap aktif sehingga
+      // keduanya saling menihilkan di laporan (tidak dihitung ganda).
+      const tipeBalik = t.tipe === 'pemasukan' ? 'pengeluaran' : 'pemasukan';
+      stmts.push(
+        db
+          .prepare(
+            `INSERT INTO kas_transaksi (id, tipe, pos_id, dompet_id, nominal, keterangan, grup_id, reversal_of, tanggal, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(
+            'kas_' + nanoid(10),
+            tipeBalik,
+            t.pos_id,
+            t.dompet_id,
+            t.nominal,
+            `Pembatalan lunas: ${t.keterangan || t.id}`,
+            id,
+            t.id,
+            tanggal,
+            actor
+          )
+      );
+    }
+    if (stmts.length) await db.batch(stmts);
+
+    return c.json({ success: true, message: 'Konfirmasi lunas dibatalkan dan jurnal pembalik dicatat.' });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal membatalkan lunas: ' + err.message }, 500);
   }
 });
 

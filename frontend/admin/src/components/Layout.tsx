@@ -1,9 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+
+function readRole(): string {
+  try {
+    const raw = localStorage.getItem('user');
+    if (raw) return (JSON.parse(raw)?.role as string) || '';
+  } catch {
+    /* ignore */
+  }
+  return '';
+}
 
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [role, setRole] = useState<string>('');
+
+  useEffect(() => {
+    setRole(readRole());
+  }, [location.pathname]);
+
+  const canKeuangan = role === 'superadmin' || role === 'bendahara';
 
   // Proteksi rute admin
   useEffect(() => {
@@ -21,6 +38,7 @@ export function Layout() {
   const handleLogout = () => {
     if (confirm('Apakah Anda yakin ingin keluar dari akun admin?')) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       navigate('/login');
     }
   };
@@ -106,6 +124,19 @@ export function Layout() {
               <span>Kelola Add-on</span>
             </Link>
 
+            {/* 6. Keuangan & LPJ (superadmin/bendahara) */}
+            {canKeuangan && (
+              <Link
+                to="/keuangan"
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs transition duration-150 ${isActiveDesktop('/keuangan')}`}
+              >
+                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 12v-2m0 0c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Keuangan & LPJ</span>
+              </Link>
+            )}
+
             {/* 6. Settings */}
             <Link
               to="/pengaturan"
@@ -153,6 +184,18 @@ export function Layout() {
             </h1>
           </div>
         </div>
+        {canKeuangan && (
+          <Link
+            to="/keuangan"
+            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition ${
+              location.pathname === '/keuangan'
+                ? 'bg-white text-[#06305d] border-white'
+                : 'bg-white/10 text-white border-white/30'
+            }`}
+          >
+            💰 Keuangan
+          </Link>
+        )}
       </header>
 
       {/* ======================================================== */}

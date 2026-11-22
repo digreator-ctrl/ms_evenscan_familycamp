@@ -62,6 +62,7 @@ export function Login() {
       }
 
       localStorage.setItem('token', data.token);
+      if (data.user) localStorage.setItem('user', JSON.stringify(data.user));
       showNotification(
         'success',
         'Login Berhasil',

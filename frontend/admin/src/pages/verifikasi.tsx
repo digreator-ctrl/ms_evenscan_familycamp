@@ -45,8 +45,17 @@ interface Grup {
   paid_at: string | null;
   confirmed_at: string | null;
   confirmed_by: string | null;
+  nominal_dibayar: number | null;
+  selisih_bayar: number;
+  nomor_grup: string | null;
   anggota: Anggota[];
   addons?: AddonPesanan[];
+}
+
+interface DompetOpt {
+  id: string;
+  nama: string;
+  jenis: string;
 }
 
 const formatRupiah = (n: number): string => {
@@ -110,6 +119,10 @@ export function Verifikasi() {
   const [tolakModal, setTolakModal] = useState<Grup | null>(null);
   const [tolakAlasan, setTolakAlasan] = useState('');
   const [hapusModal, setHapusModal] = useState<Grup | null>(null);
+  const [konfirmasiModal, setKonfirmasiModal] = useState<Grup | null>(null);
+  const [konfirmasiNominal, setKonfirmasiNominal] = useState('');
+  const [konfirmasiDompet, setKonfirmasiDompet] = useState('');
+  const [dompetList, setDompetList] = useState<DompetOpt[]>([]);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
@@ -163,30 +176,92 @@ export function Verifikasi() {
     return null;
   };
 
-  const handleKonfirmasi = async (g: Grup) => {
-    setActionLoading(g.id);
+  const fetchDompet = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/admin/grup/${g.id}/konfirmasi`, {
-        method: 'PATCH',
+      const res = await fetch(`${API_URL}/api/keuangan/dompet`, {
         headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const list: DompetOpt[] = data.data || [];
+        setDompetList(list);
+        return list;
+      }
+    } catch (err) {
+      console.error('Failed to fetch dompet:', err);
+    }
+    return [];
+  };
+
+  const openKonfirmasi = async (g: Grup) => {
+    setKonfirmasiNominal(String(g.grand_total || 0));
+    setKonfirmasiModal(g);
+    const list = await fetchDompet();
+    const def = list.find((d) => d.jenis === 'rekening') || list[0];
+    setKonfirmasiDompet(def?.id || '');
+  };
+
+  const submitKonfirmasi = async () => {
+    if (!konfirmasiModal) return;
+    const nominal = parseInt(String(konfirmasiNominal).replace(/\D/g, ''), 10);
+    if (!nominal || nominal <= 0) {
+      setToast({ type: 'error', message: 'Nominal diterima harus lebih dari 0.' });
+      return;
+    }
+    setActionLoading(konfirmasiModal.id);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/admin/grup/${konfirmasiModal.id}/konfirmasi`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nominal_dibayar: nominal, dompet_id: konfirmasiDompet || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        const nama = konfirmasiModal.pic_nama;
+        setKonfirmasiModal(null);
         await fetchGrup(true);
         if (data.wa_url) {
-          setWaModal({ waUrl: data.wa_url, nama: g.pic_nama });
+          setWaModal({ waUrl: data.wa_url, nama });
         } else {
           setToast({ type: 'success', message: 'Pendaftaran grup berhasil dikonfirmasi (Lunas).' });
         }
       } else {
         setToast({ type: 'error', message: data.error || 'Gagal mengonfirmasi grup.' });
       }
-    } catch (err) {
+    } catch {
       setToast({ type: 'error', message: 'Terjadi kesalahan saat mengonfirmasi grup.' });
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleBatalLunas = async (g: Grup) => {
+    if (!confirm(`Batalkan status LUNAS untuk "${g.pic_nama}"? Jurnal pembalik kas akan dicatat.`)) return;
+    setActionLoading(g.id);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/admin/grup/${g.id}/batal-lunas`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        await fetchGrup(true);
+        setToast({ type: 'success', message: 'Status lunas dibatalkan & jurnal pembalik dicatat.' });
+      } else {
+        setToast({ type: 'error', message: data.error || 'Gagal membatalkan lunas.' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Terjadi kesalahan.' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleKonfirmasi = (g: Grup) => {
+    void openKonfirmasi(g);
   };
 
   const handleTolak = (g: Grup) => {
@@ -381,6 +456,76 @@ export function Verifikasi() {
         </div>
       )}
 
+      {konfirmasiModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-emerald-100 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base font-black text-slate-900">Konfirmasi Lunas</h3>
+                <p className="text-xs text-slate-500 truncate">PIC: <span className="font-bold text-slate-700">{konfirmasiModal.pic_nama}</span></p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-1 border border-slate-100">
+              <div className="flex justify-between"><span className="text-slate-500">Grand Total</span><span className="font-bold text-slate-800">{formatRupiah(konfirmasiModal.grand_total)}</span></div>
+            </div>
+
+            <label className="block text-xs font-bold text-slate-600">
+              Nominal yang Diterima (Rp)
+              <input
+                type="text"
+                inputMode="numeric"
+                value={konfirmasiNominal}
+                onChange={(e) => setKonfirmasiNominal(e.target.value.replace(/\D/g, ''))}
+                className="mt-1 w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </label>
+
+            {(() => {
+              const nom = parseInt(String(konfirmasiNominal).replace(/\D/g, ''), 10) || 0;
+              const selisih = nom - (konfirmasiModal.grand_total || 0);
+              if (!nom) return null;
+              if (selisih < 0) return <p className="text-[11px] font-semibold text-rose-600">⚠ Kurang {formatRupiah(Math.abs(selisih))} dari tagihan.</p>;
+              if (selisih > 0) return <p className="text-[11px] font-semibold text-amber-600">ℹ Lebih {formatRupiah(selisih)} dicatat ke pos Kelebihan Bayar.</p>;
+              return <p className="text-[11px] font-semibold text-emerald-600">✓ Nominal sesuai tagihan.</p>;
+            })()}
+
+            <label className="block text-xs font-bold text-slate-600">
+              Dompet Tujuan
+              <select
+                value={konfirmasiDompet}
+                onChange={(e) => setKonfirmasiDompet(e.target.value)}
+                className="mt-1 w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              >
+                <option value="">-- Pilih Dompet --</option>
+                {dompetList.map((d) => (
+                  <option key={d.id} value={d.id}>{d.nama}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="flex gap-2.5 pt-1">
+              <button type="button" onClick={() => setKonfirmasiModal(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer">
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={submitKonfirmasi}
+                disabled={actionLoading === konfirmasiModal.id}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 cursor-pointer"
+              >
+                {actionLoading === konfirmasiModal.id ? 'Memproses...' : 'Konfirmasi Lunas'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {toast && (
         <div className="fixed top-6 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
           <div
@@ -423,6 +568,7 @@ export function Verifikasi() {
         onKonfirmasi={handleKonfirmasi}
         onTolak={handleTolak}
         onHapus={(g) => setHapusModal(g)}
+        onBatalLunas={handleBatalLunas}
         onRefreshDetail={async (id) => {
           const d = await fetchGrupDetail(id);
           if (d) {
@@ -660,10 +806,11 @@ function DetailGrupView(props: {
   onKonfirmasi: (g: Grup) => void;
   onTolak: (g: Grup) => void;
   onHapus: (g: Grup) => void;
+  onBatalLunas: (g: Grup) => void;
   onRefreshDetail: (id: string) => void;
   renderModals: () => JSX.Element;
 }) {
-  const { detailId, selectedGrup, loading, actionLoading, onBack, onKonfirmasi, onTolak, onHapus, onRefreshDetail, renderModals } = props;
+  const { detailId, selectedGrup, loading, actionLoading, onBack, onKonfirmasi, onTolak, onHapus, onBatalLunas, onRefreshDetail, renderModals } = props;
 
   useEffect(() => {
     if (detailId) onRefreshDetail(detailId);
@@ -994,6 +1141,24 @@ function DetailGrupView(props: {
                   Dikonfirmasi oleh {g.confirmed_by || 'Panitia'} pada {formatTanggal(g.confirmed_at)}
                 </p>
               )}
+              {g.nominal_dibayar != null && (
+                <p className="text-emerald-800 mt-0.5">
+                  Nominal diterima: <strong>{formatRupiah(g.nominal_dibayar)}</strong>
+                  {g.selisih_bayar !== 0 && (
+                    <span className={g.selisih_bayar < 0 ? 'text-rose-700' : 'text-amber-700'}>
+                      {' '}• {g.selisih_bayar < 0 ? `Kurang ${formatRupiah(Math.abs(g.selisih_bayar))}` : `Lebih ${formatRupiah(g.selisih_bayar)}`}
+                    </span>
+                  )}
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={actionLoading === g.id}
+                onClick={() => onBatalLunas(g)}
+                className="mt-2 px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition disabled:opacity-50 cursor-pointer"
+              >
+                {actionLoading === g.id ? '...' : 'Batalkan Lunas'}
+              </button>
             </div>
           )}
 

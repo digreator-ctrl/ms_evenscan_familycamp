@@ -65,3 +65,14 @@ _Panitia ${namaAcara}_`;
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(pesan)}`;
   }
 }
+
+/**
+ * Mengisi template pesan WA dengan variabel {nama_variabel}.
+ * Variabel yang tidak tersedia akan diganti string kosong.
+ */
+export function renderWaTemplate(body: string, vars: Record<string, string | number | null | undefined>): string {
+  return body.replace(/\{([a-zA-Z0-9_]+)\}/g, (_m, key: string) => {
+    const val = vars[key];
+    return val === null || val === undefined ? '' : String(val);
+  });
+}

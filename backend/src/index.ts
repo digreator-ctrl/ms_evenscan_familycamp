@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { pesertaRoutes } from './routes/peserta';
 import { adminRoutes } from './routes/admin';
 import { absensiRoutes } from './routes/absensi';
+import { keuanganRoutes } from './routes/keuangan';
 import { ensureFamilyCampTables } from './db/db-init';
 
 type Bindings = {
@@ -38,6 +39,7 @@ app.get('/', (c) => {
 app.route('/api/peserta', pesertaRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/absensi', absensiRoutes);
+app.route('/api/keuangan', keuanganRoutes);
 
 // 404 handler
 app.notFound((c) => {

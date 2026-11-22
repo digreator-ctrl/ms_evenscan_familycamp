@@ -43,7 +43,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           grup_id TEXT NOT NULL,
           nama TEXT NOT NULL,
           jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
-          peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta')),
+          peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
           usia INTEGER,
           ukuran_kaos TEXT,
           catatan_medis TEXT,
@@ -160,7 +160,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
     // Migration: pastikan tabel anggota mendukung opsi peran yang diperluas
     try {
       const tableInfo = await db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='anggota'`).first<{ sql: string }>();
-      if (tableInfo && tableInfo.sql && !tableInfo.sql.includes('Kakek')) {
+      if (tableInfo && tableInfo.sql && (!tableInfo.sql.includes('Kakek') || !tableInfo.sql.includes('Ketua Rombongan'))) {
         await db.batch([
           db.prepare(`
             CREATE TABLE anggota_temp (
@@ -168,10 +168,12 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
               grup_id TEXT NOT NULL,
               nama TEXT NOT NULL,
               jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
-              peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta')),
+              peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
               usia INTEGER,
               ukuran_kaos TEXT,
               catatan_medis TEXT,
+              provinsi TEXT,
+              kota TEXT,
               is_gratis INTEGER NOT NULL DEFAULT 0,
               qr_token TEXT UNIQUE,
               qr_code_url TEXT,
@@ -181,7 +183,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
               FOREIGN KEY (grup_id) REFERENCES pendaftaran_grup(id) ON DELETE CASCADE
             )
           `),
-          db.prepare(`INSERT INTO anggota_temp SELECT * FROM anggota`),
+          db.prepare(`INSERT INTO anggota_temp (id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at) SELECT id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at FROM anggota`),
           db.prepare(`DROP TABLE anggota`),
           db.prepare(`ALTER TABLE anggota_temp RENAME TO anggota`),
           db.prepare(`CREATE INDEX IF NOT EXISTS idx_anggota_grup_id ON anggota(grup_id)`),
@@ -193,31 +195,35 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       console.warn('[DB] Migrasi tabel anggota dilewati:', migErr);
     }
 
-    // Seed default addon items jika masih kosong
-    const existingAddon = await db.prepare(`SELECT COUNT(*) as count FROM addon_items`).first<{ count: number }>();
-    if (!existingAddon || existingAddon.count === 0) {
-      await db.batch([
-        db.prepare(`
+    // Migration & Seed item sewa: Paket A, B, C dan Satuan
+    try {
+      const defaultAddonList = [
+        { id: 'addon_paket_a', nama: 'Paket A', deskripsi: '1 Tenda + 4 Matras + 4 Sleeping Bag + 1 Lampu Tenda', harga: 120000, stok: 50, urutan: 1 },
+        { id: 'addon_paket_b', nama: 'Paket B', deskripsi: '1 Tenda + 3 Matras + 3 Sleeping Bag + 1 Lampu Tenda', harga: 110000, stok: 50, urutan: 2 },
+        { id: 'addon_paket_c', nama: 'Paket C', deskripsi: '1 Tenda + 2 Matras + 2 Sleeping Bag + 1 Lampu Tenda', harga: 100000, stok: 50, urutan: 3 },
+        { id: 'addon_satuan_tenda', nama: 'Tenda', deskripsi: 'Sewa tenda dome kapasitas 4 orang', harga: 70000, stok: 50, urutan: 4 },
+        { id: 'addon_satuan_matras', nama: 'Matras', deskripsi: 'Sewa matras spon camping tebal', harga: 5000, stok: 100, urutan: 5 },
+        { id: 'addon_satuan_sleeping_bag', nama: 'Sleeping Bag', deskripsi: 'Sewa kantong tidur / sleeping bag hangat', harga: 10000, stok: 100, urutan: 6 },
+        { id: 'addon_satuan_lampu_tenda', nama: 'Lampu Tenda', deskripsi: 'Sewa lampu tenda LED gantung', harga: 7000, stok: 50, urutan: 7 },
+      ];
+
+      for (const item of defaultAddonList) {
+        await db.prepare(`
           INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-          VALUES ('addon_tenda_4p', 'Sewa Tenda Dome (Kapasitas 4 Orang)', 'Tenda dome double layer anti air, termasuk pasak dan tali pengencang.', 120000, 20, 1, 1)
-        `),
-        db.prepare(`
-          INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-          VALUES ('addon_matras', 'Sewa Matras Spon Camping', 'Matras spon tebal 10mm untuk kenyamanan tidur di dalam tenda.', 15000, 50, 1, 2)
-        `),
-        db.prepare(`
-          INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-          VALUES ('addon_sleeping_bag', 'Sewa Sleeping Bag Hangat', 'Kantong tidur hangat bahan polar tebal.', 25000, 40, 1, 3)
-        `),
-        db.prepare(`
-          INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-          VALUES ('addon_lampu_tenda', 'Sewa Lampu Tenda LED Rechargeable', 'Lampu gantung LED portabel baterai tahan hingga 12 jam.', 20000, 30, 1, 4)
-        `),
-        db.prepare(`
-          INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-          VALUES ('addon_kabel_rol', 'Sewa Kabel Rol Listrik Tenda (10m)', 'Kabel rol colokan 4 lubang untuk suplai listrik ke tenda.', 25000, 25, 1, 5)
-        `),
-      ]);
+          VALUES (?, ?, ?, ?, ?, 1, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            nama = excluded.nama,
+            deskripsi = excluded.deskripsi,
+            harga = excluded.harga,
+            aktif = 1,
+            urutan = excluded.urutan
+        `).bind(item.id, item.nama, item.deskripsi, item.harga, item.stok, item.urutan).run();
+      }
+
+      // Nonaktifkan item lama yang digantikan
+      await db.prepare(`UPDATE addon_items SET aktif = 0 WHERE id IN ('addon_tenda_4p', 'addon_matras', 'addon_sleeping_bag', 'addon_lampu_tenda', 'addon_kabel_rol')`).run();
+    } catch (addonErr) {
+      console.warn('[DB] Migrasi addon items error:', addonErr);
     }
 
     // Seed default rekening bank jika belum ada di app_settings

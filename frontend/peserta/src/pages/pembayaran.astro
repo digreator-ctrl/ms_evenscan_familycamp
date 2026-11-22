@@ -84,7 +84,6 @@ import Layout from '../layouts/Layout.astro';
                     <th class="py-2.5 px-3">Peran</th>
                     <th class="py-2.5 px-3">Jenis Kelamin</th>
                     <th class="py-2.5 px-3">Usia</th>
-                    <th class="py-2.5 px-3">Kaos</th>
                     <th class="py-2.5 px-3 text-right">Tarif</th>
                   </tr>
                 </thead>
@@ -412,7 +411,6 @@ import Layout from '../layouts/Layout.astro';
               </td>
               <td class="py-2.5 px-3 text-slate-600">${a.jenis_kelamin}</td>
               <td class="py-2.5 px-3 text-slate-600">${a.usia ? a.usia + ' th' : '-'}</td>
-              <td class="py-2.5 px-3 font-mono font-bold text-slate-700">${a.ukuran_kaos || '-'}</td>
               <td class="py-2.5 px-3 text-right font-bold ${isGratis ? 'text-emerald-600' : 'text-slate-800'}">
                 ${isGratis ? 'GRATIS (Balita)' : 'Rp 200.000'}
               </td>
@@ -522,7 +520,7 @@ import Layout from '../layouts/Layout.astro';
 
                 <div>
                   <h4 class="text-base font-extrabold text-slate-900">${a.nama}</h4>
-                  <p class="text-xs text-slate-400">${a.jenis_kelamin}${a.usia ? ' • ' + a.usia + ' th' : ''}${a.ukuran_kaos ? ' • Kaos ' + a.ukuran_kaos : ''}</p>
+                  <p class="text-xs text-slate-400">${a.jenis_kelamin}${a.usia ? ' • ' + a.usia + ' th' : ''}</p>
                 </div>
 
                 ${qrUrl ? `

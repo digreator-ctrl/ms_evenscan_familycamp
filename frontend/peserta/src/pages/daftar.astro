@@ -359,21 +359,61 @@ import { LIST_PROVINSI } from '../data/wilayah';
                   <svg class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                   </svg>
-                  <span class="truncate">+ Sewa Perlengkapan</span>
+                  <span class="truncate">Sewa Perlengkapan</span>
                 </div>
               </label>
             </div>
           </div>
 
           <!-- Katalog Add-on Dinamis (Tampil saat pilih "ya") -->
-          <div id="containerAddons" class="hidden space-y-3 pt-2">
-            <div class="flex items-center justify-between">
-              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Katalog Perlengkapan Sewa</h4>
-              <span class="text-[10px] text-slate-400">Pilih jumlah item sesuai kebutuhan</span>
+          <div id="containerAddons" class="hidden space-y-4 pt-2">
+            <!-- 1. Dropdown Paket Tenda (Paket A, B, C) -->
+            <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                  <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Paket Tenda Lengkap</h4>
+                  <p class="text-[11px] text-slate-500">Khusus Paket A, B, dan C hanya bisa memilih salah satunya (opsional)</p>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-50 text-primary-700">Maks. 1 Paket</span>
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1.5">
+                  Pilih Paket Tenda:
+                </label>
+                <select id="selectPaketTenda" class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold text-slate-800 cursor-pointer">
+                  <option value="">-- Tanpa Paket Tenda (Rp 0) --</option>
+                  <option value="addon_paket_a">Paket A — Rp 120.000</option>
+                  <option value="addon_paket_b">Paket B — Rp 110.000</option>
+                  <option value="addon_paket_c">Paket C — Rp 100.000</option>
+                </select>
+              </div>
+
+              <!-- Rincian Fasilitas Paket yang Dipilih -->
+              <div id="boxDetailPaket" class="hidden p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2">
+                <div class="flex justify-between items-center">
+                  <span class="font-extrabold text-slate-900" id="detailPaketNama">-</span>
+                  <span class="font-black text-primary-700 font-mono text-sm" id="detailPaketHarga">Rp 0</span>
+                </div>
+                <div class="text-[11px] text-slate-600">
+                  <span class="font-bold block text-slate-700 mb-1">Fasilitas yang didapatkan:</span>
+                  <ul class="space-y-1 pl-1" id="detailPaketFasilitas">
+                    <!-- Dinamis via JS -->
+                  </ul>
+                </div>
+              </div>
             </div>
 
-            <div id="listAddonsCards" class="space-y-2.5">
-              <!-- Rendered via JS dari endpoint /api/peserta/addon-items -->
+            <!-- 2. Katalog Satuan (Bisa lebih dari 1) -->
+            <div class="space-y-2.5">
+              <div>
+                <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Sewa Perlengkapan Satuan</h4>
+                <p class="text-[11px] text-slate-500">Bisa memilih lebih dari satu item atau tidak sama sekali</p>
+              </div>
+
+              <div id="listAddonsSatuan" class="space-y-2.5">
+                <!-- Rendered via JS -->
+              </div>
             </div>
           </div>
 
@@ -487,7 +527,7 @@ import { LIST_PROVINSI } from '../data/wilayah';
   </section>
 
   <script>
-    import { DATA_WILAYAH } from '../data/wilayah';
+    import { DATA_WILAYAH, LIST_PROVINSI } from '../data/wilayah';
 
     const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
 
@@ -503,22 +543,55 @@ import { LIST_PROVINSI } from '../data/wilayah';
       kota?: string;
     }
 
-    interface AddonItem {
+    interface PaketBundleItem {
+      id: string;
+      nama: string;
+      harga: number;
+      fasilitas: string[];
+    }
+
+    interface SatuanItem {
       id: string;
       nama: string;
       deskripsi: string;
       harga: number;
-      stok: number;
-      aktif: number;
-      urutan: number;
     }
 
     let currentStep = 1;
-    let catalogAddons: AddonItem[] = [];
-    let selectedAddonQty: { [addonId: string]: number } = {};
+
+    const PAKET_BUNDLES: PaketBundleItem[] = [
+      {
+        id: 'addon_paket_a',
+        nama: 'Paket A',
+        harga: 120000,
+        fasilitas: ['1 Tenda Dome', '4 Matras Spon', '4 Sleeping Bag Hangat', '1 Lampu Tenda LED']
+      },
+      {
+        id: 'addon_paket_b',
+        nama: 'Paket B',
+        harga: 110000,
+        fasilitas: ['1 Tenda Dome', '3 Matras Spon', '3 Sleeping Bag Hangat', '1 Lampu Tenda LED']
+      },
+      {
+        id: 'addon_paket_c',
+        nama: 'Paket C',
+        harga: 100000,
+        fasilitas: ['1 Tenda Dome', '2 Matras Spon', '2 Sleeping Bag Hangat', '1 Lampu Tenda LED']
+      }
+    ];
+
+    const SATUAN_ITEMS: SatuanItem[] = [
+      { id: 'addon_satuan_tenda', nama: 'Tenda', deskripsi: 'Sewa tenda dome (kapasitas 4 orang)', harga: 70000 },
+      { id: 'addon_satuan_matras', nama: 'Matras', deskripsi: 'Sewa matras spon camping tebal', harga: 5000 },
+      { id: 'addon_satuan_sleeping_bag', nama: 'Sleeping Bag', deskripsi: 'Sewa kantong tidur / sleeping bag hangat', harga: 10000 },
+      { id: 'addon_satuan_lampu_tenda', nama: 'Lampu Tenda', deskripsi: 'Sewa lampu tenda LED gantung', harga: 7000 }
+    ];
+
+    let selectedPaketId = '';
+    let selectedSatuanQty: { [addonId: string]: number } = {};
 
     let anggotaData: AnggotaItem[] = [
-      { nama: '', peran: 'Ayah', jenis_kelamin: 'Ikhwan', usia: 35, ukuran_kaos: '-', catatan_medis: '', beda_domisili: false, provinsi: '', kota: '' }
+      { nama: '', peran: '', jenis_kelamin: 'Ikhwan', usia: null, ukuran_kaos: '-', catatan_medis: '', beda_domisili: false, provinsi: '', kota: '' }
     ];
 
     function getLockedGenderForPeran(peran: string): 'Ikhwan' | 'Akhwat' | null {
@@ -568,7 +641,8 @@ import { LIST_PROVINSI } from '../data/wilayah';
       element.classList.add('border-slate-300', 'focus:border-primary-600', 'focus:ring-primary-500/20');
     }
 
-    function bindClearOnInput(element: HTMLInputElement) {
+    function bindClearOnInput(element: HTMLElement | null) {
+      if (!element) return;
       const handler = () => {
         clearInvalid(element);
         element.removeEventListener('input', handler);
@@ -643,13 +717,18 @@ import { LIST_PROVINSI } from '../data/wilayah';
       try {
         const res = await fetch(`${API_URL}/api/peserta/addon-items`);
         const json = await res.json();
-        if (res.ok && Array.isArray(json.data)) {
-          catalogAddons = json.data;
-          renderAddonsCatalog();
+        if (res.ok && Array.isArray(json.data) && json.data.length > 0) {
+          for (const item of json.data) {
+            const p = PAKET_BUNDLES.find((b) => b.id === item.id);
+            if (p) p.harga = item.harga;
+            const s = SATUAN_ITEMS.find((it) => it.id === item.id);
+            if (s) s.harga = item.harga;
+          }
         }
       } catch (err) {
         console.warn('Gagal load addon items:', err);
       }
+      renderAddonsCatalog();
     }
 
     function checkKeluargaConstraint(): boolean {
@@ -831,6 +910,7 @@ import { LIST_PROVINSI } from '../data/wilayah';
           const cards = document.querySelectorAll('.anggota-card');
           let hasError = false;
           let firstInvalid: HTMLElement | null = null;
+          const tipe = getSelectedTipe();
 
           cards.forEach((card) => {
             const inputNama = card.querySelector('.input-nama') as HTMLInputElement | null;
@@ -846,6 +926,33 @@ import { LIST_PROVINSI } from '../data/wilayah';
               }
             }
 
+            if (tipe === 'keluarga') {
+              const selectPeran = card.querySelector('.select-peran') as HTMLSelectElement | null;
+              if (selectPeran) {
+                if (!selectPeran.value) {
+                  markInvalid(selectPeran);
+                  bindClearOnInput(selectPeran);
+                  if (!firstInvalid) firstInvalid = selectPeran;
+                  hasError = true;
+                } else {
+                  clearInvalid(selectPeran);
+                }
+              }
+            }
+
+            const inputUsia = card.querySelector('.input-usia') as HTMLInputElement | null;
+            if (inputUsia) {
+              const val = inputUsia.value.trim();
+              if (val === '' || isNaN(Number(val)) || Number(val) < 0) {
+                markInvalid(inputUsia);
+                bindClearOnInput(inputUsia);
+                if (!firstInvalid) firstInvalid = inputUsia;
+                hasError = true;
+              } else {
+                clearInvalid(inputUsia);
+              }
+            }
+
             const cbDomisili = card.querySelector('.cb-beda-domisili') as HTMLInputElement | null;
             if (cbDomisili && cbDomisili.checked) {
               const selectProv = card.querySelector('.select-provinsi-anggota') as HTMLSelectElement | null;
@@ -853,6 +960,7 @@ import { LIST_PROVINSI } from '../data/wilayah';
 
               if (selectProv && !selectProv.value) {
                 markInvalid(selectProv);
+                bindClearOnInput(selectProv);
                 if (!firstInvalid) firstInvalid = selectProv;
                 hasError = true;
               } else if (selectProv) {
@@ -861,6 +969,7 @@ import { LIST_PROVINSI } from '../data/wilayah';
 
               if (selectKota && !selectKota.value) {
                 markInvalid(selectKota);
+                bindClearOnInput(selectKota);
                 if (!firstInvalid) firstInvalid = selectKota;
                 hasError = true;
               } else if (selectKota) {
@@ -917,13 +1026,16 @@ import { LIST_PROVINSI } from '../data/wilayah';
         r.addEventListener('change', () => {
           const tipe = getSelectedTipe();
           if (tipe === 'non_keluarga') {
-            anggotaData.forEach((a) => (a.peran = 'Peserta'));
-          } else {
-            if (anggotaData[0]) anggotaData[0].peran = 'Ayah';
-            if (anggotaData[1]) anggotaData[1].peran = 'Ibu';
-            for (let i = 2; i < anggotaData.length; i++) {
-              anggotaData[i].peran = 'Anak';
+            if (anggotaData.length > 1) {
+              anggotaData[0].peran = 'Ketua Rombongan';
+              for (let i = 1; i < anggotaData.length; i++) anggotaData[i].peran = 'Peserta';
+            } else if (anggotaData[0]) {
+              anggotaData[0].peran = 'Peserta';
             }
+          } else {
+            anggotaData.forEach((a) => {
+              if (a.peran === 'Peserta' || a.peran === 'Ketua Rombongan') a.peran = '';
+            });
           }
           renderAnggotaForms();
           checkKeluargaConstraint();
@@ -937,24 +1049,18 @@ import { LIST_PROVINSI } from '../data/wilayah';
           e.preventDefault();
           syncAnggotaFromDOM();
           const tipe = getSelectedTipe();
-          let peranBaru = 'Peserta';
-          let jkBaru = 'Ikhwan';
+          const peranBaru = tipe === 'keluarga' ? '' : 'Peserta';
+          const jkBaru = 'Ikhwan';
 
-          if (tipe === 'keluarga') {
-            if (anggotaData.length === 1) {
-              peranBaru = 'Ibu';
-              jkBaru = 'Akhwat';
-            } else {
-              peranBaru = 'Anak';
-              jkBaru = 'Ikhwan';
-            }
+          if (tipe === 'non_keluarga') {
+            anggotaData[0].peran = 'Ketua Rombongan';
           }
 
           anggotaData.push({
             nama: '',
             peran: peranBaru,
             jenis_kelamin: jkBaru,
-            usia: 10,
+            usia: null,
             ukuran_kaos: '-',
             catatan_medis: '',
             beda_domisili: false,
@@ -1005,10 +1111,14 @@ import { LIST_PROVINSI } from '../data/wilayah';
 
         if (inputNama) anggotaData[idx].nama = inputNama.value.trim();
         if (selectPeran) {
-          anggotaData[idx].peran = selectPeran.value;
-          const locked = getLockedGenderForPeran(selectPeran.value);
-          if (locked) {
-            anggotaData[idx].jenis_kelamin = locked;
+          if (tipe === 'keluarga') {
+            anggotaData[idx].peran = selectPeran.value;
+            const locked = getLockedGenderForPeran(selectPeran.value);
+            if (locked) {
+              anggotaData[idx].jenis_kelamin = locked;
+            }
+          } else {
+            anggotaData[idx].peran = idx === 0 && anggotaData.length > 1 ? 'Ketua Rombongan' : 'Peserta';
           }
         }
         if (inputJk && !getLockedGenderForPeran(anggotaData[idx].peran)) {
@@ -1048,12 +1158,17 @@ import { LIST_PROVINSI } from '../data/wilayah';
           a.jenis_kelamin = lockedGender;
         }
 
+        if (tipe === 'non_keluarga') {
+          a.peran = idx === 0 && anggotaData.length > 1 ? 'Ketua Rombongan' : 'Peserta';
+        }
+
         return `
           <div class="anggota-card bg-slate-50/80 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4" data-index="${idx}">
             <div class="flex items-center justify-between pb-3 border-b border-slate-200">
               <div class="card-header-left flex items-center gap-2">
                 <span class="w-6 h-6 rounded-lg bg-primary-100 text-primary-800 font-mono font-bold text-xs flex items-center justify-center">${idx + 1}</span>
                 <span class="font-extrabold text-xs sm:text-sm text-slate-800">Peserta #${idx + 1}</span>
+                ${idx === 0 && tipe === 'non_keluarga' && anggotaData.length > 1 ? `<span class="px-2 py-0.5 bg-primary-100 text-primary-800 rounded text-[10px] font-bold">Ketua Rombongan (PIC)</span>` : ''}
                 ${isBalita ? `<span class="badge-balita px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">Balita (Gratis)</span>` : ''}
               </div>
               ${anggotaData.length > 1 ? `
@@ -1084,7 +1199,8 @@ import { LIST_PROVINSI } from '../data/wilayah';
                   Peran / Status <span class="text-rose-500">*</span>
                 </label>
                 ${tipe === 'keluarga' ? `
-                  <select class="select-peran w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold text-slate-800 cursor-pointer">
+                  <select class="select-peran w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold ${!a.peran ? 'text-slate-400' : 'text-slate-800'} cursor-pointer">
+                    <option value="" disabled ${!a.peran ? 'selected' : ''}>-</option>
                     <option value="Ayah" ${a.peran === 'Ayah' ? 'selected' : ''}>Ayah</option>
                     <option value="Ibu" ${a.peran === 'Ibu' ? 'selected' : ''}>Ibu</option>
                     <option value="Anak" ${a.peran === 'Anak' ? 'selected' : ''}>Anak</option>
@@ -1096,7 +1212,12 @@ import { LIST_PROVINSI } from '../data/wilayah';
                     <option value="Sepupu" ${a.peran === 'Sepupu' ? 'selected' : ''}>Sepupu</option>
                   </select>
                 ` : `
-                  <input type="text" readonly value="Peserta" class="select-peran w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs bg-slate-100 text-slate-600 font-bold cursor-not-allowed" />
+                  <input
+                    type="text"
+                    readonly
+                    value="${idx === 0 && anggotaData.length > 1 ? 'Ketua Rombongan' : 'Peserta'}"
+                    class="select-peran w-full border ${idx === 0 && anggotaData.length > 1 ? 'border-primary-300 bg-primary-50 text-primary-900 font-extrabold' : 'border-slate-200 bg-slate-100 text-slate-700 font-bold'} rounded-xl px-3.5 py-2.5 text-xs cursor-not-allowed select-none transition"
+                  />
                 `}
               </div>
 
@@ -1141,15 +1262,15 @@ import { LIST_PROVINSI } from '../data/wilayah';
               <!-- Usia: Angka Besar, Jelas & Tidak Samar -->
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
-                  Usia (Tahun) <span class="text-[10px] text-slate-400 font-normal">(Balita &lt; 3 th gratis)</span>
+                  Usia (Tahun) <span class="text-rose-500">*</span> <span class="text-[10px] text-slate-400 font-normal">(Balita &lt; 3 th gratis)</span>
                 </label>
                 <input
                   type="number"
                   min="0"
                   max="100"
-                  value="${a.usia !== null ? a.usia : ''}"
-                  placeholder="Contoh: 7"
-                  class="input-usia w-full border border-slate-300 rounded-xl px-4 py-2.5 text-base font-black text-slate-900 bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono placeholder:text-slate-300 placeholder:font-normal placeholder:text-xs"
+                  value="${a.usia !== null && a.usia !== undefined ? a.usia : ''}"
+                  placeholder="-"
+                  class="input-usia w-full border border-slate-300 rounded-xl px-4 py-2.5 text-base font-black text-slate-900 bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono placeholder:text-slate-400 placeholder:font-bold placeholder:text-base"
                 />
               </div>
 
@@ -1218,6 +1339,15 @@ import { LIST_PROVINSI } from '../data/wilayah';
           const idx = parseInt(target.getAttribute('data-index') || '0', 10);
           if (anggotaData.length > 1) {
             anggotaData.splice(idx, 1);
+            const tipe = getSelectedTipe();
+            if (tipe === 'non_keluarga') {
+              if (anggotaData.length === 1) {
+                anggotaData[0].peran = 'Peserta';
+              } else {
+                anggotaData[0].peran = 'Ketua Rombongan';
+                for (let i = 1; i < anggotaData.length; i++) anggotaData[i].peran = 'Peserta';
+              }
+            }
             renderAnggotaForms();
             checkKeluargaConstraint();
           }
@@ -1229,6 +1359,7 @@ import { LIST_PROVINSI } from '../data/wilayah';
         selectEl.addEventListener('change', (e) => {
           syncAnggotaFromDOM();
           const target = e.currentTarget as HTMLSelectElement;
+          clearInvalid(target);
           const card = target.closest('.anggota-card');
           const idx = parseInt(card?.getAttribute('data-index') || '0', 10);
           const chosenPeran = target.value;
@@ -1254,6 +1385,7 @@ import { LIST_PROVINSI } from '../data/wilayah';
       // Event listener input usia: update preview & badge balita secara realtime
       container.querySelectorAll('.input-usia').forEach((inputEl) => {
         inputEl.addEventListener('input', () => {
+          clearInvalid(inputEl as HTMLElement);
           syncAnggotaFromDOM();
           const card = (inputEl as HTMLElement).closest('.anggota-card');
           const idx = parseInt(card?.getAttribute('data-index') || '0', 10);
@@ -1359,6 +1491,11 @@ import { LIST_PROVINSI } from '../data/wilayah';
     function setupAddonInteractions() {
       const radioSewa = document.querySelectorAll('input[name="opt_sewa"]');
       const containerAddons = document.getElementById('containerAddons');
+      const selectPaket = document.getElementById('selectPaketTenda') as HTMLSelectElement | null;
+      const boxDetail = document.getElementById('boxDetailPaket');
+      const detailNama = document.getElementById('detailPaketNama');
+      const detailHarga = document.getElementById('detailPaketHarga');
+      const detailFasilitas = document.getElementById('detailPaketFasilitas');
 
       radioSewa.forEach((r) => {
         r.addEventListener('change', () => {
@@ -1368,44 +1505,74 @@ import { LIST_PROVINSI } from '../data/wilayah';
               containerAddons.classList.remove('hidden');
             } else {
               containerAddons.classList.add('hidden');
-              selectedAddonQty = {};
+              selectedPaketId = '';
+              selectedSatuanQty = {};
+              if (selectPaket) selectPaket.value = '';
+              if (boxDetail) boxDetail.classList.add('hidden');
               renderAddonsCatalog();
             }
           }
           calcTotalSementara();
         });
       });
+
+      if (selectPaket) {
+        selectPaket.addEventListener('change', () => {
+          selectedPaketId = selectPaket.value;
+          if (selectedPaketId) {
+            const paket = PAKET_BUNDLES.find((b) => b.id === selectedPaketId);
+            if (paket) {
+              if (boxDetail) boxDetail.classList.remove('hidden');
+              if (detailNama) detailNama.textContent = `${paket.nama} — Tenda Lengkap`;
+              if (detailHarga) detailHarga.textContent = `Rp ${paket.harga.toLocaleString('id-ID')}`;
+              if (detailFasilitas) {
+                detailFasilitas.innerHTML = paket.fasilitas
+                  .map(
+                    (f) => `
+                    <li class="flex items-center gap-1.5 text-slate-700">
+                      <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>${f}</span>
+                    </li>
+                  `
+                  )
+                  .join('');
+              }
+            }
+          } else {
+            if (boxDetail) boxDetail.classList.add('hidden');
+          }
+          calcTotalSementara();
+        });
+      }
     }
 
     function renderAddonsCatalog() {
-      const list = document.getElementById('listAddonsCards');
+      const list = document.getElementById('listAddonsSatuan');
       if (!list) return;
 
-      if (catalogAddons.length === 0) {
-        list.innerHTML = `<div class="p-4 bg-slate-50 text-slate-400 text-xs rounded-xl text-center">Belum ada item sewa tersedia.</div>`;
-        return;
-      }
-
-      list.innerHTML = catalogAddons.map((item) => {
-        const qty = selectedAddonQty[item.id] || 0;
+      list.innerHTML = SATUAN_ITEMS.map((item) => {
+        const qty = selectedSatuanQty[item.id] || 0;
         return `
-          <div class="p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-slate-50/60 flex items-center justify-between gap-3">
+          <div class="p-3.5 sm:p-4 rounded-2xl border border-slate-200 bg-white flex items-center justify-between gap-3 shadow-2xs">
             <div class="space-y-0.5">
               <h5 class="text-xs font-extrabold text-slate-900">${item.nama}</h5>
-              <p class="text-[11px] text-slate-500">${item.deskripsi || ''}</p>
+              <p class="text-[11px] text-slate-500">${item.deskripsi}</p>
               <span class="text-xs font-black text-primary-700 font-mono block">Rp ${item.harga.toLocaleString('id-ID')} <span class="text-[10px] font-normal text-slate-400">/ unit</span></span>
             </div>
 
             <div class="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                class="btn-addon-dec w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center transition active:scale-95 cursor-pointer"
+                class="btn-satuan-dec w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center transition active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                 data-id="${item.id}"
+                ${qty === 0 ? 'disabled' : ''}
               >-</button>
-              <span class="w-8 text-center font-bold text-xs font-mono addon-qty-text" data-id="${item.id}">${qty}</span>
+              <span class="w-8 text-center font-bold text-xs font-mono satuan-qty-text" data-id="${item.id}">${qty}</span>
               <button
                 type="button"
-                class="btn-addon-inc w-8 h-8 rounded-lg bg-primary-600 text-white font-bold hover:bg-primary-700 flex items-center justify-center transition active:scale-95 cursor-pointer"
+                class="btn-satuan-inc w-8 h-8 rounded-lg bg-primary-600 text-white font-bold hover:bg-primary-700 flex items-center justify-center transition active:scale-95 cursor-pointer"
                 data-id="${item.id}"
               >+</button>
             </div>
@@ -1413,35 +1580,38 @@ import { LIST_PROVINSI } from '../data/wilayah';
         `;
       }).join('');
 
-      // Bind inc / dec buttons
-      list.querySelectorAll('.btn-addon-dec').forEach((btn) => {
+      list.querySelectorAll('.btn-satuan-dec').forEach((btn) => {
         btn.addEventListener('click', (e) => {
           const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
           if (!id) return;
-          const current = selectedAddonQty[id] || 0;
+          const current = selectedSatuanQty[id] || 0;
           if (current > 0) {
-            selectedAddonQty[id] = current - 1;
-            updateAddonQtyDisplay(id);
+            selectedSatuanQty[id] = current - 1;
+            updateSatuanQtyDisplay(id);
             calcTotalSementara();
           }
         });
       });
 
-      list.querySelectorAll('.btn-addon-inc').forEach((btn) => {
+      list.querySelectorAll('.btn-satuan-inc').forEach((btn) => {
         btn.addEventListener('click', (e) => {
           const id = (e.currentTarget as HTMLElement).getAttribute('data-id');
           if (!id) return;
-          const current = selectedAddonQty[id] || 0;
-          selectedAddonQty[id] = current + 1;
-          updateAddonQtyDisplay(id);
+          const current = selectedSatuanQty[id] || 0;
+          selectedSatuanQty[id] = current + 1;
+          updateSatuanQtyDisplay(id);
           calcTotalSementara();
         });
       });
     }
 
-    function updateAddonQtyDisplay(id: string) {
-      const el = document.querySelector(`.addon-qty-text[data-id="${id}"]`);
-      if (el) el.textContent = String(selectedAddonQty[id] || 0);
+    function updateSatuanQtyDisplay(id: string) {
+      const el = document.querySelector(`.satuan-qty-text[data-id="${id}"]`);
+      if (el) el.textContent = String(selectedSatuanQty[id] || 0);
+      const decBtn = document.querySelector(`.btn-satuan-dec[data-id="${id}"]`) as HTMLButtonElement | null;
+      if (decBtn) {
+        decBtn.disabled = (selectedSatuanQty[id] || 0) <= 0;
+      }
     }
 
     function getAnggotaBerbayarCount(): number {
@@ -1466,9 +1636,20 @@ import { LIST_PROVINSI } from '../data/wilayah';
       const subtotalWajib = berbayar * 200000;
 
       let subtotalAddon = 0;
-      for (const item of catalogAddons) {
-        const qty = selectedAddonQty[item.id] || 0;
-        subtotalAddon += item.harga * qty;
+      const isYa = (document.querySelector('input[name="opt_sewa"]:checked') as HTMLInputElement)?.value === 'ya';
+
+      if (isYa) {
+        if (selectedPaketId) {
+          const paket = PAKET_BUNDLES.find((b) => b.id === selectedPaketId);
+          if (paket) subtotalAddon += paket.harga;
+        }
+
+        for (const item of SATUAN_ITEMS) {
+          const qty = selectedSatuanQty[item.id] || 0;
+          if (qty > 0) {
+            subtotalAddon += item.harga * qty;
+          }
+        }
       }
 
       const total = subtotalWajib + subtotalAddon;
@@ -1511,7 +1692,7 @@ import { LIST_PROVINSI } from '../data/wilayah';
             <li class="pt-1.5 flex justify-between items-center text-xs">
               <div>
                 <span class="font-bold text-slate-800">${idx + 1}. ${a.nama}</span>
-                <span class="text-[10px] text-slate-500">(${a.peran} • ${a.jenis_kelamin}${a.usia ? ' • ' + a.usia + ' th' : ''})</span>
+                <span class="text-[10px] text-slate-500">(${a.peran || '-'} • ${a.jenis_kelamin}${a.usia !== null && a.usia !== undefined ? ' • ' + a.usia + ' th' : ''})</span>
                 ${customDomisili ? `<span class="block text-[10px] text-primary-700 font-semibold mt-0.5">${customDomisili}</span>` : ''}
               </div>
               <span class="font-bold font-mono ${isBalita ? 'text-emerald-600' : 'text-slate-700'}">
@@ -1533,20 +1714,42 @@ import { LIST_PROVINSI } from '../data/wilayah';
 
       const rekapAddonsList = document.getElementById('rekapAddonsList');
       if (rekapAddonsList) {
-        const chosen = catalogAddons.filter((it) => (selectedAddonQty[it.id] || 0) > 0);
-        if (chosen.length === 0) {
+        const isYa = (document.querySelector('input[name="opt_sewa"]:checked') as HTMLInputElement)?.value === 'ya';
+        const itemsToReview: { nama: string; qty: number; subtotal: number }[] = [];
+
+        if (isYa) {
+          if (selectedPaketId) {
+            const paket = PAKET_BUNDLES.find((b) => b.id === selectedPaketId);
+            if (paket) {
+              itemsToReview.push({
+                nama: `${paket.nama} (${paket.fasilitas.join(', ')})`,
+                qty: 1,
+                subtotal: paket.harga,
+              });
+            }
+          }
+
+          for (const item of SATUAN_ITEMS) {
+            const qty = selectedSatuanQty[item.id] || 0;
+            if (qty > 0) {
+              itemsToReview.push({
+                nama: `Sewa ${item.nama}`,
+                qty,
+                subtotal: item.harga * qty,
+              });
+            }
+          }
+        }
+
+        if (itemsToReview.length === 0) {
           rekapAddonsList.innerHTML = `<span class="text-slate-400 text-[11px] italic">Tidak ada sewa perlengkapan tambahan.</span>`;
         } else {
-          rekapAddonsList.innerHTML = chosen.map((it) => {
-            const qty = selectedAddonQty[it.id] || 0;
-            const sub = it.harga * qty;
-            return `
-              <div class="flex justify-between text-slate-600 text-xs">
-                <span>${it.nama} (x${qty}):</span>
-                <span class="font-bold text-slate-800 font-mono">Rp ${sub.toLocaleString('id-ID')}</span>
-              </div>
-            `;
-          }).join('');
+          rekapAddonsList.innerHTML = itemsToReview.map((it) => `
+            <div class="flex justify-between text-slate-600 text-xs">
+              <span>${it.nama}${it.qty > 1 ? ` (x${it.qty})` : ''}:</span>
+              <span class="font-bold text-slate-800 font-mono">Rp ${it.subtotal.toLocaleString('id-ID')}</span>
+            </div>
+          `).join('');
         }
       }
     }
@@ -1600,6 +1803,14 @@ import { LIST_PROVINSI } from '../data/wilayah';
             hasInvalidAnggota = true;
             break;
           }
+          if (tipe === 'keluarga' && !anggotaData[i].peran) {
+            hasInvalidAnggota = true;
+            break;
+          }
+          if (anggotaData[i].usia === null || isNaN(Number(anggotaData[i].usia)) || Number(anggotaData[i].usia) < 0) {
+            hasInvalidAnggota = true;
+            break;
+          }
           if (anggotaData[i].beda_domisili && (!anggotaData[i].provinsi || !anggotaData[i].kota)) {
             hasInvalidAnggota = true;
             break;
@@ -1620,10 +1831,17 @@ import { LIST_PROVINSI } from '../data/wilayah';
 
         // Siapkan array addon
         const addonsPayload: { addon_id: string; qty: number }[] = [];
-        for (const item of catalogAddons) {
-          const qty = selectedAddonQty[item.id] || 0;
-          if (qty > 0) {
-            addonsPayload.push({ addon_id: item.id, qty });
+        const isYa = (document.querySelector('input[name="opt_sewa"]:checked') as HTMLInputElement)?.value === 'ya';
+
+        if (isYa) {
+          if (selectedPaketId) {
+            addonsPayload.push({ addon_id: selectedPaketId, qty: 1 });
+          }
+          for (const item of SATUAN_ITEMS) {
+            const qty = selectedSatuanQty[item.id] || 0;
+            if (qty > 0) {
+              addonsPayload.push({ addon_id: item.id, qty });
+            }
           }
         }
 

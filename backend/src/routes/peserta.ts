@@ -527,10 +527,12 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
       jumlahAnggotaBerbayar++;
     }
 
-    const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta'];
+    const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan'];
     let defaultPeran = 'Peserta';
     if (tipe === 'keluarga') {
       defaultPeran = m.peran && DAFTAR_PERAN_VALID.includes(m.peran) ? m.peran : (idx === 0 ? 'Ayah' : 'Anak');
+    } else {
+      defaultPeran = m.peran && DAFTAR_PERAN_VALID.includes(m.peran) ? m.peran : (idx === 0 && anggotaList.length > 1 ? 'Ketua Rombongan' : 'Peserta');
     }
 
     const provAnggota = (m.provinsi || '').trim() || pic_provinsi || null;

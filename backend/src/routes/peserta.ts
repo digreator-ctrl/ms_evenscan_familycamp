@@ -3,6 +3,13 @@ import { nanoid } from 'nanoid';
 import { validatePendaftaran } from '../middlewares/validator';
 import { StorageService } from '../services/storage';
 import { QRGeneratorService } from '../services/qr-generator';
+import {
+  BIAYA_PER_ORANG_DEFAULT,
+  formatNomorPeserta,
+  ambilNomorUrutGrup,
+  hitungBiayaWajib,
+  isBerbayar,
+} from '../services/peserta-rules';
 
 type Bindings = {
   DB: D1Database;
@@ -242,6 +249,7 @@ pesertaRoutes.get('/status', async (c) => {
         return c.json({ error: '4 digit nomor WhatsApp harus berupa 4 angka' }, 400);
       }
 
+      // Pencocokan ketat: nomor WA harus utuh (setelah dinormalisasi), bukan hanya 4 digit terakhir.
       record = await db
         .prepare(
           `SELECT id, nama, email, no_whatsapp, instansi, nip, status, qr_token, alasan_tolak, created_at, confirmed_at, attended_at
@@ -249,11 +257,10 @@ pesertaRoutes.get('/status', async (c) => {
            WHERE (
              UPPER(COALESCE(nip, '')) = ?
              OR UPPER(instansi) LIKE ?
-             OR UPPER(instansi) LIKE ?
            )
            AND (
-             substr(replace(replace(replace(no_whatsapp, ' ', ''), '-', ''), '+', ''), -4) = ?
-             OR no_whatsapp LIKE ?
+             replace(replace(replace(no_whatsapp, ' ', ''), '-', ''), '+', '') IN (?, ?)
+             OR no_whatsapp IN (?, ?)
            )
            ORDER BY created_at DESC
            LIMIT 1`
@@ -261,9 +268,7 @@ pesertaRoutes.get('/status', async (c) => {
         .bind(
           nipParam,
           `%NIP: ${nipParam}%`,
-          `%${nipParam}%`,
-          wa4Digits,
-          `%${wa4Digits}`
+          ...[0, 1, 2, 3].map(() => wa4Digits)
         )
         .first();
     } else if (wa) {
@@ -513,21 +518,47 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
     }
   }
 
-  // Hitung biaya wajib (Rp 200.000 per anggota non-balita; balita < 3 tahun gratis)
-  const BIAYA_PER_ORANG = 200000;
-  let jumlahAnggotaBerbayar = 0;
-  let jumlahBalitaGratis = 0;
+  // Harga per orang dapat diatur admin (app_settings.harga_per_orang)
+  let hargaPerOrang = BIAYA_PER_ORANG_DEFAULT;
+  try {
+    const hargaRow = await db
+      .prepare(`SELECT value FROM app_settings WHERE key = 'harga_per_orang'`)
+      .first<{ value: string }>();
+    const parsed = parseInt(hargaRow?.value || '', 10);
+    if (!isNaN(parsed) && parsed > 0) hargaPerOrang = parsed;
+  } catch (err) {}
 
-  const sanitizedAnggota = anggotaList.map((m: any, idx: number) => {
-    const usiaNum = typeof m.usia === 'number' ? m.usia : parseInt(m.usia, 10);
-    const isBalita = !isNaN(usiaNum) && usiaNum < 3;
-    if (isBalita) {
-      jumlahBalitaGratis++;
-    } else {
-      jumlahAnggotaBerbayar++;
-    }
+  const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan'];
 
-    const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan'];
+  // Nomor urut grup (K/N) untuk nomor peserta
+  let urutGrup = 1;
+  try {
+    urutGrup = await ambilNomorUrutGrup(db, tipe);
+  } catch (counterErr) {
+    console.warn('Gagal mengambil nomor urut grup:', counterErr);
+  }
+  const nomorGrup = `${tipe === 'keluarga' ? 'K' : 'N'}-${String(urutGrup).padStart(3, '0')}`;
+
+  const sanitizedAnggota: {
+    id: string;
+    nomor_peserta: string;
+    nama: string;
+    jenis_kelamin: string;
+    peran: string;
+    usia: number | null;
+    ukuran_kaos: string | null;
+    catatan_medis: string | null;
+    is_gratis: number;
+    makan_dicover: number;
+    provinsi: string | null;
+    kota: string | null;
+  }[] = anggotaList.map((m: any, idx: number) => {
+    const parsedUsia = typeof m.usia === 'number' ? m.usia : parseInt(m.usia, 10);
+    const usiaNum = isNaN(parsedUsia) ? null : parsedUsia;
+    // Opsi cover panitia hanya berlaku untuk usia di bawah 3 tahun
+    const makanDicover = usiaNum !== null && usiaNum < 3 && Boolean(m.makan_dicover);
+    const berbayar = isBerbayar(usiaNum, makanDicover);
+
     let defaultPeran = 'Peserta';
     if (tipe === 'keluarga') {
       defaultPeran = m.peran && DAFTAR_PERAN_VALID.includes(m.peran) ? m.peran : (idx === 0 ? 'Ayah' : 'Anak');
@@ -540,19 +571,28 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
 
     return {
       id: 'mbr_' + nanoid(10),
+      nomor_peserta: formatNomorPeserta(tipe, urutGrup, idx + 1),
       nama: m.nama.trim(),
       jenis_kelamin: m.jenis_kelamin,
       peran: defaultPeran,
-      usia: !isNaN(usiaNum) ? usiaNum : null,
+      usia: usiaNum,
       ukuran_kaos: (m.ukuran_kaos || '').trim() || null,
       catatan_medis: (m.catatan_medis || '').trim() || null,
-      is_gratis: isBalita ? 1 : 0,
+      is_gratis: berbayar ? 0 : 1,
+      makan_dicover: makanDicover ? 1 : 0,
       provinsi: provAnggota,
       kota: kotaAnggota,
     };
   });
 
-  const biaya_wajib = jumlahAnggotaBerbayar * BIAYA_PER_ORANG;
+  const ringkasanBiaya = hitungBiayaWajib(
+    sanitizedAnggota.map((a) => ({ usia: a.usia, makan_dicover: a.makan_dicover })),
+    hargaPerOrang
+  );
+  const jumlahAnggotaBerbayar = ringkasanBiaya.jumlah_berbayar;
+  const jumlahBalitaGratis = ringkasanBiaya.jumlah_gratis;
+  const jumlahMakanDicover = ringkasanBiaya.jumlah_makan_dicover;
+  const biaya_wajib = ringkasanBiaya.biaya_wajib;
 
   // Hitung biaya add-on dari database
   let biaya_addon = 0;
@@ -597,8 +637,8 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
         `INSERT INTO pendaftaran_grup (
           id, tipe, pic_nama, pic_whatsapp, pic_email, provinsi, kota,
           jumlah_anggota, biaya_wajib, biaya_addon, kode_unik, grand_total,
-          payment_token, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'menunggu_pembayaran')`
+          payment_token, status, nomor_grup
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'menunggu_pembayaran', ?)`
       )
       .bind(
         grupId,
@@ -613,7 +653,8 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
         biaya_addon,
         kode_unik,
         grand_total,
-        paymentToken
+        paymentToken,
+        nomorGrup
       )
       .run();
 
@@ -622,12 +663,13 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
       await db
         .prepare(
           `INSERT INTO anggota (
-            id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, provinsi, kota
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            id, grup_id, nomor_peserta, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, makan_dicover, provinsi, kota
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           ang.id,
           grupId,
+          ang.nomor_peserta,
           ang.nama,
           ang.jenis_kelamin,
           ang.peran,
@@ -635,6 +677,7 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
           ang.ukuran_kaos,
           ang.catatan_medis,
           ang.is_gratis,
+          ang.makan_dicover,
           ang.provinsi,
           ang.kota
         )
@@ -665,6 +708,7 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
       {
         success: true,
         grup_id: grupId,
+        nomor_grup: nomorGrup,
         payment_token: paymentToken,
         payment_url: `/pembayaran?token=${paymentToken}`,
         rincian: {
@@ -674,6 +718,9 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
           jumlah_anggota: sanitizedAnggota.length,
           jumlah_anggota_berbayar: jumlahAnggotaBerbayar,
           jumlah_balita_gratis: jumlahBalitaGratis,
+          jumlah_makan_dicover: jumlahMakanDicover,
+          harga_per_orang: hargaPerOrang,
+          nomor_peserta: sanitizedAnggota.map((a) => ({ nomor: a.nomor_peserta, nama: a.nama })),
           biaya_wajib,
           biaya_addon,
           kode_unik,
@@ -853,9 +900,13 @@ pesertaRoutes.get('/status-grup', async (c) => {
       sql += ` AND payment_token = ?`;
       params.push(token);
     } else if (wa) {
-      const [v1, v2] = getPhoneVariants(wa);
-      sql += ` AND (pic_whatsapp = ? OR pic_whatsapp = ? OR pic_whatsapp LIKE ?)`;
-      params.push(v1, v2, `%${wa.slice(-4)}`);
+      // Cocokkan nomor utuh saja (format 62xxx atau 0xxx). Tidak ada pencocokan sebagian.
+      const variants = getPhoneVariants(wa);
+      if (variants[0].length < 10) {
+        return c.json({ error: 'Nomor WhatsApp harus lengkap, minimal 10 digit.' }, 400);
+      }
+      sql += ` AND (pic_whatsapp = ? OR pic_whatsapp = ?)`;
+      params.push(variants[0], variants[1]);
     }
 
     sql += ` ORDER BY created_at DESC LIMIT 5`;

@@ -4,6 +4,8 @@
  * Menggunakan CREATE TABLE IF NOT EXISTS sehingga aman dipanggil berulang.
  */
 
+import { ambilNomorUrutGrup, formatNomorPeserta } from '../services/peserta-rules';
+
 let initialized = false;
 
 export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
@@ -41,6 +43,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
         CREATE TABLE IF NOT EXISTS anggota (
           id TEXT PRIMARY KEY,
           grup_id TEXT NOT NULL,
+          nomor_peserta TEXT,
           nama TEXT NOT NULL,
           jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
           peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
@@ -50,6 +53,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           provinsi TEXT,
           kota TEXT,
           is_gratis INTEGER NOT NULL DEFAULT 0,
+          makan_dicover INTEGER NOT NULL DEFAULT 0,
           qr_token TEXT UNIQUE,
           qr_code_url TEXT,
           status_hadir TEXT NOT NULL DEFAULT 'belum' CHECK(status_hadir IN ('belum', 'hadir')),
@@ -123,6 +127,80 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
         value TEXT NOT NULL,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`),
+      // 6. Counter nomor peserta per prefix (K = keluarga, N = non-keluarga)
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS peserta_counter (
+          prefix TEXT PRIMARY KEY,
+          urut_terakhir INTEGER NOT NULL DEFAULT 0
+        )
+      `),
+      // 7. Dompet kas (tunai / rekening)
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS dompet (
+          id TEXT PRIMARY KEY,
+          nama TEXT NOT NULL,
+          jenis TEXT NOT NULL DEFAULT 'rekening' CHECK(jenis IN ('tunai', 'rekening')),
+          nomor_rekening TEXT,
+          atas_nama TEXT,
+          aktif INTEGER NOT NULL DEFAULT 1,
+          urutan INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `),
+      // 8. Pos kas (pemasukan & pengeluaran, bisa ditambah admin)
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS kas_pos (
+          id TEXT PRIMARY KEY,
+          nama TEXT NOT NULL,
+          tipe TEXT NOT NULL CHECK(tipe IN ('pemasukan', 'pengeluaran')),
+          deskripsi TEXT,
+          aktif INTEGER NOT NULL DEFAULT 1,
+          urutan INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `),
+      // 9. Buku kas: pemasukan & pengeluaran (dengan jurnal pembalik)
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS kas_transaksi (
+          id TEXT PRIMARY KEY,
+          tipe TEXT NOT NULL CHECK(tipe IN ('pemasukan', 'pengeluaran')),
+          pos_id TEXT NOT NULL,
+          dompet_id TEXT NOT NULL,
+          nominal INTEGER NOT NULL,
+          keterangan TEXT,
+          grup_id TEXT,
+          nota_url TEXT,
+          reversal_of TEXT,
+          dibatalkan INTEGER NOT NULL DEFAULT 0,
+          tanggal TEXT NOT NULL,
+          created_by TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `),
+      // 10. Log scan per anggota per sesi (check-in & 3x makan)
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS scan_log (
+          id TEXT PRIMARY KEY,
+          anggota_id TEXT NOT NULL,
+          grup_id TEXT NOT NULL,
+          sesi TEXT NOT NULL,
+          scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          scanned_by TEXT,
+          metode TEXT NOT NULL DEFAULT 'qr',
+          catatan TEXT,
+          UNIQUE(anggota_id, sesi)
+        )
+      `),
+      // 11. Template pesan WhatsApp
+      db.prepare(`
+        CREATE TABLE IF NOT EXISTS wa_templates (
+          id TEXT PRIMARY KEY,
+          nama TEXT NOT NULL,
+          body TEXT NOT NULL,
+          aktif INTEGER NOT NULL DEFAULT 1,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `),
     ]);
 
     // Create indexes (batch doesn't support multiple statements per prepare)
@@ -137,9 +215,20 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_pendaftar_status ON pendaftar(status)`,
       `CREATE INDEX IF NOT EXISTS idx_pendaftar_wa ON pendaftar(no_whatsapp)`,
       `CREATE INDEX IF NOT EXISTS idx_pendaftar_qr_token ON pendaftar(qr_token)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_anggota_nomor_peserta ON anggota(nomor_peserta)`,
+      `CREATE INDEX IF NOT EXISTS idx_kas_transaksi_dompet ON kas_transaksi(dompet_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_kas_transaksi_pos ON kas_transaksi(pos_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_kas_transaksi_grup ON kas_transaksi(grup_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_scan_log_anggota ON scan_log(anggota_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_scan_log_grup ON scan_log(grup_id)`,
     ];
 
-    await db.batch(indexes.map((sql) => db.prepare(sql)));
+    // Satu per satu agar indeks yang bergantung pada kolom hasil migrasi tidak menggagalkan batch.
+    for (const sql of indexes) {
+      try {
+        await db.prepare(sql).run();
+      } catch (e) {}
+    }
 
     // Migration: pastikan kolom provinsi dan kota ada di pendaftaran_grup
     try {
@@ -157,15 +246,68 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       await db.prepare(`ALTER TABLE anggota ADD COLUMN kota TEXT`).run();
     } catch (e) {}
 
-    // Migration: pastikan tabel anggota mendukung opsi peran yang diperluas
+    // Migration: nomor peserta & opsi cover makan untuk usia < 3 tahun
+    try {
+      await db.prepare(`ALTER TABLE anggota ADD COLUMN nomor_peserta TEXT`).run();
+    } catch (e) {}
+    try {
+      await db.prepare(`ALTER TABLE anggota ADD COLUMN makan_dicover INTEGER NOT NULL DEFAULT 0`).run();
+    } catch (e) {}
+
+    // Migration: nominal yang benar-benar diterima & selisih tagihan
+    try {
+      await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN nominal_dibayar INTEGER`).run();
+    } catch (e) {}
+    try {
+      await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN selisih_bayar INTEGER NOT NULL DEFAULT 0`).run();
+    } catch (e) {}
+    try {
+      await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN nomor_grup TEXT`).run();
+    } catch (e) {}
+
+    // Backfill nomor_peserta untuk anggota lama yang belum punya nomor
+    try {
+      const belumNomor = await db
+        .prepare(
+          `SELECT a.id, a.grup_id, g.tipe FROM anggota a JOIN pendaftaran_grup g ON g.id = a.grup_id
+           WHERE a.nomor_peserta IS NULL ORDER BY a.created_at ASC`
+        )
+        .all<{ id: string; grup_id: string; tipe: string }>();
+      const grupUrut = new Map<string, number>();
+      for (const row of belumNomor.results || []) {
+        if (!grupUrut.has(row.grup_id)) {
+          grupUrut.set(row.grup_id, await ambilNomorUrutGrup(db, row.tipe));
+        }
+        const urutGrup = grupUrut.get(row.grup_id)!;
+        const countRow = await db
+          .prepare(`SELECT COUNT(*) as n FROM anggota WHERE grup_id = ? AND nomor_peserta IS NOT NULL`)
+          .bind(row.grup_id)
+          .first<{ n: number }>();
+        const nomor = formatNomorPeserta(row.tipe, urutGrup, (countRow?.n || 0) + 1);
+        await db.prepare(`UPDATE anggota SET nomor_peserta = ? WHERE id = ?`).bind(nomor, row.id).run();
+      }
+    } catch (backfillErr) {
+      console.warn('[DB] Backfill nomor peserta dilewati:', backfillErr);
+    }
+
+    // Migration: pastikan tabel anggota mendukung peran diperluas + kolom nomor peserta & cover makan
     try {
       const tableInfo = await db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='anggota'`).first<{ sql: string }>();
-      if (tableInfo && tableInfo.sql && (!tableInfo.sql.includes('Kakek') || !tableInfo.sql.includes('Ketua Rombongan'))) {
+      const needsRebuild =
+        !!tableInfo?.sql &&
+        (!tableInfo.sql.includes('Kakek') ||
+          !tableInfo.sql.includes('Ketua Rombongan') ||
+          !tableInfo.sql.includes('nomor_peserta') ||
+          !tableInfo.sql.includes('makan_dicover'));
+
+      if (needsRebuild) {
         await db.batch([
+          db.prepare(`DROP TABLE IF EXISTS anggota_temp`),
           db.prepare(`
             CREATE TABLE anggota_temp (
               id TEXT PRIMARY KEY,
               grup_id TEXT NOT NULL,
+              nomor_peserta TEXT,
               nama TEXT NOT NULL,
               jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
               peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
@@ -175,6 +317,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
               provinsi TEXT,
               kota TEXT,
               is_gratis INTEGER NOT NULL DEFAULT 0,
+              makan_dicover INTEGER NOT NULL DEFAULT 0,
               qr_token TEXT UNIQUE,
               qr_code_url TEXT,
               status_hadir TEXT NOT NULL DEFAULT 'belum' CHECK(status_hadir IN ('belum', 'hadir')),
@@ -183,19 +326,28 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
               FOREIGN KEY (grup_id) REFERENCES pendaftaran_grup(id) ON DELETE CASCADE
             )
           `),
-          db.prepare(`INSERT INTO anggota_temp (id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at) SELECT id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at FROM anggota`),
+          db.prepare(`
+            INSERT INTO anggota_temp (
+              id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis,
+              provinsi, kota, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at
+            )
+            SELECT id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis,
+              provinsi, kota, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at
+            FROM anggota
+          `),
           db.prepare(`DROP TABLE anggota`),
           db.prepare(`ALTER TABLE anggota_temp RENAME TO anggota`),
           db.prepare(`CREATE INDEX IF NOT EXISTS idx_anggota_grup_id ON anggota(grup_id)`),
           db.prepare(`CREATE INDEX IF NOT EXISTS idx_anggota_qr_token ON anggota(qr_token)`),
+          db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_anggota_nomor_peserta ON anggota(nomor_peserta)`),
         ]);
-        console.log('[DB] Tabel anggota berhasil dimigrasi untuk mendukung opsi peran tambahan.');
+        console.log('[DB] Tabel anggota berhasil dimigrasi (peran, nomor peserta, cover makan).');
       }
     } catch (migErr) {
       console.warn('[DB] Migrasi tabel anggota dilewati:', migErr);
     }
 
-    // Migration & Seed item sewa: Paket A, B, C dan Satuan
+    // Seed awal item sewa (hanya jika belum ada). Setelah itu katalog sepenuhnya dikelola admin.
     try {
       const defaultAddonList = [
         { id: 'addon_paket_a', nama: 'Paket A', deskripsi: '1 Tenda + 4 Matras + 4 Sleeping Bag + 1 Lampu Tenda', harga: 120000, stok: 50, urutan: 1 },
@@ -207,31 +359,103 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
         { id: 'addon_satuan_lampu_tenda', nama: 'Lampu Tenda', deskripsi: 'Sewa lampu tenda LED gantung', harga: 7000, stok: 50, urutan: 7 },
       ];
 
-      for (const item of defaultAddonList) {
-        await db.prepare(`
-          INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-          VALUES (?, ?, ?, ?, ?, 1, ?)
-          ON CONFLICT(id) DO UPDATE SET
-            nama = excluded.nama,
-            deskripsi = excluded.deskripsi,
-            harga = excluded.harga,
-            aktif = 1,
-            urutan = excluded.urutan
-        `).bind(item.id, item.nama, item.deskripsi, item.harga, item.stok, item.urutan).run();
-      }
+      const addonCount = await db
+        .prepare(`SELECT COUNT(*) as total FROM addon_items`)
+        .first<{ total: number }>();
 
-      // Nonaktifkan item lama yang digantikan
-      await db.prepare(`UPDATE addon_items SET aktif = 0 WHERE id IN ('addon_tenda_4p', 'addon_matras', 'addon_sleeping_bag', 'addon_lampu_tenda', 'addon_kabel_rol')`).run();
+      // Katalog sudah pernah dibuat: jangan menimpa nama/harga/status yang diubah admin.
+      if (addonCount?.total === 0) {
+        for (const item of defaultAddonList) {
+          await db
+            .prepare(
+              `INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
+               VALUES (?, ?, ?, ?, ?, 1, ?)
+               ON CONFLICT(id) DO NOTHING`
+            )
+            .bind(item.id, item.nama, item.deskripsi, item.harga, item.stok, item.urutan)
+            .run();
+        }
+      }
     } catch (addonErr) {
-      console.warn('[DB] Migrasi addon items error:', addonErr);
+      console.warn('[DB] Seed addon items error:', addonErr);
     }
 
-    // Seed / update default rekening bank resmi panitia
+    // Seed awal rekening bank (hanya jika belum diatur admin)
     await db.batch([
-      db.prepare(`INSERT INTO app_settings (key, value) VALUES ('rekening_bank', 'BCA Syariah') ON CONFLICT(key) DO UPDATE SET value = excluded.value`),
-      db.prepare(`INSERT INTO app_settings (key, value) VALUES ('rekening_nomor', '0680909090') ON CONFLICT(key) DO UPDATE SET value = excluded.value`),
-      db.prepare(`INSERT INTO app_settings (key, value) VALUES ('rekening_atas_nama', 'Yayasan Muslim Scene Official') ON CONFLICT(key) DO UPDATE SET value = excluded.value`),
+      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rekening_bank', 'BCA Syariah')`),
+      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rekening_nomor', '0680909090')`),
+      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rekening_atas_nama', 'Yayasan Muslim Scene Official')`),
       db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('kontak_panitia_wa', '081234567890')`),
+      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('harga_per_orang', '200000')`),
+    ]);
+
+    // Seed awal dompet kas
+    await db.batch([
+      db.prepare(`INSERT OR IGNORE INTO dompet (id, nama, jenis, nomor_rekening, atas_nama, aktif, urutan) VALUES ('dmp_tunai', 'Kas Tunai', 'tunai', NULL, NULL, 1, 1)`),
+      db.prepare(`INSERT OR IGNORE INTO dompet (id, nama, jenis, nomor_rekening, atas_nama, aktif, urutan) VALUES ('dmp_bca_syariah', 'BCA Syariah', 'rekening', '0680909090', 'Yayasan Muslim Scene Official', 1, 2)`),
+    ]);
+
+    // Seed awal pos kas
+    await db.batch([
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_pendaftaran', 'Pendaftaran', 'pemasukan', 'Pemasukan dari verifikasi pembayaran peserta', 1, 1)`),
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_sponsori', 'Sponsori', 'pemasukan', 'Pemasukan dari sponsor kegiatan', 1, 2)`),
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_donasi', 'Donasi', 'pemasukan', 'Pemasukan dari donatur', 1, 3)`),
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_kelebihan_bayar', 'Kelebihan Bayar', 'pemasukan', 'Selisih lebih transfer peserta (titipan, bukan pendapatan)', 1, 4)`),
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_konsumsi', 'Konsumsi', 'pengeluaran', 'Belanja bahan makanan, snack, dan minuman', 1, 1)`),
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_perlengkapan', 'Perlengkapan', 'pengeluaran', 'Sewa tenda, alat camping, dan perlengkapan acara', 1, 2)`),
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_operasional', 'Operasional', 'pengeluaran', 'Transportasi, komunikasi, dan biaya operasional lain', 1, 3)`),
+      db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_lain_lain', 'Lain-lain', 'pengeluaran', 'Pengeluaran lain yang belum berkategori', 1, 4)`),
+    ]);
+
+    // Seed awal template WhatsApp
+    await db.batch([
+      db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_undangan_bayar', 'Undangan / Simpan Link Pembayaran',
+        'بسم الله
+السلام عليكم ورحمة الله وبركاته
+Halo *{nama_pic}*,
+
+Terima kasih telah mendaftar *{nama_acara}*.
+
+Total tagihan kelompok Anda: *{total}* untuk {jumlah_anggota} peserta.
+
+Silakan lanjutkan pembayaran & simpan tautan berikut agar tidak hilang:
+🔗 {link_pembayaran}
+
+Setelah transfer, unggah bukti pembayaran pada tautan di atas.
+
+جزاكم الله خيرا
+_Panitia {nama_acara}_', 1)`),
+      db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_pengingat_bayar', 'Pengingat Tagihan',
+        'بسم الله
+السلام عليكم ورحمة الله وبركاته
+Halo *{nama_pic}*,
+
+Kami mengingatkan tagihan pendaftaran *{nama_acara}* sebesar *{total}* belum kami terima.
+
+Silakan lakukan pembayaran melalui tautan berikut:
+🔗 {link_pembayaran}
+
+Jika sudah transfer, mohon unggah bukti pembayaran pada tautan tersebut.
+
+جزاكم الله خيرا
+_Panitia {nama_acara}_', 1)`),
+      db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_lunas', 'Konfirmasi Lunas & Link Cek Status',
+        'بسم الله
+السلام عليكم ورحمة الله وبركاته
+Halo *{nama_pic}*,
+
+Alhamdulillah, pembayaran *{nama_acara}* Anda telah kami verifikasi *LUNAS* ✅
+
+Total Peserta: {jumlah_anggota} orang
+Total Pembayaran: {total}
+
+Silakan cek status pendaftaran dan unduh *ID/QR kehadiran* seluruh anggota melalui tautan berikut:
+🔗 {link_status}
+
+Mohon tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
+
+جزاكم الله خيرا
+_Panitia {nama_acara}_', 1)`),
     ]);
 
     initialized = true;

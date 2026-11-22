@@ -312,12 +312,12 @@ import Layout from '../layouts/Layout.astro';
 
         try {
           let url = `${API_URL}/api/peserta/status`;
-          if (kodeParam) {
-            url += `?kode=${encodeURIComponent(kodeParam)}`;
-          } else if (nipParam && wa4Param) {
+          if (nipParam && wa4Param) {
             url += `?nip=${encodeURIComponent(nipParam)}&wa4=${encodeURIComponent(wa4Param)}`;
           } else if (waFullParam) {
             url += `?wa=${encodeURIComponent(waFullParam)}`;
+          } else if (kodeParam) {
+            url += `?kode=${encodeURIComponent(kodeParam)}`;
           }
 
           const res = await fetch(url);

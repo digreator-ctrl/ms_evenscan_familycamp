@@ -85,3 +85,76 @@ CREATE INDEX IF NOT EXISTS idx_anggota_grup_id ON anggota(grup_id);
 CREATE INDEX IF NOT EXISTS idx_anggota_qr_token ON anggota(qr_token);
 CREATE INDEX IF NOT EXISTS idx_addon_items_aktif ON addon_items(aktif);
 CREATE INDEX IF NOT EXISTS idx_pendaftaran_addons_grup ON pendaftaran_addons(grup_id);
+
+-- ============================================================
+-- TAMBAHAN (v2): Nomor peserta, kas, scan log, template WA
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS peserta_counter (
+    prefix TEXT PRIMARY KEY,
+    urut_terakhir INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS dompet (
+    id TEXT PRIMARY KEY,
+    nama TEXT NOT NULL,
+    jenis TEXT NOT NULL DEFAULT 'rekening' CHECK(jenis IN ('tunai', 'rekening')),
+    nomor_rekening TEXT,
+    atas_nama TEXT,
+    aktif INTEGER NOT NULL DEFAULT 1,
+    urutan INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS kas_pos (
+    id TEXT PRIMARY KEY,
+    nama TEXT NOT NULL,
+    tipe TEXT NOT NULL CHECK(tipe IN ('pemasukan', 'pengeluaran')),
+    deskripsi TEXT,
+    aktif INTEGER NOT NULL DEFAULT 1,
+    urutan INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS kas_transaksi (
+    id TEXT PRIMARY KEY,
+    tipe TEXT NOT NULL CHECK(tipe IN ('pemasukan', 'pengeluaran')),
+    pos_id TEXT NOT NULL,
+    dompet_id TEXT NOT NULL,
+    nominal INTEGER NOT NULL,
+    keterangan TEXT,
+    grup_id TEXT,
+    nota_url TEXT,
+    reversal_of TEXT,
+    dibatalkan INTEGER NOT NULL DEFAULT 0,
+    tanggal TEXT NOT NULL,
+    created_by TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS scan_log (
+    id TEXT PRIMARY KEY,
+    anggota_id TEXT NOT NULL,
+    grup_id TEXT NOT NULL,
+    sesi TEXT NOT NULL,
+    scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    scanned_by TEXT,
+    metode TEXT NOT NULL DEFAULT 'qr',
+    catatan TEXT,
+    UNIQUE(anggota_id, sesi)
+);
+
+CREATE TABLE IF NOT EXISTS wa_templates (
+    id TEXT PRIMARY KEY,
+    nama TEXT NOT NULL,
+    body TEXT NOT NULL,
+    aktif INTEGER NOT NULL DEFAULT 1,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_anggota_nomor_peserta ON anggota(nomor_peserta);
+CREATE INDEX IF NOT EXISTS idx_kas_transaksi_dompet ON kas_transaksi(dompet_id);
+CREATE INDEX IF NOT EXISTS idx_kas_transaksi_pos ON kas_transaksi(pos_id);
+CREATE INDEX IF NOT EXISTS idx_kas_transaksi_grup ON kas_transaksi(grup_id);
+CREATE INDEX IF NOT EXISTS idx_scan_log_anggota ON scan_log(anggota_id);
+CREATE INDEX IF NOT EXISTS idx_scan_log_grup ON scan_log(grup_id);

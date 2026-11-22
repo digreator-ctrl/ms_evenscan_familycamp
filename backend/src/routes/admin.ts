@@ -1,14 +1,16 @@
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
-import { authMiddleware, createAdminToken, AdminJwtPayload } from '../middlewares/auth';
+import { authMiddleware, createAdminToken, getJwtSecret, requireRole, AdminJwtPayload } from '../middlewares/auth';
 import { WALinkService } from '../services/wa-link';
 import { verifyPassword, hashPassword } from '../services/auth-helper';
 import { StorageService } from '../services/storage';
+import { getKategoriUsia, getKategoriUsiaLabel, isBerbayar, KATEGORI_USIA } from '../services/peserta-rules';
 
 type Bindings = {
   DB: D1Database;
   STORAGE: R2Bucket;
   JWT_SECRET: string;
+  PESERTA_BASE_URL?: string;
 };
 
 type Variables = {
@@ -24,7 +26,6 @@ export const adminRoutes = new Hono<{ Bindings: Bindings; Variables: Variables }
  */
 adminRoutes.post('/login', async (c) => {
   const db = c.env.DB;
-  const secret = c.env.JWT_SECRET || 'dev-secret-key-12345';
 
   const body = await c.req.json().catch(() => ({}));
   const username = (body.username as string)?.trim();
@@ -34,26 +35,12 @@ adminRoutes.post('/login', async (c) => {
     return c.json({ error: 'Username dan password wajib diisi' }, 400);
   }
 
-  // Akun dev fallback bila database belum terisi admin user
-  if (username === 'admin' && password === 'admin123') {
-    const token = await createAdminToken(
-      {
-        id: 'admin_master',
-        username: 'admin',
-        nama: 'Administrator Muslim Scene',
-        role: 'superadmin',
-      },
-      secret
-    );
-    return c.json({
-      token,
-      user: {
-        id: 'admin_master',
-        username: 'admin',
-        nama: 'Administrator Muslim Scene',
-        role: 'superadmin',
-      },
-    });
+  let secret: string;
+  try {
+    secret = getJwtSecret(c);
+  } catch (configErr: any) {
+    console.error('[Auth] Konfigurasi JWT tidak valid:', configErr.message);
+    return c.json({ error: 'Konfigurasi server tidak valid: JWT_SECRET belum diatur' }, 500);
   }
 
   if (!db) {
@@ -642,7 +629,6 @@ adminRoutes.get('/grup', async (c) => {
     return c.json({ error: 'Gagal mengambil data pendaftaran grup: ' + err.message }, 500);
   }
 });
-
 /**
  * GET /api/admin/grup/:id
  * Detail pendaftaran grup beserta seluruh anggota dan add-on yang dipilih
@@ -737,10 +723,10 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
       }
     }
 
-    // 3. Generate Link WhatsApp untuk PIC
+    // 3. Generate Link Cek Status untuk PIC (halaman status ada di FE Peserta)
     const cleanPhone = WALinkService.normalizePhoneNumber(grup.pic_whatsapp);
-    const siteUrl = c.req.header('Origin') || 'http://localhost:3001';
-    const linkTiket = `${siteUrl}/pembayaran?token=${grup.payment_token}`;
+    const pesertaUrl = (c.env.PESERTA_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
+    const linkTiket = `${pesertaUrl}/status?wa=${encodeURIComponent(grup.pic_whatsapp)}`;
 
     const pesanWa = `بسم الله
 السلام عليكم ورحمة الله وبركاته
@@ -751,7 +737,7 @@ Alhamdulillah, pendaftaran *Family Camp* Anda telah *BERHASIL DIKONFIRMASI & LUN
 Total Peserta: ${grup.jumlah_anggota} orang
 Total Pembayaran: Rp ${grup.grand_total.toLocaleString('id-ID')}
 
-Silakan akses tiket dan QR Code kehadiran untuk seluruh anggota keluarga/rombongan Anda melalui tautan berikut:
+Silakan cek status pendaftaran dan unduh ID/QR kehadiran seluruh anggota keluarga/rombongan Anda melalui tautan berikut:
 🔗 ${linkTiket}
 
 Mohon simpan dan tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
@@ -962,5 +948,211 @@ adminRoutes.delete('/addon-items/:id', async (c) => {
     return c.json({ success: true, message: 'Item add-on berhasil dihapus' });
   } catch (err: any) {
     return c.json({ error: 'Gagal menghapus add-on: ' + err.message }, 500);
+  }
+});
+
+// =========================================================================
+// ENDPOINT ADMIN: Data Peserta (Anggota) Family Camp
+// =========================================================================
+
+/**
+ * GET /api/admin/anggota
+ * Mengambil daftar seluruh anggota/peserta Family Camp dengan filter dan pencarian
+ *
+ * Query params:
+ *   - status_hadir: 'hadir' | 'belum_hadir' | 'semua' (default: semua)
+ *   - kategori_usia: 'balita' | 'anak' | 'remaja' | 'dewasa' | 'lansia' | 'semua'
+ *   - jenis_kelamin: 'L' | 'P' | 'semua'
+ *   - is_gratis: '1' | '0' | 'semua'
+ *   - grup_status: 'lunas' | 'menunggu_verifikasi' | 'menunggu_pembayaran' | 'ditolak' | 'semua'
+ *   - search: pencarian nama, nomor peserta, PIC
+ *   - page: nomor halaman (default 1)
+ *   - limit: jumlah per halaman (default 50, max 200)
+ */
+adminRoutes.get('/anggota', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  // Parse query params
+  const statusHadir = c.req.query('status_hadir') || 'semua';
+  const kategoriUsia = c.req.query('kategori_usia') || 'semua';
+  const jenisKelamin = c.req.query('jenis_kelamin') || 'semua';
+  const isGratis = c.req.query('is_gratis') || 'semua';
+  const grupStatus = c.req.query('grup_status') || 'semua';
+  const search = c.req.query('search')?.trim();
+  const page = Math.max(1, parseInt(c.req.query('page') || '1', 10));
+  const limit = Math.min(200, Math.max(1, parseInt(c.req.query('limit') || '50', 10)));
+  const offset = (page - 1) * limit;
+
+  try {
+    // Build query dengan filter
+    let sql = `
+      SELECT
+        a.id,
+        a.nama,
+        a.nomor_peserta,
+        a.peran,
+        a.jenis_kelamin,
+        a.usia,
+        a.ukuran_kaos,
+        a.catatan_medis,
+        a.is_gratis,
+        a.makan_dicover,
+        a.qr_token,
+        a.qr_code_url,
+        a.status_hadir,
+        a.attended_at,
+        a.created_at,
+        g.id as grup_id,
+        g.nomor_grup,
+        g.tipe as grup_tipe,
+        g.pic_nama,
+        g.pic_whatsapp,
+        g.status as grup_status
+      FROM anggota a
+      JOIN pendaftaran_grup g ON a.grup_id = g.id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    // Filter: status hadir
+    if (statusHadir === 'hadir') {
+      sql += ` AND a.status_hadir = 'hadir'`;
+    } else if (statusHadir === 'belum_hadir') {
+      sql += ` AND (a.status_hadir IS NULL OR a.status_hadir = 'belum_hadir')`;
+    }
+
+    // Filter: kategori usia
+    if (kategoriUsia && kategoriUsia !== 'semua') {
+      const kat = KATEGORI_USIA.find((k) => k.id === kategoriUsia);
+      if (kat) {
+        sql += ` AND a.usia >= ? AND a.usia <= ?`;
+        params.push(kat.min, kat.max);
+      }
+    }
+
+    // Filter: jenis kelamin
+    if (jenisKelamin && jenisKelamin !== 'semua') {
+      sql += ` AND a.jenis_kelamin = ?`;
+      params.push(jenisKelamin);
+    }
+
+    // Filter: is_gratis
+    if (isGratis === '1') {
+      sql += ` AND a.is_gratis = 1`;
+    } else if (isGratis === '0') {
+      sql += ` AND (a.is_gratis = 0 OR a.is_gratis IS NULL)`;
+    }
+
+    // Filter: grup_status
+    if (grupStatus && grupStatus !== 'semua') {
+      sql += ` AND g.status = ?`;
+      params.push(grupStatus);
+    }
+
+    // Filter: search
+    if (search) {
+      sql += ` AND (
+        a.nama LIKE ? OR
+        a.nomor_peserta LIKE ? OR
+        g.pic_nama LIKE ? OR
+        g.pic_whatsapp LIKE ? OR
+        g.nomor_grup LIKE ?
+      )`;
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    // Count total
+    const countSql = `SELECT COUNT(*) as total FROM anggota a JOIN pendaftaran_grup g ON a.grup_id = g.id WHERE 1=1` +
+      sql.split('WHERE 1=1')[1].split('ORDER BY')[0];
+    const countStmt = db.prepare(countSql.replace(/LIMIT \d+ OFFSET \d+/g, ''));
+    const countResult = params.length > 0
+      ? await countStmt.bind(...params).first<{ total: number }>()
+      : await countStmt.first<{ total: number }>();
+    const total = countResult?.total || 0;
+
+    // Add ordering and pagination
+    sql += ` ORDER BY g.nomor_grup ASC, a.nomor_peserta ASC LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const stmt = db.prepare(sql);
+    const result = params.length > 0 ? await stmt.bind(...params).all<any>() : await stmt.all<any>();
+    const data = result.results || [];
+
+    // Enrich data dengan kategori_usia_label
+    const enrichedData = data.map((a: any) => ({
+      ...a,
+      kategori_usia: getKategoriUsia(a.usia),
+      kategori_usia_label: getKategoriUsiaLabel(a.usia),
+    }));
+
+    c.header('x-total-count', String(total));
+    return c.json({
+      data: enrichedData,
+      total,
+      page,
+      limit,
+      total_pages: Math.ceil(total / limit),
+    });
+  } catch (err: any) {
+    console.error('Error list anggota:', err);
+    return c.json({ error: 'Gagal mengambil data anggota: ' + err.message }, 500);
+  }
+});
+
+/**
+ * GET /api/admin/anggota/:id
+ * Detail anggota/peserta beserta info grup dan scan log
+ */
+adminRoutes.get('/anggota/:id', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database tidak terhubung' }, 500);
+  }
+
+  const id = c.req.param('id');
+
+  try {
+    const anggota = await db
+      .prepare(`
+        SELECT
+          a.*,
+          g.id as grup_id,
+          g.nomor_grup,
+          g.tipe as grup_tipe,
+          g.pic_nama,
+          g.pic_whatsapp,
+          g.status as grup_status,
+          g.grand_total as grup_total
+        FROM anggota a
+        JOIN pendaftaran_grup g ON a.grup_id = g.id
+        WHERE a.id = ?
+      `)
+      .bind(id)
+      .first<any>();
+
+    if (!anggota) {
+      return c.json({ error: 'Anggota tidak ditemukan' }, 404);
+    }
+
+    // Ambil scan log jika ada
+    const scanLogRes = await db
+      .prepare(`SELECT * FROM scan_log WHERE anggota_id = ? ORDER BY scanned_at DESC`)
+      .bind(id)
+      .all<any>();
+
+    return c.json({
+      data: {
+        ...anggota,
+        kategori_usia: getKategoriUsia(anggota.usia),
+        kategori_usia_label: getKategoriUsiaLabel(anggota.usia),
+        scan_log: scanLogRes.results || [],
+      },
+    });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal mengambil detail anggota: ' + err.message }, 500);
   }
 });

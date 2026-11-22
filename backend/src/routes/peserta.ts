@@ -731,9 +731,9 @@ pesertaRoutes.get('/pembayaran/:token', async (c) => {
     const settingsMap = new Map((settingsRes.results || []).map((s) => [s.key, s.value]));
 
     const bank_info = {
-      bank: settingsMap.get('rekening_bank') || 'Bank Syariah Indonesia (BSI)',
-      nomor_rekening: settingsMap.get('rekening_nomor') || '7123456789',
-      atas_nama: settingsMap.get('rekening_atas_nama') || 'Panitia Family Camp Muslim Scene',
+      bank: settingsMap.get('rekening_bank') || 'BCA Syariah',
+      nomor_rekening: settingsMap.get('rekening_nomor') || '0680909090',
+      atas_nama: settingsMap.get('rekening_atas_nama') || 'Yayasan Muslim Scene Official',
       kontak_panitia_wa: settingsMap.get('kontak_panitia_wa') || '081234567890',
     };
 

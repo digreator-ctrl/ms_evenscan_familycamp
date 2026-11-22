@@ -152,12 +152,12 @@ import Layout from '../layouts/Layout.astro';
           <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-xs text-slate-500 font-semibold">Bank Tujuan</span>
-              <span class="text-xs font-bold text-slate-800" id="txtNamaBank">-</span>
+              <span class="text-xs font-bold text-slate-800" id="txtNamaBank">BCA Syariah</span>
             </div>
             <div class="flex justify-between items-center">
               <span class="text-xs text-slate-500 font-semibold">Nomor Rekening</span>
               <div class="flex items-center gap-2">
-                <span class="text-sm font-black text-slate-900 font-mono tracking-wide" id="txtNoRek">-</span>
+                <span class="text-sm font-black text-slate-900 font-mono tracking-wide" id="txtNoRek">0680909090</span>
                 <button
                   type="button"
                   id="btnCopyRek"
@@ -169,7 +169,7 @@ import Layout from '../layouts/Layout.astro';
             </div>
             <div class="flex justify-between items-center">
               <span class="text-xs text-slate-500 font-semibold">Atas Nama</span>
-              <span class="text-xs font-bold text-slate-800" id="txtAtasNama">-</span>
+              <span class="text-xs font-bold text-slate-800" id="txtAtasNama">Yayasan Muslim Scene Official</span>
             </div>
           </div>
         </div>
@@ -466,19 +466,23 @@ import Layout from '../layouts/Layout.astro';
       }
 
       // 6. Bank Info
+      const bankNama = bank_info?.bank || 'BCA Syariah';
+      const bankNomor = bank_info?.nomor_rekening || '0680909090';
+      const bankAtasNama = bank_info?.atas_nama || 'Yayasan Muslim Scene Official';
+
       const txtNamaBank = document.getElementById('txtNamaBank');
-      if (txtNamaBank) txtNamaBank.textContent = bank_info.bank;
+      if (txtNamaBank) txtNamaBank.textContent = bankNama;
 
       const txtNoRek = document.getElementById('txtNoRek');
-      if (txtNoRek) txtNoRek.textContent = bank_info.nomor_rekening;
+      if (txtNoRek) txtNoRek.textContent = bankNomor;
 
       const txtAtasNama = document.getElementById('txtAtasNama');
-      if (txtAtasNama) txtAtasNama.textContent = bank_info.atas_nama;
+      if (txtAtasNama) txtAtasNama.textContent = bankAtasNama;
 
       const btnCopyRek = document.getElementById('btnCopyRek');
       if (btnCopyRek) {
         btnCopyRek.onclick = () => {
-          navigator.clipboard.writeText(bank_info.nomor_rekening);
+          navigator.clipboard.writeText(bankNomor);
           btnCopyRek.textContent = 'Tersalin! ✓';
           setTimeout(() => (btnCopyRek.textContent = 'Salin'), 2000);
         };

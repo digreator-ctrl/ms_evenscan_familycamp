@@ -226,11 +226,11 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       console.warn('[DB] Migrasi addon items error:', addonErr);
     }
 
-    // Seed default rekening bank jika belum ada di app_settings
+    // Seed / update default rekening bank resmi panitia
     await db.batch([
-      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rekening_bank', 'Bank Syariah Indonesia (BSI)')`),
-      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rekening_nomor', '7123456789')`),
-      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rekening_atas_nama', 'Panitia Family Camp Muslim Scene')`),
+      db.prepare(`INSERT INTO app_settings (key, value) VALUES ('rekening_bank', 'BCA Syariah') ON CONFLICT(key) DO UPDATE SET value = excluded.value`),
+      db.prepare(`INSERT INTO app_settings (key, value) VALUES ('rekening_nomor', '0680909090') ON CONFLICT(key) DO UPDATE SET value = excluded.value`),
+      db.prepare(`INSERT INTO app_settings (key, value) VALUES ('rekening_atas_nama', 'Yayasan Muslim Scene Official') ON CONFLICT(key) DO UPDATE SET value = excluded.value`),
       db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('kontak_panitia_wa', '081234567890')`),
     ]);
 

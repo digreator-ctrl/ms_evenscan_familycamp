@@ -21,7 +21,7 @@ function App() {
         dataProvider={dataProvider(API_URL)}
         resources={[
           {
-            name: 'pendaftar',
+            name: 'grup',
             list: '/verifikasi',
           },
         ]}

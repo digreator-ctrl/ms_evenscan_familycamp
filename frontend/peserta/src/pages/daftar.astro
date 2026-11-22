@@ -666,9 +666,6 @@ import { LIST_PROVINSI } from "../data/wilayah";
                   class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold text-slate-800 cursor-pointer"
                 >
                   <option value="">-- Tanpa Paket Tenda (Rp 0) --</option>
-                  <option value="addon_paket_a">Paket A — Rp 120.000</option>
-                  <option value="addon_paket_b">Paket B — Rp 110.000</option>
-                  <option value="addon_paket_c">Paket C — Rp 100.000</option>
                 </select>
               </div>
 
@@ -928,7 +925,8 @@ import { LIST_PROVINSI } from "../data/wilayah";
 
     let currentStep = 1;
 
-    const PAKET_BUNDLES: PaketBundleItem[] = [
+    // Katalog paket & satuan diisi dari API admin (fallback bawaan bila API gagal).
+    let PAKET_BUNDLES: PaketBundleItem[] = [
       {
         id: "addon_paket_a",
         nama: "Paket A",
@@ -964,7 +962,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
       },
     ];
 
-    const SATUAN_ITEMS: SatuanItem[] = [
+    let SATUAN_ITEMS: SatuanItem[] = [
       {
         id: "addon_satuan_tenda",
         nama: "Tenda",
@@ -1167,17 +1165,50 @@ import { LIST_PROVINSI } from "../data/wilayah";
         const res = await fetch(`${API_URL}/api/peserta/addon-items`);
         const json = await res.json();
         if (res.ok && Array.isArray(json.data) && json.data.length > 0) {
-          for (const item of json.data) {
-            const p = PAKET_BUNDLES.find((b) => b.id === item.id);
-            if (p) p.harga = item.harga;
-            const s = SATUAN_ITEMS.find((it) => it.id === item.id);
-            if (s) s.harga = item.harga;
-          }
+          const paket = json.data
+            .filter((item: any) => item.kategori === "paket")
+            .map((item: any) => ({
+              id: item.id,
+              nama: item.nama,
+              harga: item.harga,
+              fasilitas: Array.isArray(item.fasilitas) ? item.fasilitas : [],
+            }));
+          const satuan = json.data
+            .filter((item: any) => item.kategori !== "paket")
+            .map((item: any) => ({
+              id: item.id,
+              nama: item.nama,
+              deskripsi: item.deskripsi || "",
+              harga: item.harga,
+            }));
+
+          // Gunakan katalog dari API bila tersedia (paket dipertahankan jika API tak mengirim paket).
+          if (paket.length > 0) PAKET_BUNDLES = paket;
+          SATUAN_ITEMS = satuan;
+
+          renderPaketSelect();
         }
       } catch (err) {
         console.warn("Gagal load addon items:", err);
       }
       renderAddonsCatalog();
+    }
+
+    function renderPaketSelect() {
+      const select = document.getElementById(
+        "selectPaketTenda",
+      ) as HTMLSelectElement | null;
+      if (!select) return;
+      const current = select.value;
+      select.innerHTML =
+        `<option value="">-- Tanpa Paket Tenda (Rp 0) --</option>` +
+        PAKET_BUNDLES.map(
+          (p) =>
+            `<option value="${p.id}">${p.nama} — Rp ${Number(p.harga).toLocaleString("id-ID")}</option>`,
+        ).join("");
+      if (current && PAKET_BUNDLES.some((p) => p.id === current)) {
+        select.value = current;
+      }
     }
 
     function checkKeluargaConstraint(): boolean {

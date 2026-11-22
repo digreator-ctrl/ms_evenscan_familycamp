@@ -447,9 +447,19 @@ pesertaRoutes.get('/addon-items', async (c) => {
 
   try {
     const result = await db
-      .prepare(`SELECT id, nama, deskripsi, harga, stok, aktif, urutan FROM addon_items WHERE aktif = 1 ORDER BY urutan ASC, created_at ASC`)
-      .all();
-    return c.json({ data: result.results || [] });
+      .prepare(`SELECT id, nama, deskripsi, harga, stok, aktif, urutan, kategori, fasilitas FROM addon_items WHERE aktif = 1 ORDER BY urutan ASC, created_at ASC`)
+      .all<any>();
+    const data = (result.results || []).map((item: any) => ({
+      ...item,
+      kategori: item.kategori === 'paket' ? 'paket' : 'satuan',
+      fasilitas: item.fasilitas
+        ? String(item.fasilitas)
+            .split('|')
+            .map((f: string) => f.trim())
+            .filter(Boolean)
+        : [],
+    }));
+    return c.json({ data });
   } catch (err: any) {
     console.error('Error get addon items:', err);
     return c.json({ error: 'Gagal mengambil data add-on: ' + err.message }, 500);

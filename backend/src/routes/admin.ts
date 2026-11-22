@@ -99,253 +99,6 @@ adminRoutes.post('/login', async (c) => {
 adminRoutes.use('/*', authMiddleware);
 
 /**
- * GET /api/admin/pendaftar
- * Mengambil daftar pendaftar dengan filter status dan pencarian
- */
-adminRoutes.get('/pendaftar', async (c) => {
-  const db = c.env.DB;
-  if (!db) {
-    return c.json({ error: 'Database D1 tidak terhubung' }, 500);
-  }
-
-  const status = c.req.query('status');
-  const search = c.req.query('search')?.trim();
-
-  try {
-    let sql = `SELECT id, nama, email, no_whatsapp, instansi, jenis_kelamin, nip, domisili, alasan, screenshot_url, qr_code_url, qr_token, status, alasan_tolak, wa_terkirim, created_at, confirmed_at, attended_at, confirmed_by, wa_sent_by FROM pendaftar WHERE 1=1`;
-    const params: any[] = [];
-
-    if (status && status !== 'semua') {
-      sql += ` AND status = ?`;
-      params.push(status);
-    }
-
-    if (search) {
-      sql += ` AND (nama LIKE ? OR no_whatsapp LIKE ? OR instansi LIKE ? OR COALESCE(nip, '') LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
-    }
-
-    if (status === 'hadir') {
-      sql += ` ORDER BY attended_at DESC, created_at DESC`;
-    } else if (status === 'dikonfirmasi') {
-      sql += ` ORDER BY COALESCE(confirmed_at, created_at) DESC`;
-    } else {
-      sql += ` ORDER BY COALESCE(attended_at, confirmed_at, created_at) DESC`;
-    }
-
-    const stmt = db.prepare(sql);
-    const result = params.length > 0 ? await stmt.bind(...params).all() : await stmt.all();
-
-    const data = result.results || [];
-
-    c.header('x-total-count', String(data.length));
-    return c.json({
-      data,
-      total: data.length,
-    });
-  } catch (err: any) {
-    console.error('Error list pendaftar:', err);
-    return c.json({ error: 'Gagal mengambil data pendaftar: ' + err.message }, 500);
-  }
-});
-
-/**
- * GET /api/admin/pendaftar/:id
- * Detail pendaftar tertentu
- */
-adminRoutes.get('/pendaftar/:id', async (c) => {
-  const db = c.env.DB;
-  const id = c.req.param('id');
-
-  try {
-    const record = await db
-      .prepare(`SELECT * FROM pendaftar WHERE id = ?`)
-      .bind(id)
-      .first();
-
-    if (!record) {
-      return c.json({ error: 'Pendaftar tidak ditemukan' }, 404);
-    }
-
-    return c.json({ data: record });
-  } catch (err: any) {
-    return c.json({ error: 'Gagal mengambil detail pendaftar: ' + err.message }, 500);
-  }
-});
-
-/**
- * PATCH /api/admin/pendaftar/:id/konfirmasi
- * Konfirmasi pendaftar: Generate QR token unik, ubah status, buat link WhatsApp
- */
-adminRoutes.patch('/pendaftar/:id/konfirmasi', async (c) => {
-  const db = c.env.DB;
-  const id = c.req.param('id');
-
-  try {
-    const pendaftar = await db
-      .prepare(`SELECT * FROM pendaftar WHERE id = ?`)
-      .bind(id)
-      .first<{
-        id: string;
-        nama: string;
-        no_whatsapp: string;
-        qr_token: string | null;
-        status: string;
-        jenis_kelamin?: string;
-        nip?: string;
-        instansi?: string;
-      }>();
-
-    if (!pendaftar) {
-      return c.json({ error: 'Pendaftar tidak ditemukan' }, 404);
-    }
-
-    // Token QR unik untuk validasi scan absensi
-    const qrToken = pendaftar.qr_token || 'qr_' + nanoid(12);
-    const qrCodeUrl = `/api/peserta/qr/${qrToken}`;
-
-    const user = c.get('user');
-    const confirmedBy = user?.nama || user?.username || 'Panitia';
-
-    await db
-      .prepare(
-        `UPDATE pendaftar
-         SET status = 'dikonfirmasi',
-             qr_token = ?,
-             qr_code_url = ?,
-             confirmed_at = CURRENT_TIMESTAMP,
-             confirmed_by = ?
-         WHERE id = ?`
-      )
-      .bind(qrToken, qrCodeUrl, confirmedBy, id)
-      .run();
-
-    // Buat link wa.me
-    const siteUrl = c.req.header('Origin') || 'http://localhost:3001';
-    const waUrl = WALinkService.generateLink({
-      phoneNumber: pendaftar.no_whatsapp,
-      namaPeserta: pendaftar.nama,
-      jenisKelamin: pendaftar.jenis_kelamin,
-      nip: pendaftar.nip || pendaftar.instansi,
-      siteUrl,
-    });
-
-    return c.json({
-      success: true,
-      message: 'Pendaftar berhasil dikonfirmasi',
-      qr_token: qrToken,
-      qr_code_url: qrCodeUrl,
-      wa_url: waUrl,
-    });
-  } catch (err: any) {
-    console.error('Error konfirmasi:', err);
-    return c.json({ error: 'Gagal mengonfirmasi pendaftar: ' + err.message }, 500);
-  }
-});
-
-/**
- * PATCH /api/admin/pendaftar/:id/tolak
- * Menolak pendaftar dengan alasan tertentu
- */
-adminRoutes.patch('/pendaftar/:id/tolak', async (c) => {
-  const db = c.env.DB;
-  const id = c.req.param('id');
-  const body = await c.req.json().catch(() => ({}));
-  const alasan = (body.alasan as string)?.trim() || 'Data tidak memenuhi syarat';
-
-  try {
-    await db
-      .prepare(
-        `UPDATE pendaftar
-         SET status = 'ditolak',
-             alasan_tolak = ?
-         WHERE id = ?`
-      )
-      .bind(alasan, id)
-      .run();
-
-    return c.json({
-      success: true,
-      message: 'Pendaftar telah ditolak',
-    });
-  } catch (err: any) {
-    return c.json({ error: 'Gagal menolak pendaftar: ' + err.message }, 500);
-  }
-});
-
-/**
- * PATCH /api/admin/pendaftar/:id/mark-wa-sent
- * Menandai bahwa link WA sudah dibuka/dikirim oleh panitia
- */
-adminRoutes.patch('/pendaftar/:id/mark-wa-sent', async (c) => {
-  const db = c.env.DB;
-  const id = c.req.param('id');
-
-  try {
-    const user = c.get('user');
-    const waSentBy = user?.nama || user?.username || 'Panitia';
-
-    await db
-      .prepare(`UPDATE pendaftar SET wa_terkirim = 1, wa_sent_by = ? WHERE id = ?`)
-      .bind(waSentBy, id)
-      .run();
-
-    return c.json({ success: true });
-  } catch (err: any) {
-    return c.json({ error: 'Gagal update status WA: ' + err.message }, 500);
-  }
-});
-
-/**
- * DELETE /api/admin/pendaftar/:id
- * Menghapus data pendaftar dan membersihkan file screenshot di R2 jika ada
- */
-adminRoutes.delete('/pendaftar/:id', async (c) => {
-  const db = c.env.DB;
-  if (!db) {
-    return c.json({ error: 'Database D1 tidak terhubung' }, 500);
-  }
-
-  const id = c.req.param('id');
-  const storage = new StorageService(c.env.STORAGE);
-
-  try {
-    const record = await db
-      .prepare(`SELECT id, nama, screenshot_url FROM pendaftar WHERE id = ?`)
-      .bind(id)
-      .first<{ id: string; nama: string; screenshot_url: string | null }>();
-
-    if (!record) {
-      return c.json({ error: 'Data pendaftar tidak ditemukan' }, 404);
-    }
-
-    // Bersihkan file di R2 jika ada
-    if (record.screenshot_url) {
-      try {
-        const match = record.screenshot_url.match(/\/api\/peserta\/screenshot\/(.+)$/);
-        if (match) {
-          const key = decodeURIComponent(match[1]);
-          await storage.delete(key);
-        }
-      } catch (fileErr) {
-        console.warn('Gagal menghapus file R2:', fileErr);
-      }
-    }
-
-    // Hapus dari database D1
-    await db.prepare(`DELETE FROM pendaftar WHERE id = ?`).bind(id).run();
-
-    return c.json({
-      success: true,
-      message: `Pendaftar ${record.nama} berhasil dihapus`,
-    });
-  } catch (err: any) {
-    console.error('Error saat menghapus pendaftar:', err);
-    return c.json({ error: 'Gagal menghapus pendaftar: ' + err.message }, 500);
-  }
-});
-
-/**
  * GET /api/admin/me
  * Mendapatkan profil admin yang sedang login
  */
@@ -1071,6 +824,10 @@ adminRoutes.post('/addon-items', async (c) => {
   const stok = body.stok !== undefined ? parseInt(body.stok, 10) : -1;
   const aktif = body.aktif !== undefined ? (body.aktif ? 1 : 0) : 1;
   const urutan = body.urutan !== undefined ? parseInt(body.urutan, 10) : 0;
+  const kategori = body.kategori === 'paket' ? 'paket' : 'satuan';
+  const fasilitas = Array.isArray(body.fasilitas)
+    ? body.fasilitas.map((f: any) => String(f).trim()).filter(Boolean).join('|')
+    : String(body.fasilitas || '').trim();
 
   if (!nama) {
     return c.json({ error: 'Nama item add-on wajib diisi' }, 400);
@@ -1084,16 +841,16 @@ adminRoutes.post('/addon-items', async (c) => {
   try {
     await db
       .prepare(
-        `INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan, kategori, fasilitas)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
-      .bind(id, nama, deskripsi, harga, stok, aktif, urutan)
+      .bind(id, nama, deskripsi, harga, stok, aktif, urutan, kategori, fasilitas)
       .run();
 
     return c.json({
       success: true,
       message: 'Item add-on berhasil ditambahkan',
-      data: { id, nama, deskripsi, harga, stok, aktif, urutan },
+      data: { id, nama, deskripsi, harga, stok, aktif, urutan, kategori, fasilitas },
     }, 201);
   } catch (err: any) {
     return c.json({ error: 'Gagal menambahkan add-on: ' + err.message }, 500);
@@ -1120,14 +877,22 @@ adminRoutes.patch('/addon-items/:id', async (c) => {
     const stok = body.stok !== undefined ? parseInt(body.stok, 10) : existing.stok;
     const aktif = body.aktif !== undefined ? (body.aktif ? 1 : 0) : existing.aktif;
     const urutan = body.urutan !== undefined ? parseInt(body.urutan, 10) : existing.urutan;
+    const kategori =
+      body.kategori !== undefined ? (body.kategori === 'paket' ? 'paket' : 'satuan') : existing.kategori || 'satuan';
+    const fasilitas =
+      body.fasilitas !== undefined
+        ? Array.isArray(body.fasilitas)
+          ? body.fasilitas.map((f: any) => String(f).trim()).filter(Boolean).join('|')
+          : String(body.fasilitas).trim()
+        : existing.fasilitas;
 
     await db
       .prepare(
         `UPDATE addon_items
-         SET nama = ?, deskripsi = ?, harga = ?, stok = ?, aktif = ?, urutan = ?
+         SET nama = ?, deskripsi = ?, harga = ?, stok = ?, aktif = ?, urutan = ?, kategori = ?, fasilitas = ?
          WHERE id = ?`
       )
-      .bind(nama, deskripsi, harga, stok, aktif, urutan, id)
+      .bind(nama, deskripsi, harga, stok, aktif, urutan, kategori, fasilitas, id)
       .run();
 
     return c.json({

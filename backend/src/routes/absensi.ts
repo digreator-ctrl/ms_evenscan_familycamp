@@ -306,28 +306,8 @@ absensiRoutes.post('/lookup', async (c) => {
       });
     }
 
-    // 2. Fallback: Cek tabel pendaftar (legacy)
-    const pendaftar = await db
-      .prepare(
-        `SELECT id, nama, email, no_whatsapp, instansi, status, qr_token, attended_at, created_at, confirmed_at, screenshot_url
-         FROM pendaftar
-         WHERE qr_token = ?`
-      )
-      .bind(token)
-      .first<any>();
-
-    if (!pendaftar) {
-      return c.json({ error: 'QR Code tidak terdaftar / tidak valid!' }, 404);
-    }
-
-    return c.json({
-      success: true,
-      data: {
-        ...pendaftar,
-        tipe: 'legacy_pendaftar',
-        sesi_tersedia: [{ id: 'checkin', label: 'Check-in Kehadiran' }],
-      },
-    });
+    // 2. QR tidak terdaftar pada tabel anggota Family Camp
+    return c.json({ error: 'QR Code tidak terdaftar / tidak valid!' }, 404);
   } catch (err: any) {
     return c.json({ error: 'Gagal mencari data QR: ' + err.message }, 500);
   }
@@ -486,89 +466,8 @@ absensiRoutes.post('/scan', async (c) => {
       });
     }
 
-    // 2. Fallback: Cek tabel pendaftar (legacy) - hanya untuk check-in
-    if (sesi !== 'checkin') {
-      return c.json({ error: 'QR Code tidak terdaftar / tidak valid!' }, 404);
-    }
-
-    const pendaftar = await db
-      .prepare(
-        `SELECT id, nama, no_whatsapp, instansi, status, qr_token, attended_at
-         FROM pendaftar
-         WHERE qr_token = ?`
-      )
-      .bind(token)
-      .first<{
-        id: string;
-        nama: string;
-        no_whatsapp: string;
-        instansi: string;
-        status: string;
-        qr_token: string;
-        attended_at: string | null;
-      }>();
-
-    if (!pendaftar) {
-      return c.json({ error: 'QR Code tidak terdaftar / tidak valid!' }, 404);
-    }
-
-    if (pendaftar.status === 'menunggu') {
-      return c.json(
-        {
-          error: 'Pendaftar belum dikonfirmasi oleh panitia.',
-          nama: pendaftar.nama,
-          status: pendaftar.status,
-        },
-        400
-      );
-    }
-
-    if (pendaftar.status === 'ditolak') {
-      return c.json(
-        {
-          error: 'Status pendaftaran ditolak oleh panitia.',
-          nama: pendaftar.nama,
-          status: pendaftar.status,
-        },
-        400
-      );
-    }
-
-    if (pendaftar.status === 'hadir') {
-      return c.json(
-        {
-          error: 'Peserta sudah tercatat hadir sebelumnya!',
-          nama: pendaftar.nama,
-          instansi: pendaftar.instansi,
-          attended_at: pendaftar.attended_at,
-          status: 'hadir',
-        },
-        409
-      );
-    }
-
-    // Status 'dikonfirmasi' -> Ubah status menjadi 'hadir'
-    const now = new Date().toISOString();
-    await db
-      .prepare(
-        `UPDATE pendaftar
-         SET status = 'hadir',
-             attended_at = CURRENT_TIMESTAMP
-         WHERE id = ?`
-      )
-      .bind(pendaftar.id)
-      .run();
-
-    return c.json({
-      success: true,
-      message: `✅ Check-in Berhasil: Selamat Datang, ${pendaftar.nama}!`,
-      nama: pendaftar.nama,
-      instansi: pendaftar.instansi,
-      sesi: 'checkin',
-      sesi_label: 'Check-in Kehadiran',
-      scanned_at: now,
-      status: 'berhasil',
-    });
+    // 2. QR tidak terdaftar pada tabel anggota Family Camp
+    return c.json({ error: 'QR Code tidak terdaftar / tidak valid!' }, 404);
   } catch (err: any) {
     console.error('Error scan kehadiran:', err);
     return c.json({ error: 'Gagal memproses validasi kehadiran: ' + err.message }, 500);

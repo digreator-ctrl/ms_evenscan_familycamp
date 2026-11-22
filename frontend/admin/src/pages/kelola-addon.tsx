@@ -10,6 +10,8 @@ interface AddonItem {
   stok: number;
   aktif: number;
   urutan: number;
+  kategori?: string;
+  fasilitas?: string;
   created_at?: string;
 }
 
@@ -17,7 +19,16 @@ const formatRupiah = (n: number): string => {
   return 'Rp ' + (n || 0).toLocaleString('id-ID');
 };
 
-const emptyForm = { nama: '', deskripsi: '', harga: '', stok: '-1', aktif: '1', urutan: '0' };
+const emptyForm = {
+  nama: '',
+  deskripsi: '',
+  harga: '',
+  stok: '-1',
+  aktif: '1',
+  urutan: '0',
+  kategori: 'satuan',
+  fasilitas: '',
+};
 
 export function KelolaAddon() {
   const [items, setItems] = useState<AddonItem[]>([]);
@@ -78,6 +89,8 @@ export function KelolaAddon() {
       stok: String(item.stok),
       aktif: String(item.aktif),
       urutan: String(item.urutan || 0),
+      kategori: item.kategori === 'paket' ? 'paket' : 'satuan',
+      fasilitas: item.fasilitas || '',
     });
     setFormError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -112,6 +125,8 @@ export function KelolaAddon() {
         stok: isNaN(stok) ? -1 : stok,
         aktif: aktif === 0 ? 0 : 1,
         urutan: isNaN(urutan) ? 0 : urutan,
+        kategori: form.kategori,
+        fasilitas: form.kategori === 'paket' ? form.fasilitas.trim() : '',
       };
 
       const url = editingId
@@ -252,6 +267,32 @@ export function KelolaAddon() {
             />
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1.5">Kategori</label>
+              <select
+                value={form.kategori}
+                onChange={(e) => setForm((f) => ({ ...f, kategori: e.target.value }))}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
+              >
+                <option value="satuan">Satuan (dijual per unit)</option>
+                <option value="paket">Paket Tenda (bundling)</option>
+              </select>
+            </div>
+            {form.kategori === 'paket' && (
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">Fasilitas Paket</label>
+                <input
+                  type="text"
+                  placeholder="Pisahkan dengan | contoh: 1 Tenda|4 Matras|4 Sleeping Bag"
+                  value={form.fasilitas}
+                  onChange={(e) => setForm((f) => ({ ...f, fasilitas: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
+                />
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block font-bold text-slate-700 mb-1.5">Harga (Rp) <span className="text-rose-500">*</span></label>
@@ -381,6 +422,7 @@ export function KelolaAddon() {
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <th className="px-5 py-3.5">Item</th>
+                  <th className="px-5 py-3.5">Kategori</th>
                   <th className="px-5 py-3.5">Harga</th>
                   <th className="px-5 py-3.5">Stok</th>
                   <th className="px-5 py-3.5">Urutan</th>
@@ -394,6 +436,17 @@ export function KelolaAddon() {
                     <td className="px-5 py-3.5">
                       <div className="font-semibold text-slate-900">{it.nama}</div>
                       {it.deskripsi && <div className="text-[11px] text-slate-400">{it.deskripsi}</div>}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          it.kategori === 'paket'
+                            ? 'bg-violet-100 text-violet-700 border border-violet-200'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}
+                      >
+                        {it.kategori === 'paket' ? 'Paket' : 'Satuan'}
+                      </span>
                     </td>
                     <td className="px-5 py-3.5 font-bold text-slate-800">{formatRupiah(it.harga)}</td>
                     <td className="px-5 py-3.5 text-slate-600">{it.stok === -1 ? 'Unlimited' : it.stok}</td>

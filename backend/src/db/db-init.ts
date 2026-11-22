@@ -72,6 +72,8 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           stok INTEGER NOT NULL DEFAULT -1,
           aktif INTEGER NOT NULL DEFAULT 1,
           urutan INTEGER NOT NULL DEFAULT 0,
+          kategori TEXT NOT NULL DEFAULT 'satuan',
+          fasilitas TEXT,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
       `),
@@ -265,6 +267,22 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN nomor_grup TEXT`).run();
     } catch (e) {}
 
+    // Migration: kategori & fasilitas add-on (paket vs satuan)
+    try {
+      await db.prepare(`ALTER TABLE addon_items ADD COLUMN kategori TEXT NOT NULL DEFAULT 'satuan'`).run();
+    } catch (e) {}
+    try {
+      await db.prepare(`ALTER TABLE addon_items ADD COLUMN fasilitas TEXT`).run();
+    } catch (e) {}
+    // Backfill kategori paket dari id lama (addon_paket_*)
+    try {
+      await db
+        .prepare(
+          `UPDATE addon_items SET kategori = 'paket', fasilitas = COALESCE(fasilitas, '1 Tenda Dome|Matras Spon|Sleeping Bag Hangat|1 Lampu Tenda LED') WHERE id LIKE 'addon_paket_%' AND (kategori IS NULL OR kategori = 'satuan')`
+        )
+        .run();
+    } catch (e) {}
+
     // Backfill nomor_peserta untuk anggota lama yang belum punya nomor
     try {
       const belumNomor = await db
@@ -350,13 +368,13 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
     // Seed awal item sewa (hanya jika belum ada). Setelah itu katalog sepenuhnya dikelola admin.
     try {
       const defaultAddonList = [
-        { id: 'addon_paket_a', nama: 'Paket A', deskripsi: '1 Tenda + 4 Matras + 4 Sleeping Bag + 1 Lampu Tenda', harga: 120000, stok: 50, urutan: 1 },
-        { id: 'addon_paket_b', nama: 'Paket B', deskripsi: '1 Tenda + 3 Matras + 3 Sleeping Bag + 1 Lampu Tenda', harga: 110000, stok: 50, urutan: 2 },
-        { id: 'addon_paket_c', nama: 'Paket C', deskripsi: '1 Tenda + 2 Matras + 2 Sleeping Bag + 1 Lampu Tenda', harga: 100000, stok: 50, urutan: 3 },
-        { id: 'addon_satuan_tenda', nama: 'Tenda', deskripsi: 'Sewa tenda dome kapasitas 4 orang', harga: 70000, stok: 50, urutan: 4 },
-        { id: 'addon_satuan_matras', nama: 'Matras', deskripsi: 'Sewa matras spon camping tebal', harga: 5000, stok: 100, urutan: 5 },
-        { id: 'addon_satuan_sleeping_bag', nama: 'Sleeping Bag', deskripsi: 'Sewa kantong tidur / sleeping bag hangat', harga: 10000, stok: 100, urutan: 6 },
-        { id: 'addon_satuan_lampu_tenda', nama: 'Lampu Tenda', deskripsi: 'Sewa lampu tenda LED gantung', harga: 7000, stok: 50, urutan: 7 },
+        { id: 'addon_paket_a', nama: 'Paket A', deskripsi: '1 Tenda + 4 Matras + 4 Sleeping Bag + 1 Lampu Tenda', harga: 120000, stok: 50, urutan: 1, kategori: 'paket', fasilitas: '1 Tenda Dome|4 Matras Spon|4 Sleeping Bag Hangat|1 Lampu Tenda LED' },
+        { id: 'addon_paket_b', nama: 'Paket B', deskripsi: '1 Tenda + 3 Matras + 3 Sleeping Bag + 1 Lampu Tenda', harga: 110000, stok: 50, urutan: 2, kategori: 'paket', fasilitas: '1 Tenda Dome|3 Matras Spon|3 Sleeping Bag Hangat|1 Lampu Tenda LED' },
+        { id: 'addon_paket_c', nama: 'Paket C', deskripsi: '1 Tenda + 2 Matras + 2 Sleeping Bag + 1 Lampu Tenda', harga: 100000, stok: 50, urutan: 3, kategori: 'paket', fasilitas: '1 Tenda Dome|2 Matras Spon|2 Sleeping Bag Hangat|1 Lampu Tenda LED' },
+        { id: 'addon_satuan_tenda', nama: 'Tenda', deskripsi: 'Sewa tenda dome kapasitas 4 orang', harga: 70000, stok: 50, urutan: 4, kategori: 'satuan', fasilitas: '' },
+        { id: 'addon_satuan_matras', nama: 'Matras', deskripsi: 'Sewa matras spon camping tebal', harga: 5000, stok: 100, urutan: 5, kategori: 'satuan', fasilitas: '' },
+        { id: 'addon_satuan_sleeping_bag', nama: 'Sleeping Bag', deskripsi: 'Sewa kantong tidur / sleeping bag hangat', harga: 10000, stok: 100, urutan: 6, kategori: 'satuan', fasilitas: '' },
+        { id: 'addon_satuan_lampu_tenda', nama: 'Lampu Tenda', deskripsi: 'Sewa lampu tenda LED gantung', harga: 7000, stok: 50, urutan: 7, kategori: 'satuan', fasilitas: '' },
       ];
 
       const addonCount = await db
@@ -368,11 +386,11 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
         for (const item of defaultAddonList) {
           await db
             .prepare(
-              `INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan)
-               VALUES (?, ?, ?, ?, ?, 1, ?)
+              `INSERT INTO addon_items (id, nama, deskripsi, harga, stok, aktif, urutan, kategori, fasilitas)
+               VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)
                ON CONFLICT(id) DO NOTHING`
             )
-            .bind(item.id, item.nama, item.deskripsi, item.harga, item.stok, item.urutan)
+            .bind(item.id, item.nama, item.deskripsi, item.harga, item.stok, item.urutan, item.kategori, item.fasilitas)
             .run();
         }
       }

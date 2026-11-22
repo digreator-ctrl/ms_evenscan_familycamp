@@ -166,6 +166,9 @@ import Layout from '../layouts/Layout.astro';
           <h2 class="text-xl font-black text-slate-900" id="fcPicNama">-</h2>
           <p class="text-xs text-slate-500 mt-1" id="fcRincian">-</p>
         </div>
+
+        <!-- Daftar Anggota & Status Tiket/Makan (muncul saat LUNAS) -->
+        <div id="fcAnggotaSection" class="hidden text-left space-y-2"></div>
         <div class="pt-2">
           <a
             id="fcLinkPembayaran"
@@ -215,6 +218,7 @@ import Layout from '../layouts/Layout.astro';
       const fcStatusBadge = document.getElementById('fcStatusBadge');
       const fcPicNama = document.getElementById('fcPicNama');
       const fcRincian = document.getElementById('fcRincian');
+      const fcAnggotaSection = document.getElementById('fcAnggotaSection');
       const fcLinkPembayaran = document.getElementById('fcLinkPembayaran') as HTMLAnchorElement | null;
 
       const namaMenunggu = document.getElementById('namaMenunggu');
@@ -259,6 +263,62 @@ import Layout from '../layouts/Layout.astro';
         );
       }
 
+      function renderFcAnggota(g: any) {
+        if (!fcAnggotaSection) return;
+        const anggota = Array.isArray(g.anggota) ? g.anggota : [];
+        const isLunas = g.status === 'lunas';
+
+        if (!isLunas || anggota.length === 0) {
+          fcAnggotaSection.classList.add('hidden');
+          fcAnggotaSection.innerHTML = '';
+          return;
+        }
+
+        const sesi = [
+          { id: 'checkin', label: 'Check-in' },
+          { id: 'makan_sabtu_siang', label: 'Sbt Siang' },
+          { id: 'makan_sabtu_malam', label: 'Sbt Malam' },
+          { id: 'makan_ahad_pagi', label: 'Ahad Pagi' },
+        ];
+
+        const rows = anggota
+          .map((a: any) => {
+            const scan = a.scan_sesi || {};
+            const noJatah = (a.is_gratis === 1 || a.is_gratis === true) && !(a.makan_dicover === 1 || a.makan_dicover === true);
+            const sesiBadges = sesi
+              .map((s) => {
+                if (s.id !== 'checkin' && noJatah) {
+                  return `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-400" title="Tanpa jatah makan">${s.label} —</span>`;
+                }
+                const done = !!scan[s.id];
+                return `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold ${done ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}">${done ? '✓' : '○'} ${s.label}</span>`;
+              })
+              .join(' ');
+
+            return `
+              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-xs font-mono font-black text-primary-700">${a.nomor_peserta || '-'}</p>
+                    <p class="text-sm font-bold text-slate-900 truncate">${a.nama}</p>
+                    <p class="text-[11px] text-slate-500">${a.peran || ''} • ${a.jenis_kelamin || ''}${a.usia != null ? ' • ' + a.usia + ' th' : ''}${a.kategori_usia_label ? ' • ' + a.kategori_usia_label : ''}</p>
+                  </div>
+                  ${a.status_hadir === 'hadir' ? '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold shrink-0">✓ Hadir</span>' : ''}
+                </div>
+                <div class="flex flex-wrap gap-1 mt-2">${sesiBadges}</div>
+                ${noJatah ? '<p class="text-[10px] text-amber-700 mt-1">🍼 Balita gratis — jatah makan dicover orang tua.</p>' : ''}
+              </div>
+            `;
+          })
+          .join('');
+
+        fcAnggotaSection.innerHTML = `
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Daftar Anggota & Tiket</p>
+          <div class="space-y-2">${rows}</div>
+        `;
+        fcAnggotaSection.classList.remove('hidden');
+      }
+
       async function checkFamilyCamp(inputVal: string): Promise<boolean> {
         try {
           const res = await fetch(`${API_URL}/api/peserta/status-grup?wa=${encodeURIComponent(inputVal)}&token=${encodeURIComponent(inputVal)}`);
@@ -287,6 +347,7 @@ import Layout from '../layouts/Layout.astro';
               }
 
               resultFamilyCamp?.classList.remove('hidden');
+              renderFcAnggota(g);
               return true;
             }
           }

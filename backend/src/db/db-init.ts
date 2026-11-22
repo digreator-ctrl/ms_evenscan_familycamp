@@ -387,6 +387,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('rekening_atas_nama', 'Yayasan Muslim Scene Official')`),
       db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('kontak_panitia_wa', '081234567890')`),
       db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('harga_per_orang', '200000')`),
+      db.prepare(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('nama_acara', 'Family Camp')`),
     ]);
 
     // Seed awal dompet kas

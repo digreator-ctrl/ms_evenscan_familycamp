@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { PembayaranSetting } from './pembayaran-setting';
+import { TemplateWaSetting } from './template-wa-setting';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
@@ -2197,6 +2199,14 @@ export function Pengaturan() {
   // ==========================================================
   // VIEW 3: DETAIL SUBMENU KONTROL KUOTA & PENDAFTARAN ACARA
   // ==========================================================
+  if (currentSub === 'pembayaran') {
+    return <PembayaranSetting onBack={backToMenu} />;
+  }
+
+  if (currentSub === 'template-wa') {
+    return <TemplateWaSetting onBack={backToMenu} />;
+  }
+
   if (currentSub === 'kuota') {
     if (currentUser?.role !== 'superadmin') {
       return (
@@ -2529,6 +2539,48 @@ export function Pengaturan() {
               </p>
             </div>
 
+            <div className="flex items-center gap-1.5 text-slate-400 shrink-0">
+              <span className="text-xs font-semibold hidden sm:inline">Kelola</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {/* 4. SUBMENU: PEMBAYARAN & REKENING (KHUSUS SUPERADMIN) */}
+        {currentUser?.role === 'superadmin' && (
+          <div
+            onClick={() => openSubmenu('pembayaran')}
+            className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 hover:bg-slate-50/60 cursor-pointer transition-all duration-150 active:scale-[0.99] flex items-center justify-between gap-4"
+          >
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-slate-900">Pembayaran & Rekening</h3>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">
+                Atur rekening tujuan transfer, kontak panitia, dan harga per orang
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-400 shrink-0">
+              <span className="text-xs font-semibold hidden sm:inline">Kelola</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {/* 5. SUBMENU: TEMPLATE WHATSAPP (KHUSUS SUPERADMIN) */}
+        {currentUser?.role === 'superadmin' && (
+          <div
+            onClick={() => openSubmenu('template-wa')}
+            className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 hover:bg-slate-50/60 cursor-pointer transition-all duration-150 active:scale-[0.99] flex items-center justify-between gap-4"
+          >
+            <div className="min-w-0">
+              <h3 className="text-sm font-bold text-slate-900">Template WhatsApp</h3>
+              <p className="text-xs text-slate-500 mt-0.5 truncate">
+                Edit pesan undangan bayar, pengingat tagihan, dan konfirmasi lunas
+              </p>
+            </div>
             <div className="flex items-center gap-1.5 text-slate-400 shrink-0">
               <span className="text-xs font-semibold hidden sm:inline">Kelola</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

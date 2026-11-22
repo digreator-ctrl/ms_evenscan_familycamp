@@ -264,6 +264,23 @@ export function Verifikasi() {
     void openKonfirmasi(g);
   };
 
+  const handleKirimWa = async (g: Grup, jenis: 'undangan' | 'pengingat' | 'lunas') => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/admin/grup/${g.id}/wa-link?jenis=${jenis}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.wa_url) {
+        window.open(data.wa_url, '_blank');
+      } else {
+        setToast({ type: 'error', message: data.error || 'Gagal membuat link WhatsApp.' });
+      }
+    } catch {
+      setToast({ type: 'error', message: 'Terjadi kesalahan saat membuat link WhatsApp.' });
+    }
+  };
+
   const handleTolak = (g: Grup) => {
     setTolakAlasan('');
     setTolakModal(g);
@@ -569,6 +586,7 @@ export function Verifikasi() {
         onTolak={handleTolak}
         onHapus={(g) => setHapusModal(g)}
         onBatalLunas={handleBatalLunas}
+        onKirimWa={handleKirimWa}
         onRefreshDetail={async (id) => {
           const d = await fetchGrupDetail(id);
           if (d) {
@@ -807,10 +825,11 @@ function DetailGrupView(props: {
   onTolak: (g: Grup) => void;
   onHapus: (g: Grup) => void;
   onBatalLunas: (g: Grup) => void;
+  onKirimWa: (g: Grup, jenis: 'undangan' | 'pengingat' | 'lunas') => void;
   onRefreshDetail: (id: string) => void;
   renderModals: () => JSX.Element;
 }) {
-  const { detailId, selectedGrup, loading, actionLoading, onBack, onKonfirmasi, onTolak, onHapus, onBatalLunas, onRefreshDetail, renderModals } = props;
+  const { detailId, selectedGrup, loading, actionLoading, onBack, onKonfirmasi, onTolak, onHapus, onBatalLunas, onKirimWa, onRefreshDetail, renderModals } = props;
 
   useEffect(() => {
     if (detailId) onRefreshDetail(detailId);
@@ -1169,6 +1188,34 @@ function DetailGrupView(props: {
           >
             Kembali ke Daftar
           </button>
+        </div>
+
+        {/* Kirim Pesan WhatsApp */}
+        <div className="border-t border-slate-100 pt-4">
+          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Kirim Pesan WhatsApp ke PIC</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onKirimWa(g, 'undangan')}
+              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold transition active:scale-95 cursor-pointer"
+            >
+              💬 Undangan Bayar
+            </button>
+            <button
+              type="button"
+              onClick={() => onKirimWa(g, 'pengingat')}
+              className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-bold transition active:scale-95 cursor-pointer"
+            >
+              🔔 Pengingat Tagihan
+            </button>
+            <button
+              type="button"
+              onClick={() => onKirimWa(g, 'lunas')}
+              className="px-3.5 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-lg text-[11px] font-bold transition active:scale-95 cursor-pointer"
+            >
+              ✅ Konfirmasi Lunas
+            </button>
+          </div>
         </div>
       </div>
 

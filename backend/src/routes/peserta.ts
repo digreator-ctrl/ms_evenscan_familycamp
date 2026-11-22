@@ -9,6 +9,8 @@ import {
   ambilNomorUrutGrup,
   hitungBiayaWajib,
   isBerbayar,
+  getKategoriUsia,
+  getKategoriUsiaLabel,
 } from '../services/peserta-rules';
 
 type Bindings = {
@@ -918,16 +920,45 @@ pesertaRoutes.get('/status-grup', async (c) => {
       return c.json({ error: 'Data pendaftaran dengan nomor WhatsApp tersebut tidak ditemukan.' }, 404);
     }
 
-    // Ambil anggota untuk setiap grup
+    // Ambil anggota untuk setiap grup (lengkap dengan nomor peserta, kategori usia, & log scan)
     const enrichedGroups = [];
     for (const g of groups) {
       const anggota = await db
-        .prepare(`SELECT id, nama, peran, jenis_kelamin, usia, is_gratis, qr_token, status_hadir, attended_at, provinsi, kota FROM anggota WHERE grup_id = ?`)
+        .prepare(
+          `SELECT id, nomor_peserta, nama, peran, jenis_kelamin, usia, is_gratis, makan_dicover,
+                  qr_token, status_hadir, attended_at, provinsi, kota
+           FROM anggota WHERE grup_id = ? ORDER BY nomor_peserta ASC`
+        )
         .bind(g.id)
-        .all();
+        .all<any>();
+
+      const anggotaList = anggota.results || [];
+
+      // Ambil log scan per anggota (status check-in & jatah makan)
+      const ids = anggotaList.map((a: any) => a.id);
+      const scanByAnggota: Record<string, Record<string, string>> = {};
+      if (ids.length > 0) {
+        const placeholders = ids.map(() => '?').join(',');
+        const scanRes = await db
+          .prepare(`SELECT anggota_id, sesi, scanned_at FROM scan_log WHERE anggota_id IN (${placeholders})`)
+          .bind(...ids)
+          .all<any>();
+        for (const row of scanRes.results || []) {
+          if (!scanByAnggota[row.anggota_id]) scanByAnggota[row.anggota_id] = {};
+          scanByAnggota[row.anggota_id][row.sesi] = row.scanned_at;
+        }
+      }
+
+      const enrichedAnggota = anggotaList.map((a: any) => ({
+        ...a,
+        kategori_usia: getKategoriUsia(a.usia),
+        kategori_usia_label: getKategoriUsiaLabel(a.usia),
+        scan_sesi: scanByAnggota[a.id] || {},
+      }));
+
       enrichedGroups.push({
         ...g,
-        anggota: anggota.results || [],
+        anggota: enrichedAnggota,
       });
     }
 

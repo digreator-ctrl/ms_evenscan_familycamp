@@ -1374,3 +1374,182 @@ adminRoutes.get('/anggota/:id', async (c) => {
     return c.json({ error: 'Gagal mengambil detail anggota: ' + err.message }, 500);
   }
 });
+
+// =========================================================================
+// PENGATURAN PEMBAYARAN & TEMPLATE WHATSAPP
+// =========================================================================
+
+const APP_SETTING_KEYS = [
+  'rekening_bank',
+  'rekening_nomor',
+  'rekening_atas_nama',
+  'kontak_panitia_wa',
+  'nama_acara',
+  'harga_per_orang',
+] as const;
+
+/**
+ * GET /api/admin/settings/app
+ * Membaca pengaturan pembayaran umum (rekening, kontak, harga). Khusus superadmin.
+ */
+adminRoutes.get('/settings/app', requireRole('superadmin'), async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  try {
+    const res = await db.prepare(`SELECT key, value FROM app_settings`).all<{ key: string; value: string }>();
+    const map = new Map((res.results || []).map((s) => [s.key, s.value]));
+    const settings: Record<string, string> = {};
+    for (const k of APP_SETTING_KEYS) settings[k] = map.get(k) ?? '';
+    return c.json({ data: settings });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal memuat pengaturan: ' + err.message }, 500);
+  }
+});
+
+/**
+ * PATCH /api/admin/settings/app
+ * Menyimpan pengaturan pembayaran umum. Khusus superadmin.
+ */
+adminRoutes.patch('/settings/app', requireRole('superadmin'), async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  const body = await c.req.json().catch(() => ({}));
+
+  try {
+    if (body.harga_per_orang !== undefined) {
+      const harga = parseInt(body.harga_per_orang, 10);
+      if (!Number.isFinite(harga) || harga <= 0) {
+        return c.json({ error: 'Harga per orang harus angka lebih dari 0' }, 400);
+      }
+    }
+
+    const stmts: D1PreparedStatement[] = [];
+    for (const k of APP_SETTING_KEYS) {
+      if (body[k] === undefined) continue;
+      const val = String(body[k] ?? '').trim();
+      stmts.push(
+        db
+          .prepare(
+            `INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP`
+          )
+          .bind(k, val)
+      );
+    }
+    if (stmts.length) await db.batch(stmts);
+
+    return c.json({ success: true, message: 'Pengaturan berhasil disimpan' });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal menyimpan pengaturan: ' + err.message }, 500);
+  }
+});
+
+/**
+ * GET /api/admin/wa-templates
+ * Daftar 3 template WhatsApp (undangan, pengingat, lunas). Khusus superadmin.
+ */
+adminRoutes.get('/wa-templates', requireRole('superadmin'), async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  try {
+    const res = await db
+      .prepare(`SELECT id, nama, body, aktif, updated_at FROM wa_templates ORDER BY id ASC`)
+      .all<any>();
+    return c.json({ data: res.results || [] });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal memuat template: ' + err.message }, 500);
+  }
+});
+
+/**
+ * PATCH /api/admin/wa-templates/:id
+ * Menyimpan isi/aktif template. Khusus superadmin.
+ */
+adminRoutes.patch('/wa-templates/:id', requireRole('superadmin'), async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  const id = c.req.param('id');
+  const body = await c.req.json().catch(() => ({}));
+
+  try {
+    const existing = await db.prepare(`SELECT id FROM wa_templates WHERE id = ?`).bind(id).first<{ id: string }>();
+    if (!existing) return c.json({ error: 'Template tidak ditemukan' }, 404);
+
+    if (body.body !== undefined) {
+      const bodyText = String(body.body);
+      if (!bodyText.trim()) return c.json({ error: 'Isi template tidak boleh kosong' }, 400);
+      await db.prepare(`UPDATE wa_templates SET body = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).bind(bodyText, id).run();
+    }
+    if (body.aktif !== undefined) {
+      await db.prepare(`UPDATE wa_templates SET aktif = ? WHERE id = ?`).bind(body.aktif ? 1 : 0, id).run();
+    }
+
+    return c.json({ success: true, message: 'Template berhasil disimpan' });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal menyimpan template: ' + err.message }, 500);
+  }
+});
+
+/**
+ * GET /api/admin/grup/:id/wa-link?jenis=undangan|pengingat|lunas
+ * Membuat link wa.me terisi template untuk PIC grup tertentu.
+ * Bisa diakses superadmin & bendahara.
+ */
+adminRoutes.get('/grup/:id/wa-link', async (c) => {
+  const db = c.env.DB;
+  if (!db) return c.json({ error: 'Database tidak terhubung' }, 500);
+
+  const id = c.req.param('id');
+  const jenis = (c.req.query('jenis') || 'undangan').trim();
+
+  const tplIdMap: Record<string, string> = {
+    undangan: 'wa_undangan_bayar',
+    pengingat: 'wa_pengingat_bayar',
+    lunas: 'wa_lunas',
+  };
+  const tplId = tplIdMap[jenis];
+  if (!tplId) return c.json({ error: 'Jenis template tidak dikenal (undangan/pengingat/lunas)' }, 400);
+
+  try {
+    const grup = await db.prepare(`SELECT * FROM pendaftaran_grup WHERE id = ?`).bind(id).first<any>();
+    if (!grup) return c.json({ error: 'Grup tidak ditemukan' }, 404);
+
+    const tpl = await db.prepare(`SELECT body, aktif FROM wa_templates WHERE id = ?`).bind(tplId).first<{ body: string; aktif: number }>();
+    const namaAcaraRow = await db.prepare(`SELECT value FROM app_settings WHERE key = 'nama_acara'`).first<{ value: string }>();
+    const namaAcara = namaAcaraRow?.value || 'Family Camp';
+
+    const pesertaUrl = (c.env.PESERTA_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
+    const linkPembayaran = `${pesertaUrl}/pembayaran?token=${encodeURIComponent(grup.payment_token)}`;
+    const linkStatus = `${pesertaUrl}/status?wa=${encodeURIComponent(grup.pic_whatsapp)}`;
+
+    const fallback =
+      jenis === 'lunas'
+        ? `Halo {nama_pic}, pembayaran {nama_acara} Anda sudah LUNAS ✅. Cek tiket QR di: {link_status}`
+        : jenis === 'pengingat'
+        ? `Halo {nama_pic}, tagihan {nama_acara} sebesar {total} belum kami terima. Bayar di: {link_pembayaran}`
+        : `Halo {nama_pic}, terima kasih telah mendaftar {nama_acara}. Total {total}. Bayar di: {link_pembayaran}`;
+
+    const bodyTpl = tpl?.aktif ? tpl.body : fallback;
+
+    const pesan = renderWaTemplate(bodyTpl, {
+      nama_pic: grup.pic_nama || '',
+      nama_acara: namaAcara,
+      total: `Rp ${Number(grup.grand_total || 0).toLocaleString('id-ID')}`,
+      jumlah_anggota: String(grup.jumlah_anggota ?? ''),
+      nomor_grup: grup.nomor_grup || '',
+      link_pembayaran: linkPembayaran,
+      link_status: linkStatus,
+    });
+
+    const cleanPhone = WALinkService.normalizePhoneNumber(grup.pic_whatsapp || '');
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(pesan)}`;
+
+    return c.json({ success: true, jenis, wa_url: waUrl, pesan });
+  } catch (err: any) {
+    return c.json({ error: 'Gagal membuat link WA: ' + err.message }, 500);
+  }
+});

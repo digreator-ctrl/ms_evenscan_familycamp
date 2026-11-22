@@ -442,10 +442,10 @@ absensiRoutes.post('/scan', async (c) => {
       const scanLogId = 'scan_' + crypto.randomUUID().slice(0, 12);
       await db
         .prepare(
-          `INSERT INTO scan_log (id, anggota_id, sesi, scanned_at, scanned_by)
-           VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)`
+          `INSERT INTO scan_log (id, anggota_id, grup_id, sesi, scanned_at, scanned_by)
+           VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`
         )
-        .bind(scanLogId, member.id, sesi, scannedBy)
+        .bind(scanLogId, member.id, member.grup_id, sesi, scannedBy)
         .run();
 
       // Jika check-in dan belum pernah hadir, update status_hadir

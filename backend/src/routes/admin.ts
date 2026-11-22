@@ -1285,11 +1285,26 @@ adminRoutes.get('/anggota', async (c) => {
     const result = params.length > 0 ? await stmt.bind(...params).all<any>() : await stmt.all<any>();
     const data = result.results || [];
 
-    // Enrich data dengan kategori_usia_label
+    // Enrich data dengan kategori_usia_label + status scan per sesi
+    const ids = data.map((a: any) => a.id);
+    const scanByAnggota: Record<string, Record<string, boolean>> = {};
+    if (ids.length > 0) {
+      const placeholders = ids.map(() => '?').join(',');
+      const scanRes = await db
+        .prepare(`SELECT anggota_id, sesi FROM scan_log WHERE anggota_id IN (${placeholders})`)
+        .bind(...ids)
+        .all<any>();
+      for (const row of scanRes.results || []) {
+        if (!scanByAnggota[row.anggota_id]) scanByAnggota[row.anggota_id] = {};
+        scanByAnggota[row.anggota_id][row.sesi] = true;
+      }
+    }
+
     const enrichedData = data.map((a: any) => ({
       ...a,
       kategori_usia: getKategoriUsia(a.usia),
       kategori_usia_label: getKategoriUsiaLabel(a.usia),
+      scan_sesi: scanByAnggota[a.id] || {},
     }));
 
     c.header('x-total-count', String(total));

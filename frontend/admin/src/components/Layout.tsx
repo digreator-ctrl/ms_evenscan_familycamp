@@ -87,7 +87,7 @@ export function Layout() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M4 11a9 9 0 0116 0" />
               </svg>
-              <span>Scan History</span>
+              <span>Data Peserta</span>
             </Link>
 
             {/* 3. Fast Action Scan */}
@@ -284,7 +284,7 @@ export function Layout() {
                   d="M9 3v2m6-2v2M4 11a9 9 0 0116 0"
                 />
               </svg>
-              <span className="text-[9.5px] font-semibold tracking-tight mt-0.5">History</span>
+              <span className="text-[9.5px] font-semibold tracking-tight mt-0.5">Peserta</span>
               {/* Indikator Dot di Bawah Ikon Aktif */}
               {location.pathname === '/riwayat-scan' ? (
                 <span className="w-1.5 h-1.5 bg-[#06305d] rounded-full mt-0.5" />

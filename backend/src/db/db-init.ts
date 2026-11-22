@@ -19,6 +19,8 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           pic_nama TEXT NOT NULL,
           pic_whatsapp TEXT NOT NULL,
           pic_email TEXT,
+          provinsi TEXT,
+          kota TEXT,
           jumlah_anggota INTEGER NOT NULL DEFAULT 1,
           biaya_wajib INTEGER NOT NULL DEFAULT 0,
           biaya_addon INTEGER NOT NULL DEFAULT 0,
@@ -41,10 +43,12 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           grup_id TEXT NOT NULL,
           nama TEXT NOT NULL,
           jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
-          peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Peserta')),
+          peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta')),
           usia INTEGER,
           ukuran_kaos TEXT,
           catatan_medis TEXT,
+          provinsi TEXT,
+          kota TEXT,
           is_gratis INTEGER NOT NULL DEFAULT 0,
           qr_token TEXT UNIQUE,
           qr_code_url TEXT,
@@ -136,6 +140,58 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
     ];
 
     await db.batch(indexes.map((sql) => db.prepare(sql)));
+
+    // Migration: pastikan kolom provinsi dan kota ada di pendaftaran_grup
+    try {
+      await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN provinsi TEXT`).run();
+    } catch (e) {}
+    try {
+      await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN kota TEXT`).run();
+    } catch (e) {}
+
+    // Migration: pastikan kolom provinsi dan kota ada di anggota
+    try {
+      await db.prepare(`ALTER TABLE anggota ADD COLUMN provinsi TEXT`).run();
+    } catch (e) {}
+    try {
+      await db.prepare(`ALTER TABLE anggota ADD COLUMN kota TEXT`).run();
+    } catch (e) {}
+
+    // Migration: pastikan tabel anggota mendukung opsi peran yang diperluas
+    try {
+      const tableInfo = await db.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='anggota'`).first<{ sql: string }>();
+      if (tableInfo && tableInfo.sql && !tableInfo.sql.includes('Kakek')) {
+        await db.batch([
+          db.prepare(`
+            CREATE TABLE anggota_temp (
+              id TEXT PRIMARY KEY,
+              grup_id TEXT NOT NULL,
+              nama TEXT NOT NULL,
+              jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
+              peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta')),
+              usia INTEGER,
+              ukuran_kaos TEXT,
+              catatan_medis TEXT,
+              is_gratis INTEGER NOT NULL DEFAULT 0,
+              qr_token TEXT UNIQUE,
+              qr_code_url TEXT,
+              status_hadir TEXT NOT NULL DEFAULT 'belum' CHECK(status_hadir IN ('belum', 'hadir')),
+              attended_at DATETIME,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (grup_id) REFERENCES pendaftaran_grup(id) ON DELETE CASCADE
+            )
+          `),
+          db.prepare(`INSERT INTO anggota_temp SELECT * FROM anggota`),
+          db.prepare(`DROP TABLE anggota`),
+          db.prepare(`ALTER TABLE anggota_temp RENAME TO anggota`),
+          db.prepare(`CREATE INDEX IF NOT EXISTS idx_anggota_grup_id ON anggota(grup_id)`),
+          db.prepare(`CREATE INDEX IF NOT EXISTS idx_anggota_qr_token ON anggota(qr_token)`),
+        ]);
+        console.log('[DB] Tabel anggota berhasil dimigrasi untuk mendukung opsi peran tambahan.');
+      }
+    } catch (migErr) {
+      console.warn('[DB] Migrasi tabel anggota dilewati:', migErr);
+    }
 
     // Seed default addon items jika masih kosong
     const existingAddon = await db.prepare(`SELECT COUNT(*) as count FROM addon_items`).first<{ count: number }>();

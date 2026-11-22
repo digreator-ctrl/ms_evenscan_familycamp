@@ -112,7 +112,7 @@ import Layout from '../layouts/Layout.astro';
               <!-- Generated via JS -->
             </div>
 
-            <div class="flex justify-between text-slate-600">
+            <div class="hidden justify-between text-slate-600" id="rowKodeUnik">
               <span class="flex items-center gap-1">
                 <span>Kode Unik Transfer</span>
                 <span class="text-[10px] text-amber-600 font-semibold">(Untuk verifikasi otomatis)</span>
@@ -125,7 +125,7 @@ import Layout from '../layouts/Layout.astro';
               <div>
                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Transfer Wajib</span>
                 <span class="text-2xl font-black text-amber-400 font-mono tracking-tight" id="txtGrandTotal">Rp 0</span>
-                <span class="text-[10px] text-slate-400 block mt-0.5">*Harap transfer tepat hingga 3 digit terakhir</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">*Harap transfer sesuai nominal tepat di atas</span>
               </div>
               <button
                 type="button"
@@ -443,8 +443,16 @@ import Layout from '../layouts/Layout.astro';
         }
       }
 
+      const rowKodeUnik = document.getElementById('rowKodeUnik');
       const txtKodeUnik = document.getElementById('txtKodeUnik');
-      if (txtKodeUnik) txtKodeUnik.textContent = `+Rp ${grup.kode_unik}`;
+      if (rowKodeUnik && txtKodeUnik) {
+        if (grup.kode_unik && grup.kode_unik > 0) {
+          rowKodeUnik.classList.remove('hidden');
+          txtKodeUnik.textContent = `+Rp ${grup.kode_unik}`;
+        } else {
+          rowKodeUnik.classList.add('hidden');
+        }
+      }
 
       const txtGrandTotal = document.getElementById('txtGrandTotal');
       if (txtGrandTotal) txtGrandTotal.textContent = `Rp ${grup.grand_total.toLocaleString('id-ID')}`;

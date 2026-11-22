@@ -1,15 +1,34 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { LIST_PROVINSI } from '../data/wilayah';
 ---
 
 <Layout title="Formulir Pendaftaran Family Camp">
+  <!-- Floating Toast Alert (Pop-up melayang, otomatis hilang, tanpa tombol close) -->
+  <div
+    id="floatingToast"
+    class="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none transition-all duration-300 opacity-0 -translate-y-4 scale-95 flex items-center gap-3 px-4 py-3 bg-slate-900/95 text-white text-xs sm:text-sm font-medium rounded-2xl shadow-2xl border border-slate-700/60 backdrop-blur-md max-w-[92vw] sm:max-w-md w-max"
+    role="alert"
+    aria-live="polite"
+  >
+    <div id="floatingToastIcon" class="w-5 h-5 shrink-0 text-rose-400 flex items-center justify-center">
+      <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    </div>
+    <span id="floatingToastMsg" class="leading-snug text-slate-100 font-semibold"></span>
+  </div>
+
   <section class="py-10 px-4">
     <div class="max-w-2xl mx-auto space-y-6">
 
       <!-- Header Acara -->
       <div class="text-center space-y-2">
-        <span class="inline-block px-3.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold uppercase tracking-wider">
-          ⛺ Pendaftaran Resmi Family Camp
+        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold uppercase tracking-wider">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span>Pendaftaran Resmi Family Camp</span>
         </span>
         <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
           Formulir Peserta Family Camp
@@ -21,7 +40,9 @@ import Layout from '../layouts/Layout.astro';
 
       <!-- Closed Banner (jika pendaftaran ditutup admin) -->
       <div id="closedBanner" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3">
-        <span class="text-xl">⚠️</span>
+        <svg class="w-5 h-5 shrink-0 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
         <div>
           <h3 class="font-bold text-sm">Pendaftaran Sedang Ditutup</h3>
           <p class="text-xs text-amber-800 mt-0.5">Mohon maaf, kuota pendaftaran Family Camp saat ini sedang ditutup oleh panitia.</p>
@@ -52,41 +73,43 @@ import Layout from '../layouts/Layout.astro';
       </div>
 
       <!-- Form Card Multi-Step -->
-      <form id="formFamilyCamp" class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm space-y-6">
+      <form id="formFamilyCamp" novalidate class="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200/90 shadow-sm space-y-6">
 
         <!-- ======================================================== -->
         <!-- STEP 1: PILIH TIPE PENDAFTARAN & KONTAK PIC               -->
         <!-- ======================================================== -->
-        <div id="stepContent1" class="step-content space-y-6">
+        <div id="stepContent1" class="step-content space-y-5">
           <div>
-            <h2 class="text-base font-extrabold text-slate-900 mb-1">1. Pilih Kategori Pendaftaran</h2>
-            <p class="text-xs text-slate-500">Tentukan apakah Anda mendaftar bersama keluarga atau perorangan/rombongan.</p>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <!-- Pilihan Keluarga -->
-            <label class="cursor-pointer">
-              <input type="radio" name="tipe_pendaftaran" value="keluarga" checked class="peer sr-only" />
-              <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
-                <span class="text-2xl block">👨‍👩‍👧‍👦</span>
-                <span class="font-extrabold text-sm text-slate-900 block">Keluarga</span>
-                <p class="text-[11px] text-slate-500 leading-relaxed">
-                  Pendaftaran untuk Ayah, Ibu, dan Anak-anak dalam satu tenda/grup keluarga.
-                </p>
-              </div>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">
+              Pilih Kategori Pendaftaran <span class="text-rose-500">*</span>
             </label>
+            <!-- Kontrol Segmented Ringkas, Clean & Hemat Ruang di Mobile -->
+            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
+              <!-- Pilihan Keluarga -->
+              <label class="cursor-pointer">
+                <input type="radio" name="tipe_pendaftaran" value="keluarga" checked class="peer sr-only" />
+                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 font-bold text-xs sm:text-sm text-slate-600 transition peer-checked:bg-white peer-checked:text-primary-700 peer-checked:shadow-xs border border-transparent peer-checked:border-slate-200/60">
+                  <svg class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <span>Keluarga</span>
+                </div>
+              </label>
 
-            <!-- Pilihan Non-Keluarga -->
-            <label class="cursor-pointer">
-              <input type="radio" name="tipe_pendaftaran" value="non_keluarga" class="peer sr-only" />
-              <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
-                <span class="text-2xl block">🎒</span>
-                <span class="font-extrabold text-sm text-slate-900 block">Non-Keluarga / Rombongan</span>
-                <p class="text-[11px] text-slate-500 leading-relaxed">
-                  Pendaftaran untuk perorangan atau bersama teman/komunitas.
-                </p>
-              </div>
-            </label>
+              <!-- Pilihan Non-Keluarga -->
+              <label class="cursor-pointer">
+                <input type="radio" name="tipe_pendaftaran" value="non_keluarga" class="peer sr-only" />
+                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 font-bold text-xs sm:text-sm text-slate-600 transition peer-checked:bg-white peer-checked:text-primary-700 peer-checked:shadow-xs border border-transparent peer-checked:border-slate-200/60">
+                  <svg class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span class="truncate">Non-Keluarga</span>
+                </div>
+              </label>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1.5">
+              Pilih <span class="font-medium text-slate-600">Keluarga</span> untuk ayah, ibu & anak, atau <span class="font-medium text-slate-600">Non-Keluarga</span> untuk perorangan/rombongan.
+            </p>
           </div>
 
           <!-- Data Kontak Penanggung Jawab (PIC) -->
@@ -120,11 +143,11 @@ import Layout from '../layouts/Layout.astro';
                 name="pic_whatsapp"
                 required
                 inputmode="numeric"
-                pattern="[0-9]*"
+                maxlength="15"
                 placeholder="Contoh: 081234567890"
                 class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
               />
-              <p class="text-[11px] text-slate-400 mt-1">📱 Wajib aktif di WhatsApp untuk menerima notifikasi & link tiket.</p>
+              <p class="text-[11px] text-slate-400 mt-1">Hanya angka, 10 - 15 digit (untuk invoice & link tiket QR).</p>
             </div>
 
             <div>
@@ -138,6 +161,41 @@ import Layout from '../layouts/Layout.astro';
                 placeholder="nama@email.com"
                 class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
               />
+            </div>
+
+            <!-- Domisili Asal (Provinsi & Kota/Kabupaten) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label for="pic_provinsi" class="block text-xs font-bold text-slate-700 mb-1">
+                  Provinsi Asal <span class="text-rose-500">*</span>
+                </label>
+                <select
+                  id="pic_provinsi"
+                  name="pic_provinsi"
+                  required
+                  class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="" disabled selected>Pilih Provinsi...</option>
+                  {LIST_PROVINSI.map((prov) => (
+                    <option value={prov}>{prov}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label for="pic_kota" class="block text-xs font-bold text-slate-700 mb-1">
+                  Kota / Kabupaten <span class="text-rose-500">*</span>
+                </label>
+                <select
+                  id="pic_kota"
+                  name="pic_kota"
+                  required
+                  disabled
+                  class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-xs sm:text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition text-slate-800 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="" disabled selected>Pilih Provinsi terlebih dahulu...</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -177,13 +235,37 @@ import Layout from '../layouts/Layout.astro';
 
           <!-- Alert Khusus Balita -->
           <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-start gap-3">
-            <span class="text-lg">👶</span>
+            <svg class="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             <div>
               <span class="font-bold block">Kebijakan Anak & Balita:</span>
               <p class="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
                 Anak balita di bawah usia <b>3 tahun</b> mendapatkan tiket <b>GRATIS</b> (tidak dikenakan biaya wajib). Anak usia 3 tahun ke atas dikenakan paket penuh Rp 200.000 dengan fasilitas lengkap.
               </p>
             </div>
+          </div>
+
+          <!-- Notice Khusus Kategori Keluarga Minimal 2 Orang -->
+          <div id="noticeMinKeluarga" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div class="flex items-start sm:items-center gap-2.5">
+              <svg class="w-5 h-5 shrink-0 text-amber-600 mt-0.5 sm:mt-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <span class="font-extrabold block text-amber-900">Kategori Keluarga Minimal 2 Peserta</span>
+                <p class="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                  Pendaftaran <b>Keluarga</b> minimal terdiri dari 2 orang (misal: Ayah &amp; Ibu, atau Orang Tua &amp; Anak). Silakan tambah anggota, atau beralih ke kategori Non-Keluarga jika mendaftar perorangan/sendiri.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="btnSwitchNonKeluarga"
+              class="self-start sm:self-center px-3.5 py-2 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-xl text-xs transition cursor-pointer shrink-0 active:scale-95 whitespace-nowrap"
+            >
+              Pindah ke Non-Keluarga →
+            </button>
           </div>
 
           <div class="pt-2 flex items-center justify-between">
@@ -232,12 +314,17 @@ import Layout from '../layouts/Layout.astro';
             <div class="pt-3 border-t border-white/10 space-y-2 text-xs">
               <span class="font-bold text-slate-200 block text-[11px] uppercase tracking-wider">Fasilitas yang Didapatkan:</span>
               <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
-                <li class="flex items-center gap-1.5"><span>✓</span><span>Akses Kavling Campground</span></li>
-                <li class="flex items-center gap-1.5"><span>✓</span><span>Konsumsi 3x Makan & Snack</span></li>
-                <li class="flex items-center gap-1.5"><span>✓</span><span>Kaos Eksklusif Family Camp</span></li>
-                <li class="flex items-center gap-1.5"><span>✓</span><span>Kit Acara & ID Card QR</span></li>
-                <li class="flex items-center gap-1.5"><span>✓</span><span>Outbound & Fun Games Keluarga</span></li>
-                <li class="flex items-center gap-1.5"><span>✓</span><span>Kajian Tematik & Api Unggun</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Majelis Ilmu</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Makan 3x + Air Mineral</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Berkumpul Bersama</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>BBQ & Sosis Bakar</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Teman-Teman Shalih</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Snack</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Games Edukatif & Seru</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Kopi & Teh</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Doorprize Menarik</span></li>
+                <li class="flex items-center gap-1.5"><span class="text-emerald-400 font-bold">✓</span><span>Kamar Mandi</span></li>
+                <li class="flex items-center gap-1.5 sm:col-span-2"><span class="text-emerald-400 font-bold">✓</span><span>Area Parkir</span></li>
               </ul>
             </div>
 
@@ -249,28 +336,30 @@ import Layout from '../layouts/Layout.astro';
           </div>
 
           <!-- Pertanyaan Opsi Sewa Add-on -->
-          <div class="space-y-4 pt-2">
+          <div class="space-y-3 pt-2">
             <div>
-              <h3 class="text-sm font-extrabold text-slate-900">Apakah Anda Memerlukan Sewa Perlengkapan Tambahan?</h3>
-              <p class="text-xs text-slate-500 mt-0.5">Jika Anda membawa tenda dan perlengkapan sendiri, pilih "Hanya Paket Wajib".</p>
+              <h3 class="text-sm font-extrabold text-slate-900">Opsi Sewa Perlengkapan Tambahan</h3>
+              <p class="text-xs text-slate-500 mt-0.5">Pilih "Hanya Paket Wajib" jika Anda membawa tenda sendiri dari rumah.</p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
               <label class="cursor-pointer">
                 <input type="radio" name="opt_sewa" value="tidak" checked class="peer sr-only" />
-                <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
-                  <span class="text-xl block">🏕️</span>
-                  <span class="font-extrabold text-xs text-slate-900 block">Hanya Paket Wajib</span>
-                  <p class="text-[11px] text-slate-500">Membawa tenda & perlengkapan tidur sendiri dari rumah.</p>
+                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm text-slate-600 transition peer-checked:bg-white peer-checked:text-primary-700 peer-checked:shadow-xs border border-transparent peer-checked:border-slate-200/60">
+                  <svg class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span class="truncate">Hanya Paket Wajib</span>
                 </div>
               </label>
 
               <label class="cursor-pointer">
                 <input type="radio" name="opt_sewa" value="ya" class="peer sr-only" />
-                <div class="p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/60 peer-checked:border-primary-600 peer-checked:bg-primary-50/40 peer-checked:shadow-sm transition hover:border-slate-300 space-y-1">
-                  <span class="text-xl block">🛒</span>
-                  <span class="font-extrabold text-xs text-slate-900 block">Tambah Sewa Perlengkapan</span>
-                  <p class="text-[11px] text-slate-500">Sewa tenda, matras, sleeping bag, dll dari panitia.</p>
+                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 font-bold text-xs sm:text-sm text-slate-600 transition peer-checked:bg-white peer-checked:text-primary-700 peer-checked:shadow-xs border border-transparent peer-checked:border-slate-200/60">
+                  <svg class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span class="truncate">+ Sewa Perlengkapan</span>
                 </div>
               </label>
             </div>
@@ -292,7 +381,6 @@ import Layout from '../layouts/Layout.astro';
           <div class="p-4 rounded-2xl bg-slate-100 border border-slate-200/90 flex justify-between items-center text-xs">
             <div>
               <span class="text-slate-500 font-semibold block">Total Sementara (Wajib + Sewa):</span>
-              <span class="text-[11px] text-slate-400">*Belum termasuk 3 digit kode unik</span>
             </div>
             <span class="text-lg font-black text-slate-900 font-mono" id="txtTotalSementara">Rp 0</span>
           </div>
@@ -335,6 +423,7 @@ import Layout from '../layouts/Layout.astro';
                 <span class="text-[10px] text-slate-400 uppercase tracking-wider block font-bold">PIC Pendaftaran</span>
                 <span class="font-bold text-slate-800" id="rekapPicNama">-</span>
                 <span class="text-[11px] text-slate-500 block font-mono" id="rekapPicWa">-</span>
+                <span class="text-[10px] text-slate-400 block font-medium" id="rekapPicDomisili">-</span>
               </div>
             </div>
 
@@ -356,19 +445,13 @@ import Layout from '../layouts/Layout.astro';
               <div id="rekapAddonsList" class="space-y-1 pl-3 border-l-2 border-slate-200">
                 <!-- Dinamis via JS -->
               </div>
-
-              <div class="flex justify-between text-slate-600">
-                <span class="flex items-center gap-1">
-                  <span>Estimasi Kode Unik Transfer:</span>
-                  <span class="text-[10px] text-amber-600">(3 digit acak otomatis)</span>
-                </span>
-                <span class="font-mono text-amber-600 font-bold">+Rp ~100-999</span>
-              </div>
             </div>
           </div>
 
           <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs flex items-start gap-3">
-            <span class="text-lg">ℹ️</span>
+            <svg class="w-5 h-5 shrink-0 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             <div>
               <span class="font-bold block">Setelah Klik Daftar:</span>
               <p class="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
@@ -404,6 +487,8 @@ import Layout from '../layouts/Layout.astro';
   </section>
 
   <script>
+    import { DATA_WILAYAH } from '../data/wilayah';
+
     const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
 
     interface AnggotaItem {
@@ -413,6 +498,9 @@ import Layout from '../layouts/Layout.astro';
       usia: number | null;
       ukuran_kaos: string;
       catatan_medis: string;
+      beda_domisili?: boolean;
+      provinsi?: string;
+      kota?: string;
     }
 
     interface AddonItem {
@@ -430,16 +518,110 @@ import Layout from '../layouts/Layout.astro';
     let selectedAddonQty: { [addonId: string]: number } = {};
 
     let anggotaData: AnggotaItem[] = [
-      { nama: '', peran: 'Ayah', jenis_kelamin: 'Ikhwan', usia: 35, ukuran_kaos: 'L', catatan_medis: '' }
+      { nama: '', peran: 'Ayah', jenis_kelamin: 'Ikhwan', usia: 35, ukuran_kaos: '-', catatan_medis: '', beda_domisili: false, provinsi: '', kota: '' }
     ];
 
+    function getLockedGenderForPeran(peran: string): 'Ikhwan' | 'Akhwat' | null {
+      if (['Ayah', 'Kakek', 'Paman'].includes(peran)) return 'Ikhwan';
+      if (['Ibu', 'Nenek', 'Bibi'].includes(peran)) return 'Akhwat';
+      return null; // Anak, Saudara Kandung, Sepupu, Peserta -> bebas pilih
+    }
+
+    let toastTimeout: any = null;
+    function showFloatingToast(message: string, isError = true) {
+      const toast = document.getElementById('floatingToast');
+      const msgEl = document.getElementById('floatingToastMsg');
+      const iconEl = document.getElementById('floatingToastIcon');
+      if (!toast || !msgEl || !iconEl) return;
+
+      if (toastTimeout) {
+        clearTimeout(toastTimeout);
+      }
+
+      msgEl.textContent = message;
+      if (isError) {
+        iconEl.className = 'w-5 h-5 shrink-0 text-rose-400 flex items-center justify-center';
+        iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`;
+      } else {
+        iconEl.className = 'w-5 h-5 shrink-0 text-emerald-400 flex items-center justify-center';
+        iconEl.innerHTML = `<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>`;
+      }
+
+      toast.classList.remove('opacity-0', '-translate-y-4', 'scale-95');
+      toast.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+        toast.classList.add('opacity-0', '-translate-y-4', 'scale-95');
+      }, 3500);
+    }
+
+    function markInvalid(element: HTMLElement | null) {
+      if (!element) return;
+      element.classList.remove('border-slate-300', 'focus:border-primary-600', 'focus:ring-primary-500/20');
+      element.classList.add('!border-rose-500', '!ring-2', '!ring-rose-200', 'bg-rose-50/30');
+    }
+
+    function clearInvalid(element: HTMLElement | null) {
+      if (!element) return;
+      element.classList.remove('!border-rose-500', '!ring-2', '!ring-rose-200', 'bg-rose-50/30');
+      element.classList.add('border-slate-300', 'focus:border-primary-600', 'focus:ring-primary-500/20');
+    }
+
+    function bindClearOnInput(element: HTMLInputElement) {
+      const handler = () => {
+        clearInvalid(element);
+        element.removeEventListener('input', handler);
+        element.removeEventListener('change', handler);
+      };
+      element.addEventListener('input', handler);
+      element.addEventListener('change', handler);
+    }
+
     async function initFamilyCampForm() {
+      const form = document.getElementById('formFamilyCamp');
+      if (!form) return;
+      if (form.dataset.initialized === 'true') return;
+      form.dataset.initialized = 'true';
+
       checkQuotaStatus();
       await fetchAddonCatalog();
+      setupWilayahSelector();
       setupStepNavigation();
       renderAnggotaForms();
       setupAddonInteractions();
       setupFinalSubmit();
+    }
+
+    function setupWilayahSelector() {
+      const picProvinsiSelect = document.getElementById('pic_provinsi') as HTMLSelectElement | null;
+      const picKotaSelect = document.getElementById('pic_kota') as HTMLSelectElement | null;
+
+      if (!picProvinsiSelect || !picKotaSelect) return;
+
+      picProvinsiSelect.addEventListener('change', () => {
+        clearInvalid(picProvinsiSelect);
+        const prov = picProvinsiSelect.value;
+        const kotaList = DATA_WILAYAH[prov] || [];
+
+        if (kotaList.length === 0) {
+          picKotaSelect.innerHTML = '<option value="" disabled selected>Pilih Provinsi terlebih dahulu...</option>';
+          picKotaSelect.disabled = true;
+          picKotaSelect.classList.add('bg-slate-50', 'disabled:opacity-50', 'disabled:cursor-not-allowed');
+        } else {
+          picKotaSelect.disabled = false;
+          picKotaSelect.classList.remove('bg-slate-50', 'disabled:opacity-50', 'disabled:cursor-not-allowed');
+          picKotaSelect.innerHTML = `
+            <option value="" disabled selected>Pilih Kota / Kabupaten...</option>
+            ${kotaList.map((kota) => `<option value="${kota}">${kota}</option>`).join('')}
+          `;
+        }
+        clearInvalid(picKotaSelect);
+      });
+
+      picKotaSelect.addEventListener('change', () => {
+        clearInvalid(picKotaSelect);
+      });
     }
 
     async function checkQuotaStatus() {
@@ -470,6 +652,28 @@ import Layout from '../layouts/Layout.astro';
       }
     }
 
+    function checkKeluargaConstraint(): boolean {
+      const tipe = getSelectedTipe();
+      const noticeMinKeluarga = document.getElementById('noticeMinKeluarga');
+      const btnNextStep2 = document.getElementById('btnNextStep2') as HTMLButtonElement | null;
+
+      if (tipe === 'keluarga' && anggotaData.length < 2) {
+        if (noticeMinKeluarga) noticeMinKeluarga.classList.remove('hidden');
+        if (btnNextStep2) {
+          btnNextStep2.classList.add('opacity-40', 'cursor-not-allowed');
+          btnNextStep2.setAttribute('title', 'Kategori Keluarga minimal 2 peserta');
+        }
+        return false;
+      } else {
+        if (noticeMinKeluarga) noticeMinKeluarga.classList.add('hidden');
+        if (btnNextStep2) {
+          btnNextStep2.classList.remove('opacity-40', 'cursor-not-allowed');
+          btnNextStep2.removeAttribute('title');
+        }
+        return true;
+      }
+    }
+
     function setupStepNavigation() {
       const btnNextStep1 = document.getElementById('btnNextStep1');
       const btnNextStep2 = document.getElementById('btnNextStep2');
@@ -478,54 +682,234 @@ import Layout from '../layouts/Layout.astro';
       const btnPrevStep3 = document.getElementById('btnPrevStep3');
       const btnPrevStep4 = document.getElementById('btnPrevStep4');
 
-      btnNextStep1?.addEventListener('click', () => {
-        const picNama = (document.getElementById('pic_nama') as HTMLInputElement).value.trim();
-        const picWa = (document.getElementById('pic_whatsapp') as HTMLInputElement).value.trim();
+      const picNamaInput = document.getElementById('pic_nama') as HTMLInputElement | null;
+      const picWaInput = document.getElementById('pic_whatsapp') as HTMLInputElement | null;
+      const picProvinsiSelect = document.getElementById('pic_provinsi') as HTMLSelectElement | null;
+      const picKotaSelect = document.getElementById('pic_kota') as HTMLSelectElement | null;
 
-        if (picNama.length < 2) {
-          alert('Harap isi Nama Lengkap PIC (minimal 2 huruf).');
-          document.getElementById('pic_nama')?.focus();
-          return;
-        }
+      if (picProvinsiSelect) {
+        picProvinsiSelect.addEventListener('change', () => clearInvalid(picProvinsiSelect));
+      }
+      if (picKotaSelect) {
+        picKotaSelect.addEventListener('change', () => clearInvalid(picKotaSelect));
+      }
 
-        const cleanWa = picWa.replace(/\D/g, '');
-        if (cleanWa.length < 9) {
-          alert('Harap masukkan nomor WhatsApp PIC yang aktif dan valid (minimal 9 angka).');
-          document.getElementById('pic_whatsapp')?.focus();
-          return;
-        }
+      // Filter ketat WhatsApp: Hanya bisa input angka & maksimal 15 digit
+      if (picWaInput) {
+        picWaInput.addEventListener('input', () => {
+          const raw = picWaInput.value;
+          const clean = raw.replace(/\D/g, '').slice(0, 15);
+          if (raw !== clean) {
+            picWaInput.value = clean;
+          }
+        });
 
-        // Set nama anggota pertama otomatis sama dengan PIC jika masih kosong
-        if (anggotaData[0] && !anggotaData[0].nama) {
-          anggotaData[0].nama = picNama;
-          renderAnggotaForms();
-        }
-
-        goToStep(2);
-      });
-
-      btnPrevStep2?.addEventListener('click', () => goToStep(1));
-      btnNextStep2?.addEventListener('click', () => {
-        // Validasi setiap anggota
-        syncAnggotaFromDOM();
-        for (let i = 0; i < anggotaData.length; i++) {
-          const a = anggotaData[i];
-          if (!a.nama || a.nama.trim().length < 2) {
-            alert(`Harap lengkapi nama peserta ke-${i + 1}.`);
+        picWaInput.addEventListener('keydown', (e) => {
+          if (
+            ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key) ||
+            e.ctrlKey || e.metaKey
+          ) {
             return;
           }
-        }
-        updateStep3Summary();
-        goToStep(3);
-      });
+          if (!/^[0-9]$/.test(e.key)) {
+            e.preventDefault();
+          }
+        });
 
-      btnPrevStep3?.addEventListener('click', () => goToStep(2));
-      btnNextStep3?.addEventListener('click', () => {
-        updateStep4Review();
-        goToStep(4);
-      });
+        picWaInput.addEventListener('paste', (e) => {
+          e.preventDefault();
+          const pasteData = (e.clipboardData || (window as any).clipboardData)?.getData('text') || '';
+          const clean = pasteData.replace(/\D/g, '').slice(0, 15);
+          const start = picWaInput.selectionStart || 0;
+          const end = picWaInput.selectionEnd || 0;
+          const oldVal = picWaInput.value;
+          picWaInput.value = (oldVal.slice(0, start) + clean + oldVal.slice(end)).slice(0, 15);
+          picWaInput.dispatchEvent(new Event('input'));
+        });
+      }
 
-      btnPrevStep4?.addEventListener('click', () => goToStep(3));
+      if (btnNextStep1) {
+        btnNextStep1.onclick = () => {
+          const picNama = (picNamaInput?.value || '').trim();
+          const rawWa = picWaInput?.value || '';
+          const cleanWa = rawWa.replace(/\D/g, '');
+          const picProvinsi = (picProvinsiSelect?.value || '').trim();
+          const picKota = (picKotaSelect?.value || '').trim();
+
+          let hasError = false;
+          let firstInvalid: HTMLElement | null = null;
+
+          // Validasi Kota/Kabupaten
+          if (!picKota) {
+            markInvalid(picKotaSelect);
+            firstInvalid = picKotaSelect;
+            hasError = true;
+          } else {
+            clearInvalid(picKotaSelect);
+          }
+
+          // Validasi Provinsi
+          if (!picProvinsi) {
+            markInvalid(picProvinsiSelect);
+            firstInvalid = picProvinsiSelect;
+            hasError = true;
+          } else {
+            clearInvalid(picProvinsiSelect);
+          }
+
+          // Validasi WhatsApp: Wajib angka, min 10 digit, max 15 digit
+          if (!cleanWa || cleanWa.length < 10 || cleanWa.length > 15) {
+            markInvalid(picWaInput);
+            if (picWaInput) bindClearOnInput(picWaInput);
+            firstInvalid = picWaInput;
+            hasError = true;
+          } else {
+            clearInvalid(picWaInput);
+          }
+
+          // Validasi Nama PIC: Wajib minimal 2 huruf
+          if (!picNama || picNama.length < 2) {
+            markInvalid(picNamaInput);
+            if (picNamaInput) bindClearOnInput(picNamaInput);
+            firstInvalid = picNamaInput; // Urutan fokus prioritas Nama PIC di atas
+            hasError = true;
+          } else {
+            clearInvalid(picNamaInput);
+          }
+
+          if (hasError) {
+            if (firstInvalid) {
+              firstInvalid.focus();
+              firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            if ((!picNama || picNama.length < 2) && (!cleanWa || cleanWa.length < 10)) {
+              showFloatingToast('Mohon lengkapi kolom yang ditandai merah.');
+            } else if (!picNama || picNama.length < 2) {
+              showFloatingToast('Mohon lengkapi Nama Lengkap PIC.');
+            } else if (cleanWa.length < 10) {
+              showFloatingToast('Nomor WhatsApp minimal 10 digit angka.');
+            } else if (cleanWa.length > 15) {
+              showFloatingToast('Nomor WhatsApp maksimal 15 digit angka.');
+            } else if (!picProvinsi || !picKota) {
+              showFloatingToast('Mohon lengkapi Provinsi dan Kota/Kabupaten domisili.');
+            } else {
+              showFloatingToast('Mohon lengkapi kolom yang ditandai merah.');
+            }
+            return;
+          }
+
+          // Set nama anggota pertama otomatis sama dengan PIC jika masih kosong
+          if (anggotaData[0] && !anggotaData[0].nama) {
+            anggotaData[0].nama = picNama;
+            renderAnggotaForms();
+          }
+
+          goToStep(2);
+          checkKeluargaConstraint();
+        };
+      }
+
+      if (btnPrevStep2) {
+        btnPrevStep2.onclick = () => goToStep(1);
+      }
+
+      if (btnNextStep2) {
+        btnNextStep2.onclick = () => {
+          syncAnggotaFromDOM();
+
+          // Cek constraint minimal 2 peserta untuk kategori keluarga
+          if (!checkKeluargaConstraint()) {
+            const noticeMinKeluarga = document.getElementById('noticeMinKeluarga');
+            if (noticeMinKeluarga) {
+              noticeMinKeluarga.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            showFloatingToast('Kategori Keluarga minimal 2 orang peserta. Tambah anggota atau pindah ke Non-Keluarga.');
+            return;
+          }
+
+          const cards = document.querySelectorAll('.anggota-card');
+          let hasError = false;
+          let firstInvalid: HTMLElement | null = null;
+
+          cards.forEach((card) => {
+            const inputNama = card.querySelector('.input-nama') as HTMLInputElement | null;
+            if (inputNama) {
+              const val = inputNama.value.trim();
+              if (!val || val.length < 2) {
+                markInvalid(inputNama);
+                bindClearOnInput(inputNama);
+                if (!firstInvalid) firstInvalid = inputNama;
+                hasError = true;
+              } else {
+                clearInvalid(inputNama);
+              }
+            }
+
+            const cbDomisili = card.querySelector('.cb-beda-domisili') as HTMLInputElement | null;
+            if (cbDomisili && cbDomisili.checked) {
+              const selectProv = card.querySelector('.select-provinsi-anggota') as HTMLSelectElement | null;
+              const selectKota = card.querySelector('.select-kota-anggota') as HTMLSelectElement | null;
+
+              if (selectProv && !selectProv.value) {
+                markInvalid(selectProv);
+                if (!firstInvalid) firstInvalid = selectProv;
+                hasError = true;
+              } else if (selectProv) {
+                clearInvalid(selectProv);
+              }
+
+              if (selectKota && !selectKota.value) {
+                markInvalid(selectKota);
+                if (!firstInvalid) firstInvalid = selectKota;
+                hasError = true;
+              } else if (selectKota) {
+                clearInvalid(selectKota);
+              }
+            }
+          });
+
+          if (hasError) {
+            if (firstInvalid) {
+              firstInvalid.focus();
+              firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            showFloatingToast('Mohon lengkapi kolom yang ditandai merah.');
+            return;
+          }
+
+          updateStep3Summary();
+          goToStep(3);
+        };
+      }
+
+      if (btnPrevStep3) {
+        btnPrevStep3.onclick = () => goToStep(2);
+      }
+
+      if (btnNextStep3) {
+        btnNextStep3.onclick = () => {
+          updateStep4Review();
+          goToStep(4);
+        };
+      }
+
+      if (btnPrevStep4) {
+        btnPrevStep4.onclick = () => goToStep(3);
+      }
+
+      // Tombol pindah ke Non-Keluarga dari notif constraint
+      const btnSwitch = document.getElementById('btnSwitchNonKeluarga');
+      if (btnSwitch) {
+        btnSwitch.onclick = () => {
+          const radioNonKeluarga = document.querySelector('input[name="tipe_pendaftaran"][value="non_keluarga"]') as HTMLInputElement | null;
+          if (radioNonKeluarga) {
+            radioNonKeluarga.checked = true;
+            radioNonKeluarga.dispatchEvent(new Event('change'));
+            showFloatingToast('Kategori berhasil diubah ke Non-Keluarga.', false);
+          }
+        };
+      }
 
       // Radio tipe change (Keluarga vs Non-Keluarga)
       const radioTipe = document.querySelectorAll('input[name="tipe_pendaftaran"]');
@@ -542,35 +926,45 @@ import Layout from '../layouts/Layout.astro';
             }
           }
           renderAnggotaForms();
+          checkKeluargaConstraint();
         });
       });
 
       // Tombol tambah anggota
-      document.getElementById('btnAddAnggota')?.addEventListener('click', () => {
-        syncAnggotaFromDOM();
-        const tipe = getSelectedTipe();
-        let peranBaru = 'Peserta';
-        let jkBaru = 'Ikhwan';
+      const btnAdd = document.getElementById('btnAddAnggota');
+      if (btnAdd) {
+        btnAdd.onclick = (e) => {
+          e.preventDefault();
+          syncAnggotaFromDOM();
+          const tipe = getSelectedTipe();
+          let peranBaru = 'Peserta';
+          let jkBaru = 'Ikhwan';
 
-        if (tipe === 'keluarga') {
-          if (anggotaData.length === 1) {
-            peranBaru = 'Ibu';
-            jkBaru = 'Akhwat';
-          } else {
-            peranBaru = 'Anak';
+          if (tipe === 'keluarga') {
+            if (anggotaData.length === 1) {
+              peranBaru = 'Ibu';
+              jkBaru = 'Akhwat';
+            } else {
+              peranBaru = 'Anak';
+              jkBaru = 'Ikhwan';
+            }
           }
-        }
 
-        anggotaData.push({
-          nama: '',
-          peran: peranBaru,
-          jenis_kelamin: jkBaru,
-          usia: 10,
-          ukuran_kaos: 'M',
-          catatan_medis: '',
-        });
-        renderAnggotaForms();
-      });
+          anggotaData.push({
+            nama: '',
+            peran: peranBaru,
+            jenis_kelamin: jkBaru,
+            usia: 10,
+            ukuran_kaos: '-',
+            catatan_medis: '',
+            beda_domisili: false,
+            provinsi: '',
+            kota: '',
+          });
+          renderAnggotaForms();
+          checkKeluargaConstraint();
+        };
+      }
     }
 
     function getSelectedTipe(): 'keluarga' | 'non_keluarga' {
@@ -607,15 +1001,37 @@ import Layout from '../layouts/Layout.astro';
         const selectPeran = card.querySelector('.select-peran') as HTMLSelectElement | null;
         const inputJk = card.querySelector('input[name^="jk_"]:checked') as HTMLInputElement | null;
         const inputUsia = card.querySelector('.input-usia') as HTMLInputElement | null;
-        const selectKaos = card.querySelector('.select-kaos') as HTMLSelectElement | null;
         const inputMedis = card.querySelector('.input-medis') as HTMLInputElement | null;
 
         if (inputNama) anggotaData[idx].nama = inputNama.value.trim();
-        if (selectPeran) anggotaData[idx].peran = selectPeran.value;
-        if (inputJk) anggotaData[idx].jenis_kelamin = inputJk.value;
+        if (selectPeran) {
+          anggotaData[idx].peran = selectPeran.value;
+          const locked = getLockedGenderForPeran(selectPeran.value);
+          if (locked) {
+            anggotaData[idx].jenis_kelamin = locked;
+          }
+        }
+        if (inputJk && !getLockedGenderForPeran(anggotaData[idx].peran)) {
+          anggotaData[idx].jenis_kelamin = inputJk.value;
+        }
         if (inputUsia) anggotaData[idx].usia = inputUsia.value ? parseInt(inputUsia.value, 10) : null;
-        if (selectKaos) anggotaData[idx].ukuran_kaos = selectKaos.value;
+        anggotaData[idx].ukuran_kaos = '-';
         if (inputMedis) anggotaData[idx].catatan_medis = inputMedis.value.trim();
+
+        const cbDomisili = card.querySelector('.cb-beda-domisili') as HTMLInputElement | null;
+        const selectProvinsi = card.querySelector('.select-provinsi-anggota') as HTMLSelectElement | null;
+        const selectKota = card.querySelector('.select-kota-anggota') as HTMLSelectElement | null;
+
+        if (cbDomisili) {
+          anggotaData[idx].beda_domisili = cbDomisili.checked;
+          if (cbDomisili.checked) {
+            if (selectProvinsi) anggotaData[idx].provinsi = selectProvinsi.value;
+            if (selectKota) anggotaData[idx].kota = selectKota.value;
+          } else {
+            anggotaData[idx].provinsi = '';
+            anggotaData[idx].kota = '';
+          }
+        }
       });
     }
 
@@ -627,13 +1043,18 @@ import Layout from '../layouts/Layout.astro';
 
       container.innerHTML = anggotaData.map((a, idx) => {
         const isBalita = a.usia !== null && a.usia < 3;
+        const lockedGender = tipe === 'keluarga' ? getLockedGenderForPeran(a.peran) : null;
+        if (lockedGender) {
+          a.jenis_kelamin = lockedGender;
+        }
+
         return `
           <div class="anggota-card bg-slate-50/80 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4" data-index="${idx}">
             <div class="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div class="flex items-center gap-2">
+              <div class="card-header-left flex items-center gap-2">
                 <span class="w-6 h-6 rounded-lg bg-primary-100 text-primary-800 font-mono font-bold text-xs flex items-center justify-center">${idx + 1}</span>
                 <span class="font-extrabold text-xs sm:text-sm text-slate-800">Peserta #${idx + 1}</span>
-                ${isBalita ? `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">Balita (Gratis)</span>` : ''}
+                ${isBalita ? `<span class="badge-balita px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">Balita (Gratis)</span>` : ''}
               </div>
               ${anggotaData.length > 1 ? `
                 <button type="button" class="btn-hapus-anggota text-xs text-rose-600 hover:text-rose-800 font-bold transition cursor-pointer" data-index="${idx}">
@@ -642,7 +1063,8 @@ import Layout from '../layouts/Layout.astro';
               ` : ''}
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <!-- Nama Lengkap -->
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
                   Nama Lengkap <span class="text-rose-500">*</span>
@@ -656,78 +1078,133 @@ import Layout from '../layouts/Layout.astro';
                 />
               </div>
 
+              <!-- Peran / Status -->
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
                   Peran / Status <span class="text-rose-500">*</span>
                 </label>
                 ${tipe === 'keluarga' ? `
-                  <select class="select-peran w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold text-slate-800">
-                    <option value="Ayah" ${a.peran === 'Ayah' ? 'selected' : ''}>Ayah (Kepala Keluarga)</option>
+                  <select class="select-peran w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold text-slate-800 cursor-pointer">
+                    <option value="Ayah" ${a.peran === 'Ayah' ? 'selected' : ''}>Ayah</option>
                     <option value="Ibu" ${a.peran === 'Ibu' ? 'selected' : ''}>Ibu</option>
                     <option value="Anak" ${a.peran === 'Anak' ? 'selected' : ''}>Anak</option>
-                    <option value="Peserta" ${a.peran === 'Peserta' ? 'selected' : ''}>Lainnya (Kakek/Nenek/Keluarga)</option>
+                    <option value="Kakek" ${a.peran === 'Kakek' ? 'selected' : ''}>Kakek</option>
+                    <option value="Nenek" ${a.peran === 'Nenek' ? 'selected' : ''}>Nenek</option>
+                    <option value="Paman" ${a.peran === 'Paman' ? 'selected' : ''}>Paman</option>
+                    <option value="Bibi" ${a.peran === 'Bibi' ? 'selected' : ''}>Bibi</option>
+                    <option value="Saudara Kandung" ${a.peran === 'Saudara Kandung' ? 'selected' : ''}>Saudara Kandung</option>
+                    <option value="Sepupu" ${a.peran === 'Sepupu' ? 'selected' : ''}>Sepupu</option>
                   </select>
                 ` : `
                   <input type="text" readonly value="Peserta" class="select-peran w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs bg-slate-100 text-slate-600 font-bold cursor-not-allowed" />
                 `}
               </div>
 
+              <!-- Jenis Kelamin -->
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
                   Jenis Kelamin <span class="text-rose-500">*</span>
+                  ${lockedGender ? '<span class="text-[10px] text-primary-600 font-semibold ml-1">(Terkunci sesuai peran)</span>' : ''}
                 </label>
                 <div class="grid grid-cols-2 gap-2">
-                  <label class="cursor-pointer">
-                    <input type="radio" name="jk_${idx}" value="Ikhwan" ${a.jenis_kelamin === 'Ikhwan' ? 'checked' : ''} class="peer sr-only" />
-                    <div class="text-center p-2 rounded-xl border border-slate-200 bg-white font-bold text-xs peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-600 transition">
+                  <label class="${lockedGender === 'Akhwat' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}">
+                    <input
+                      type="radio"
+                      name="jk_${idx}"
+                      value="Ikhwan"
+                      ${a.jenis_kelamin === 'Ikhwan' ? 'checked' : ''}
+                      ${lockedGender === 'Akhwat' ? 'disabled' : ''}
+                      class="radio-jk peer sr-only"
+                      data-index="${idx}"
+                    />
+                    <div class="text-center py-2.5 px-3 rounded-xl border border-slate-200 bg-white font-bold text-xs peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-600 peer-disabled:bg-slate-100 peer-disabled:text-slate-400 peer-disabled:border-slate-200 transition shadow-2xs">
                       IKHWAN
                     </div>
                   </label>
-                  <label class="cursor-pointer">
-                    <input type="radio" name="jk_${idx}" value="Akhwat" ${a.jenis_kelamin === 'Akhwat' ? 'checked' : ''} class="peer sr-only" />
-                    <div class="text-center p-2 rounded-xl border border-slate-200 bg-white font-bold text-xs peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-600 transition">
+                  <label class="${lockedGender === 'Ikhwan' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}">
+                    <input
+                      type="radio"
+                      name="jk_${idx}"
+                      value="Akhwat"
+                      ${a.jenis_kelamin === 'Akhwat' ? 'checked' : ''}
+                      ${lockedGender === 'Ikhwan' ? 'disabled' : ''}
+                      class="radio-jk peer sr-only"
+                      data-index="${idx}"
+                    />
+                    <div class="text-center py-2.5 px-3 rounded-xl border border-slate-200 bg-white font-bold text-xs peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-600 peer-disabled:bg-slate-100 peer-disabled:text-slate-400 peer-disabled:border-slate-200 transition shadow-2xs">
                       AKHWAT
                     </div>
                   </label>
                 </div>
               </div>
 
-              <div class="grid grid-cols-2 gap-2">
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Usia (Tahun)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value="${a.usia !== null ? a.usia : ''}"
-                    placeholder="Contoh: 7"
-                    class="input-usia w-full border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono"
-                  />
-                </div>
-                <div>
-                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Ukuran Kaos</label>
-                  <select class="select-kaos w-full border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono font-bold">
-                    <option value="S" ${a.ukuran_kaos === 'S' ? 'selected' : ''}>S</option>
-                    <option value="M" ${a.ukuran_kaos === 'M' ? 'selected' : ''}>M</option>
-                    <option value="L" ${a.ukuran_kaos === 'L' ? 'selected' : ''}>L</option>
-                    <option value="XL" ${a.ukuran_kaos === 'XL' ? 'selected' : ''}>XL</option>
-                    <option value="XXL" ${a.ukuran_kaos === 'XXL' ? 'selected' : ''}>XXL</option>
-                    <option value="Anak" ${a.ukuran_kaos === 'Anak' ? 'selected' : ''}>Anak (All Size)</option>
-                  </select>
-                </div>
+              <!-- Usia: Angka Besar, Jelas & Tidak Samar -->
+              <div>
+                <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                  Usia (Tahun) <span class="text-[10px] text-slate-400 font-normal">(Balita &lt; 3 th gratis)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value="${a.usia !== null ? a.usia : ''}"
+                  placeholder="Contoh: 7"
+                  class="input-usia w-full border border-slate-300 rounded-xl px-4 py-2.5 text-base font-black text-slate-900 bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono placeholder:text-slate-300 placeholder:font-normal placeholder:text-xs"
+                />
               </div>
 
+              <!-- Catatan Medis & Obat yang Sering Digunakan/Dikonsumsi -->
               <div class="sm:col-span-2">
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
-                  Catatan Medis / Alergi <span class="text-slate-400 font-normal">(Opsional)</span>
+                  Catatan Medis, Alergi & Obat yang Sering Dikonsumsi <span class="text-slate-400 font-normal">(Opsional)</span>
                 </label>
                 <input
                   type="text"
                   value="${a.catatan_medis}"
-                  placeholder="Contoh: Alergi udang, asma dingin, dll."
-                  class="input-medis w-full border border-slate-300 rounded-xl px-3.5 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
+                  placeholder="Contoh: Asma dingin (bawa inhaler salbutamol), alergi seafood, obat rutin maag/darah tinggi, dll."
+                  class="input-medis w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition text-slate-800"
                 />
               </div>
+
+              ${idx > 0 && tipe === 'non_keluarga' ? `
+                <!-- Opsi Beda Domisili Khusus Non-Keluarga (Smart Inherit) -->
+                <div class="sm:col-span-2 pt-2 border-t border-slate-200/80 space-y-2.5">
+                  <label class="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      class="cb-beda-domisili mt-0.5 rounded border-slate-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                      data-index="${idx}"
+                      ${a.beda_domisili ? 'checked' : ''}
+                    />
+                    <div>
+                      <span class="text-xs font-bold text-slate-800 block">Asal kota / domisili berbeda dengan PIC?</span>
+                      <span class="text-[10px] text-slate-400 block">Default: mengikuti domisili PIC.</span>
+                    </div>
+                  </label>
+
+                  <div class="container-domisili-anggota ${a.beda_domisili ? '' : 'hidden'} grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-white rounded-xl border border-slate-200" data-index="${idx}">
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                        Provinsi Asal <span class="text-rose-500">*</span>
+                      </label>
+                      <select class="select-provinsi-anggota w-full border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-medium cursor-pointer" data-index="${idx}">
+                        <option value="" disabled ${!a.provinsi ? 'selected' : ''}>Pilih Provinsi...</option>
+                        ${LIST_PROVINSI.map((p) => `<option value="${p}" ${a.provinsi === p ? 'selected' : ''}>${p}</option>`).join('')}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                        Kota / Kabupaten <span class="text-rose-500">*</span>
+                      </label>
+                      <select class="select-kota-anggota w-full border border-slate-300 rounded-xl px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" data-index="${idx}" ${!a.provinsi ? 'disabled' : ''}>
+                        <option value="" disabled ${!a.kota ? 'selected' : ''}>${a.provinsi ? 'Pilih Kota / Kabupaten...' : 'Pilih Provinsi dahulu...'}</option>
+                        ${a.provinsi && DATA_WILAYAH[a.provinsi] ? DATA_WILAYAH[a.provinsi].map((k) => `<option value="${k}" ${a.kota === k ? 'selected' : ''}>${k}</option>`).join('') : ''}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
             </div>
           </div>
         `;
@@ -742,9 +1219,141 @@ import Layout from '../layouts/Layout.astro';
           if (anggotaData.length > 1) {
             anggotaData.splice(idx, 1);
             renderAnggotaForms();
+            checkKeluargaConstraint();
           }
         });
       });
+
+      // Event listener ganti peran -> otomatis sesuaikan dan kunci gender
+      container.querySelectorAll('.select-peran').forEach((selectEl) => {
+        selectEl.addEventListener('change', (e) => {
+          syncAnggotaFromDOM();
+          const target = e.currentTarget as HTMLSelectElement;
+          const card = target.closest('.anggota-card');
+          const idx = parseInt(card?.getAttribute('data-index') || '0', 10);
+          const chosenPeran = target.value;
+          const locked = getLockedGenderForPeran(chosenPeran);
+          if (locked) {
+            anggotaData[idx].jenis_kelamin = locked;
+          }
+          renderAnggotaForms();
+        });
+      });
+
+      // Event listener radio jenis kelamin (untuk peran yang fleksibel)
+      container.querySelectorAll('.radio-jk').forEach((radio) => {
+        radio.addEventListener('change', (e) => {
+          const target = e.currentTarget as HTMLInputElement;
+          const idx = parseInt(target.getAttribute('data-index') || '0', 10);
+          if (anggotaData[idx]) {
+            anggotaData[idx].jenis_kelamin = target.value;
+          }
+        });
+      });
+
+      // Event listener input usia: update preview & badge balita secara realtime
+      container.querySelectorAll('.input-usia').forEach((inputEl) => {
+        inputEl.addEventListener('input', () => {
+          syncAnggotaFromDOM();
+          const card = (inputEl as HTMLElement).closest('.anggota-card');
+          const idx = parseInt(card?.getAttribute('data-index') || '0', 10);
+          const usiaVal = anggotaData[idx]?.usia;
+          const badgeEl = card?.querySelector('.badge-balita');
+          if (usiaVal !== null && usiaVal < 3) {
+            if (!badgeEl) {
+              const headerLeft = card?.querySelector('.card-header-left');
+              if (headerLeft) {
+                const span = document.createElement('span');
+                span.className = 'badge-balita px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold';
+                span.textContent = 'Balita (Gratis)';
+                headerLeft.appendChild(span);
+              }
+            }
+          } else {
+            if (badgeEl) badgeEl.remove();
+          }
+        });
+      });
+
+      // Pasang event listener input agar border merah langsung hilang saat mulai mengetik
+      container.querySelectorAll('.input-nama').forEach((inp) => {
+        inp.addEventListener('input', (e) => {
+          clearInvalid(e.currentTarget as HTMLElement);
+        });
+      });
+
+      // Event listener checkbox beda domisili (Non-Keluarga)
+      container.querySelectorAll('.cb-beda-domisili').forEach((cb) => {
+        cb.addEventListener('change', (e) => {
+          const target = e.currentTarget as HTMLInputElement;
+          const idx = parseInt(target.getAttribute('data-index') || '0', 10);
+          if (!anggotaData[idx]) return;
+
+          anggotaData[idx].beda_domisili = target.checked;
+          const card = target.closest('.anggota-card');
+          const domisiliContainer = card?.querySelector('.container-domisili-anggota');
+          if (domisiliContainer) {
+            if (target.checked) {
+              domisiliContainer.classList.remove('hidden');
+            } else {
+              domisiliContainer.classList.add('hidden');
+              anggotaData[idx].provinsi = '';
+              anggotaData[idx].kota = '';
+              const provSelect = domisiliContainer.querySelector('.select-provinsi-anggota') as HTMLSelectElement | null;
+              const kotaSelect = domisiliContainer.querySelector('.select-kota-anggota') as HTMLSelectElement | null;
+              if (provSelect) {
+                provSelect.value = '';
+                clearInvalid(provSelect);
+              }
+              if (kotaSelect) {
+                kotaSelect.value = '';
+                kotaSelect.disabled = true;
+                kotaSelect.innerHTML = '<option value="" disabled selected>Pilih Provinsi dahulu...</option>';
+                clearInvalid(kotaSelect);
+              }
+            }
+          }
+        });
+      });
+
+      // Event listener select provinsi anggota
+      container.querySelectorAll('.select-provinsi-anggota').forEach((provEl) => {
+        provEl.addEventListener('change', (e) => {
+          const target = e.currentTarget as HTMLSelectElement;
+          const idx = parseInt(target.getAttribute('data-index') || '0', 10);
+          if (!anggotaData[idx]) return;
+
+          clearInvalid(target);
+          anggotaData[idx].provinsi = target.value;
+          anggotaData[idx].kota = '';
+
+          const card = target.closest('.anggota-card');
+          const kotaEl = card?.querySelector('.select-kota-anggota') as HTMLSelectElement | null;
+          if (kotaEl) {
+            clearInvalid(kotaEl);
+            const kotaList = DATA_WILAYAH[target.value] || [];
+            kotaEl.disabled = false;
+            kotaEl.innerHTML = `
+              <option value="" disabled selected>Pilih Kota / Kabupaten...</option>
+              ${kotaList.map((k) => `<option value="${k}">${k}</option>`).join('')}
+            `;
+          }
+        });
+      });
+
+      // Event listener select kota anggota
+      container.querySelectorAll('.select-kota-anggota').forEach((kotaEl) => {
+        kotaEl.addEventListener('change', (e) => {
+          const target = e.currentTarget as HTMLSelectElement;
+          const idx = parseInt(target.getAttribute('data-index') || '0', 10);
+          if (anggotaData[idx]) {
+            anggotaData[idx].kota = target.value;
+          }
+          clearInvalid(target);
+        });
+      });
+
+      checkKeluargaConstraint();
     }
 
     function setupAddonInteractions() {
@@ -873,6 +1482,8 @@ import Layout from '../layouts/Layout.astro';
       const tipe = getSelectedTipe();
       const picNama = (document.getElementById('pic_nama') as HTMLInputElement).value.trim();
       const picWa = (document.getElementById('pic_whatsapp') as HTMLInputElement).value.trim();
+      const picProvinsi = (document.getElementById('pic_provinsi') as HTMLSelectElement)?.value || '';
+      const picKota = (document.getElementById('pic_kota') as HTMLSelectElement)?.value || '';
 
       const rekapTipe = document.getElementById('rekapTipe');
       if (rekapTipe) rekapTipe.textContent = tipe === 'keluarga' ? 'Pendaftaran Keluarga' : 'Pendaftaran Rombongan / Non-Keluarga';
@@ -883,6 +1494,11 @@ import Layout from '../layouts/Layout.astro';
       const rekapPicWa = document.getElementById('rekapPicWa');
       if (rekapPicWa) rekapPicWa.textContent = `WA: ${picWa}`;
 
+      const rekapPicDomisili = document.getElementById('rekapPicDomisili');
+      if (rekapPicDomisili) {
+        rekapPicDomisili.textContent = picKota && picProvinsi ? `${picKota}, ${picProvinsi}` : (picKota || picProvinsi || '-');
+      }
+
       const rekapJmlAnggota = document.getElementById('rekapJmlAnggota');
       if (rekapJmlAnggota) rekapJmlAnggota.textContent = String(anggotaData.length);
 
@@ -890,11 +1506,13 @@ import Layout from '../layouts/Layout.astro';
       if (rekapAnggotaList) {
         rekapAnggotaList.innerHTML = anggotaData.map((a, idx) => {
           const isBalita = a.usia !== null && a.usia < 3;
+          const customDomisili = a.beda_domisili && a.kota && a.provinsi ? `📍 Asal: ${a.kota}, ${a.provinsi}` : '';
           return `
             <li class="pt-1.5 flex justify-between items-center text-xs">
               <div>
                 <span class="font-bold text-slate-800">${idx + 1}. ${a.nama}</span>
                 <span class="text-[10px] text-slate-500">(${a.peran} • ${a.jenis_kelamin}${a.usia ? ' • ' + a.usia + ' th' : ''})</span>
+                ${customDomisili ? `<span class="block text-[10px] text-primary-700 font-semibold mt-0.5">${customDomisili}</span>` : ''}
               </div>
               <span class="font-bold font-mono ${isBalita ? 'text-emerald-600' : 'text-slate-700'}">
                 ${isBalita ? 'GRATIS (Balita)' : 'Rp 200.000'}
@@ -946,16 +1564,59 @@ import Layout from '../layouts/Layout.astro';
 
         if (submitError) submitError.classList.add('hidden');
 
+        const picNamaInput = document.getElementById('pic_nama') as HTMLInputElement | null;
+        const picWaInput = document.getElementById('pic_whatsapp') as HTMLInputElement | null;
+        const picProvinsiSelect = document.getElementById('pic_provinsi') as HTMLSelectElement | null;
+        const picKotaSelect = document.getElementById('pic_kota') as HTMLSelectElement | null;
+
+        const picNama = (picNamaInput?.value || '').trim();
+        const picWa = (picWaInput?.value || '').replace(/\D/g, '');
+        const picEmail = (document.getElementById('pic_email') as HTMLInputElement).value.trim();
+        const picProvinsi = (picProvinsiSelect?.value || '').trim();
+        const picKota = (picKotaSelect?.value || '').trim();
+
+        // Validasi Step 1
+        if (!picNama || picNama.length < 2 || picWa.length < 10 || picWa.length > 15 || !picProvinsi || !picKota) {
+          goToStep(1);
+          const btnNextStep1 = document.getElementById('btnNextStep1');
+          btnNextStep1?.click();
+          return;
+        }
+
+        const tipe = getSelectedTipe();
+
+        // Validasi constraint keluarga: minimal 2 peserta
+        if (tipe === 'keluarga' && anggotaData.length < 2) {
+          goToStep(2);
+          checkKeluargaConstraint();
+          showFloatingToast('Kategori Keluarga minimal 2 orang peserta.');
+          return;
+        }
+
+        // Validasi Step 2
+        let hasInvalidAnggota = false;
+        for (let i = 0; i < anggotaData.length; i++) {
+          if (!anggotaData[i].nama || anggotaData[i].nama.trim().length < 2) {
+            hasInvalidAnggota = true;
+            break;
+          }
+          if (anggotaData[i].beda_domisili && (!anggotaData[i].provinsi || !anggotaData[i].kota)) {
+            hasInvalidAnggota = true;
+            break;
+          }
+        }
+        if (hasInvalidAnggota) {
+          goToStep(2);
+          const btnNextStep2 = document.getElementById('btnNextStep2');
+          btnNextStep2?.click();
+          return;
+        }
+
         if (btnFinalSubmit) {
           btnFinalSubmit.disabled = true;
           btnFinalSubmit.textContent = 'Memproses Pendaftaran...';
           btnFinalSubmit.className = 'px-7 py-3.5 bg-slate-400 text-white font-extrabold text-sm rounded-xl transition cursor-wait';
         }
-
-        const tipe = getSelectedTipe();
-        const picNama = (document.getElementById('pic_nama') as HTMLInputElement).value.trim();
-        const picWa = (document.getElementById('pic_whatsapp') as HTMLInputElement).value.trim();
-        const picEmail = (document.getElementById('pic_email') as HTMLInputElement).value.trim();
 
         // Siapkan array addon
         const addonsPayload: { addon_id: string; qty: number }[] = [];
@@ -971,6 +1632,8 @@ import Layout from '../layouts/Layout.astro';
           pic_nama: picNama,
           pic_whatsapp: picWa,
           pic_email: picEmail,
+          pic_provinsi: picProvinsi,
+          pic_kota: picKota,
           anggota: anggotaData,
           addons: addonsPayload,
         };
@@ -993,12 +1656,16 @@ import Layout from '../layouts/Layout.astro';
           } else if (json.payment_token) {
             window.location.href = `/pembayaran?token=${encodeURIComponent(json.payment_token)}`;
           } else {
-            alert('Pendaftaran berhasil disimpan!');
-            window.location.href = '/status';
+            showFloatingToast('Pendaftaran berhasil disimpan!', false);
+            setTimeout(() => {
+              window.location.href = '/status';
+            }, 1000);
           }
         } catch (err: any) {
+          const errMsg = err.message || 'Terjadi kesalahan sistem saat mengirim data.';
+          showFloatingToast(errMsg, true);
           if (submitError) {
-            submitError.textContent = err.message || 'Terjadi kesalahan sistem saat mengirim data.';
+            submitError.textContent = errMsg;
             submitError.classList.remove('hidden');
           }
           if (btnFinalSubmit) {
@@ -1011,10 +1678,5 @@ import Layout from '../layouts/Layout.astro';
     }
 
     document.addEventListener('astro:page-load', initFamilyCampForm);
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initFamilyCampForm);
-    } else {
-      initFamilyCampForm();
-    }
   </script>
 </Layout>

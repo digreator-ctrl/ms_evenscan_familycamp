@@ -474,13 +474,15 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
         403
       );
     }
-  } catch (err) {}
+  } catch (err) { }
 
   const body = await c.req.json().catch(() => ({}));
   const tipe = body.tipe === 'keluarga' ? 'keluarga' : 'non_keluarga';
   const pic_nama = (body.pic_nama as string)?.trim();
   const pic_whatsapp = (body.pic_whatsapp as string)?.trim();
   const pic_email = ((body.pic_email as string) || '').trim();
+  const pic_provinsi = ((body.pic_provinsi || body.provinsi || '') as string).trim();
+  const pic_kota = ((body.pic_kota || body.kota || '') as string).trim();
   const anggotaList = Array.isArray(body.anggota) ? body.anggota : [];
   const addonsSelected = Array.isArray(body.addons) ? body.addons : [];
 
@@ -494,6 +496,10 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
 
   if (anggotaList.length === 0) {
     return c.json({ error: 'Minimal 1 anggota wajib didaftarkan.' }, 400);
+  }
+
+  if (tipe === 'keluarga' && anggotaList.length < 2) {
+    return c.json({ error: 'Pendaftaran kategori Keluarga minimal terdiri dari 2 peserta.' }, 400);
   }
 
   // Validasi setiap anggota
@@ -521,10 +527,14 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
       jumlahAnggotaBerbayar++;
     }
 
+    const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta'];
     let defaultPeran = 'Peserta';
     if (tipe === 'keluarga') {
-      defaultPeran = m.peran && ['Ayah', 'Ibu', 'Anak', 'Peserta'].includes(m.peran) ? m.peran : (idx === 0 ? 'Ayah' : 'Anak');
+      defaultPeran = m.peran && DAFTAR_PERAN_VALID.includes(m.peran) ? m.peran : (idx === 0 ? 'Ayah' : 'Anak');
     }
+
+    const provAnggota = (m.provinsi || '').trim() || pic_provinsi || null;
+    const kotaAnggota = (m.kota || '').trim() || pic_kota || null;
 
     return {
       id: 'mbr_' + nanoid(10),
@@ -535,6 +545,8 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
       ukuran_kaos: (m.ukuran_kaos || '').trim() || null,
       catatan_medis: (m.catatan_medis || '').trim() || null,
       is_gratis: isBalita ? 1 : 0,
+      provinsi: provAnggota,
+      kota: kotaAnggota,
     };
   });
 
@@ -569,9 +581,9 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
     }
   }
 
-  // Kode unik transfer (3 digit acak antara 101 - 999)
-  const kode_unik = Math.floor(Math.random() * 898) + 101;
-  const grand_total = biaya_wajib + biaya_addon + kode_unik;
+  // Tidak menggunakan kode unik transfer (nominal bersih)
+  const kode_unik = 0;
+  const grand_total = biaya_wajib + biaya_addon;
 
   const grupId = 'grp_' + nanoid(10);
   const paymentToken = 'pay_' + nanoid(16);
@@ -581,10 +593,10 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
     await db
       .prepare(
         `INSERT INTO pendaftaran_grup (
-          id, tipe, pic_nama, pic_whatsapp, pic_email,
+          id, tipe, pic_nama, pic_whatsapp, pic_email, provinsi, kota,
           jumlah_anggota, biaya_wajib, biaya_addon, kode_unik, grand_total,
           payment_token, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'menunggu_pembayaran')`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'menunggu_pembayaran')`
       )
       .bind(
         grupId,
@@ -592,6 +604,8 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
         pic_nama,
         pic_whatsapp,
         pic_email,
+        pic_provinsi || null,
+        pic_kota || null,
         sanitizedAnggota.length,
         biaya_wajib,
         biaya_addon,
@@ -606,8 +620,8 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
       await db
         .prepare(
           `INSERT INTO anggota (
-            id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, provinsi, kota
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .bind(
           ang.id,
@@ -618,7 +632,9 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
           ang.usia,
           ang.ukuran_kaos,
           ang.catatan_medis,
-          ang.is_gratis
+          ang.is_gratis,
+          ang.provinsi,
+          ang.kota
         )
         .run();
     }
@@ -698,7 +714,7 @@ pesertaRoutes.get('/pembayaran/:token', async (c) => {
 
     // Ambil data anggota
     const anggotaRes = await db
-      .prepare(`SELECT id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, qr_token, status_hadir FROM anggota WHERE grup_id = ? ORDER BY created_at ASC`)
+      .prepare(`SELECT id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis, is_gratis, qr_token, status_hadir, provinsi, kota FROM anggota WHERE grup_id = ? ORDER BY created_at ASC`)
       .bind(grup.id)
       .all();
 
@@ -853,7 +869,7 @@ pesertaRoutes.get('/status-grup', async (c) => {
     const enrichedGroups = [];
     for (const g of groups) {
       const anggota = await db
-        .prepare(`SELECT id, nama, peran, jenis_kelamin, usia, is_gratis, qr_token, status_hadir, attended_at FROM anggota WHERE grup_id = ?`)
+        .prepare(`SELECT id, nama, peran, jenis_kelamin, usia, is_gratis, qr_token, status_hadir, attended_at, provinsi, kota FROM anggota WHERE grup_id = ?`)
         .bind(g.id)
         .all();
       enrichedGroups.push({

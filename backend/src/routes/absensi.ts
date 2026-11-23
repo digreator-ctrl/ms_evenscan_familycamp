@@ -279,11 +279,11 @@ function tambahKeBreakdown(target: PesertaBreakdown, usia: unknown, gender: Gend
 function dashboardKosong() {
   return {
     pembayaran: {
-      menunggu_pembayaran: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
-      menunggu_verifikasi: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
-      lunas: { jumlah_grup: 0, tagihan: 0, diterima: 0, kurang: 0, lebih: 0 },
-      ditolak: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
-      total: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      menunggu_pembayaran: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
+      menunggu_verifikasi: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
+      lunas: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0, kurang: 0, lebih: 0 },
+      ditolak: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
+      total: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
     },
     peserta: {
       terdaftar: buatBreakdownPeserta(),
@@ -386,11 +386,13 @@ absensiRoutes.get('/dashboard', async (c) => {
 
     // 2. Peserta terdaftar & hadir
     const jatahMap = new Map<string, boolean>();
+    const pesertaPerStatus: Record<string, number> = {};
     let totalLunas = 0;
     let hadirLunas = 0;
 
     for (const a of anggotaRes.results || []) {
       const grupStatus = String(a.grup_status || '');
+      pesertaPerStatus[grupStatus] = (pesertaPerStatus[grupStatus] || 0) + 1;
 
       if (grupStatus === 'lunas') {
         totalLunas++;
@@ -414,6 +416,11 @@ absensiRoutes.get('/dashboard', async (c) => {
         tambahKeBreakdown(hasil.peserta.hadir, a.usia, gender);
       }
     }
+
+    for (const status of statusUtama) {
+      (hasil.pembayaran[status] as any).jumlah_peserta = pesertaPerStatus[status] || 0;
+    }
+    (hasil.pembayaran.total as any).jumlah_peserta = hasil.peserta.terdaftar.total;
 
     // 3. Scan konsumsi per sesi makan (peserta lunas & berjatah makan)
     const scanPerSesi = new Map<string, Set<string>>();

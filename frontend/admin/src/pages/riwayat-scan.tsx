@@ -10,6 +10,28 @@ const SESI_COLS: { id: string; short: string }[] = [
   { id: 'makan_ahad_pagi', short: 'Ahad Pagi' },
 ];
 
+function statusBayarBadge(status: string) {
+  const styles: Record<string, string> = {
+    draft: 'bg-slate-100 text-slate-700',
+    menunggu_pembayaran: 'bg-amber-100 text-amber-800',
+    menunggu_verifikasi: 'bg-sky-100 text-sky-800',
+    lunas: 'bg-emerald-100 text-emerald-800',
+    ditolak: 'bg-rose-100 text-rose-800',
+  };
+  return styles[status] || 'bg-slate-100 text-slate-800';
+}
+
+function statusBayarLabel(status: string): string {
+  const map: Record<string, string> = {
+    draft: 'Draft',
+    menunggu_pembayaran: 'Menunggu Pembayaran',
+    menunggu_verifikasi: 'Menunggu Verifikasi',
+    lunas: 'Lunas',
+    ditolak: 'Ditolak',
+  };
+  return map[status] || status;
+}
+
 interface AnggotaRow {
   id: string;
   nomor_peserta: string;
@@ -40,6 +62,7 @@ export function RiwayatScan() {
   const [fHadir, setFHadir] = useState('semua');
   const [fKategori, setFKategori] = useState('semua');
   const [fGender, setFGender] = useState('semua');
+  const [fStatus, setFStatus] = useState('semua');
 
   const fetchAnggota = async () => {
     setLoading(true);
@@ -49,6 +72,7 @@ export function RiwayatScan() {
       if (fHadir !== 'semua') p.set('status_hadir', fHadir);
       if (fKategori !== 'semua') p.set('kategori_usia', fKategori);
       if (fGender !== 'semua') p.set('jenis_kelamin', fGender);
+      if (fStatus !== 'semua') p.set('grup_status', fStatus);
       if (search.trim()) p.set('search', search.trim());
 
       const res = await fetch(`${API_URL}/api/admin/anggota?${p.toString()}`, {
@@ -68,7 +92,7 @@ export function RiwayatScan() {
   useEffect(() => {
     fetchAnggota();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fHadir, fKategori, fGender]);
+  }, [fHadir, fKategori, fGender, fStatus]);
 
   const handleExportCSV = () => {
     if (data.length === 0) {
@@ -88,7 +112,7 @@ export function RiwayatScan() {
       `"${d.kategori_usia_label}"`,
       `"${d.nomor_grup || d.grup_id}"`,
       `"${(d.pic_nama || '').replace(/"/g, '""')}"`,
-      d.is_gratis ? 'Gratis' : 'Berbayar',
+      d.is_gratis ? 'Gratis' : statusBayarLabel(d.grup_status),
       d.status_hadir === 'hadir' ? 'Hadir' : 'Belum',
       d.scan_sesi?.checkin ? 'Ya' : '-',
       d.scan_sesi?.makan_sabtu_siang ? 'Ya' : '-',
@@ -173,6 +197,17 @@ export function RiwayatScan() {
           <option value="L">Ikhwan (L)</option>
           <option value="P">Akhwat (P)</option>
         </select>
+        <select
+          value={fStatus}
+          onChange={(e) => setFStatus(e.target.value)}
+          className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
+        >
+          <option value="semua">Semua Status Bayar</option>
+          <option value="menunggu_pembayaran">Menunggu Pembayaran</option>
+          <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
+          <option value="lunas">Lunas</option>
+          <option value="ditolak">Ditolak</option>
+        </select>
         <button
           type="button"
           onClick={fetchAnggota}
@@ -212,13 +247,22 @@ export function RiwayatScan() {
                       {d.peran} • {d.jenis_kelamin} • {d.usia != null ? `${d.usia} th` : '-'} • {d.kategori_usia_label}
                     </p>
                   </div>
-                  <span
-                    className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                      d.status_hadir === 'hadir' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    {d.status_hadir === 'hadir' ? '✓ Hadir' : 'Belum'}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        d.is_gratis ? 'bg-amber-100 text-amber-800' : statusBayarBadge(d.grup_status)
+                      }`}
+                    >
+                      {d.is_gratis ? 'Gratis' : statusBayarLabel(d.grup_status)}
+                    </span>
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        d.status_hadir === 'hadir' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'
+                      }`}
+                    >
+                      {d.status_hadir === 'hadir' ? '✓ Hadir' : 'Belum'}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t border-slate-100">
                   {SESI_COLS.map((s) => (
@@ -245,7 +289,7 @@ export function RiwayatScan() {
                     <th className="py-3 px-4">Nomor</th>
                     <th className="py-3 px-4">Nama / Peserta</th>
                     <th className="py-3 px-4">Grup / PIC</th>
-                    <th className="py-3 px-4 text-center">Bayar</th>
+                    <th className="py-3 px-4 text-center">Status Bayar</th>
                     {SESI_COLS.map((s) => (
                       <th key={s.id} className="py-3 px-2 text-center">{s.short}</th>
                     ))}
@@ -273,10 +317,10 @@ export function RiwayatScan() {
                       <td className="py-3 px-4 text-center">
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            d.is_gratis ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                            d.is_gratis ? 'bg-amber-100 text-amber-800' : statusBayarBadge(d.grup_status)
                           }`}
                         >
-                          {d.is_gratis ? 'Gratis' : 'Bayar'}
+                          {d.is_gratis ? 'Gratis' : statusBayarLabel(d.grup_status)}
                         </span>
                       </td>
                       {SESI_COLS.map((s) => (

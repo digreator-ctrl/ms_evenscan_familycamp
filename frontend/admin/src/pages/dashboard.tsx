@@ -19,6 +19,7 @@ interface PesertaBreakdown {
 
 interface PembayaranRow {
   jumlah_grup: number;
+  jumlah_peserta: number;
   tagihan: number;
   diterima: number;
   kurang?: number;
@@ -56,7 +57,7 @@ interface DashboardData {
   generated_at: string;
 }
 
-const KATEGORI_URUTAN = ['balita', 'anak', 'remaja', 'dewasa', 'lansia', 'tidak_diketahui'];
+const KATEGORI_URUTAN = ['balita', 'anak', 'remaja', 'dewasa', 'lansia'];
 
 const LABEL_KATEGORI: Record<string, string> = {
   balita: 'Balita (0-5 th)',
@@ -74,7 +75,8 @@ const LABEL_SESI: Record<string, string> = {
 };
 
 function barisKategori(data: PesertaBreakdown): { id: string; label: string }[] {
-  const ids = Array.from(new Set([...KATEGORI_URUTAN, ...Object.keys(data.per_kategori)]));
+  const ids = Array.from(new Set([...KATEGORI_URUTAN, ...Object.keys(data.per_kategori)]))
+    .filter((id) => id !== 'tidak_diketahui');
   return ids.map((id) => ({ id, label: LABEL_KATEGORI[id] ?? id.replace(/_/g, ' ') }));
 }
 
@@ -113,11 +115,11 @@ function buatBreakdownKosong(): PesertaBreakdown {
 function dashboardKosong(): DashboardData {
   return {
     pembayaran: {
-      menunggu_pembayaran: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
-      menunggu_verifikasi: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
-      lunas: { jumlah_grup: 0, tagihan: 0, diterima: 0, kurang: 0, lebih: 0 },
-      ditolak: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
-      total: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      menunggu_pembayaran: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
+      menunggu_verifikasi: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
+      lunas: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0, kurang: 0, lebih: 0 },
+      ditolak: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
+      total: { jumlah_grup: 0, jumlah_peserta: 0, tagihan: 0, diterima: 0 },
     },
     peserta: {
       terdaftar: buatBreakdownKosong(),
@@ -158,6 +160,28 @@ function StatCard({
     <div className={`border rounded-2xl p-4 sm:p-5 shadow-xs ${TONE_KELAS[tone]}`}>
       <span className="text-xs font-bold uppercase tracking-wider opacity-70">{label}</span>
       <span className="block text-2xl sm:text-3xl font-black mt-1 leading-tight">{value}</span>
+      {hint && <p className="text-[11px] opacity-70 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  hint,
+  tone = 'white',
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  tone?: Tone;
+}) {
+  return (
+    <div className={`border rounded-2xl p-4 shadow-xs ${TONE_KELAS[tone]}`}>
+      <div className="flex items-center justify-between gap-3 sm:block">
+        <span className="text-xs font-bold uppercase tracking-wider opacity-70">{label}</span>
+        <span className="text-2xl font-black leading-tight sm:block sm:mt-1 sm:text-3xl">{value}</span>
+      </div>
       {hint && <p className="text-[11px] opacity-70 mt-1">{hint}</p>}
     </div>
   );
@@ -214,17 +238,26 @@ function BlokPeserta({ title, data, tone }: { title: string; data: PesertaBreakd
   return (
     <section className="space-y-2.5">
       <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h2>
-      <div className="grid grid-cols-3 gap-3">
+
+      {/* Mobile: satu card ringkas (total besar + ikhwan/akhwat di bawah) */}
+      <div className={`sm:hidden border rounded-2xl p-4 shadow-xs ${TONE_KELAS[tone]}`}>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-3xl font-black leading-tight">{data.total}</span>
+          <span className="text-xs font-medium opacity-70">peserta</span>
+        </div>
+        <p className="text-[11px] opacity-70 mt-1">
+          {data.gender.ikhwan} ikhwan • {data.gender.akhwat} akhwat
+        </p>
+      </div>
+
+      {/* Desktop/tablet: tiga card */}
+      <div className="hidden sm:grid grid-cols-3 gap-3">
         <StatCard label="Total" value={data.total} tone={tone} />
         <StatCard label="Ikhwan" value={data.gender.ikhwan} tone={tone} />
         <StatCard label="Akhwat" value={data.gender.akhwat} tone={tone} />
       </div>
+
       <MatrixTable data={data} />
-      {data.gender.tidak_diketahui > 0 && (
-        <p className="text-[11px] text-slate-500">
-          Termasuk {data.gender.tidak_diketahui} peserta dengan jenis kelamin tidak diketahui.
-        </p>
-      )}
     </section>
   );
 }
@@ -236,7 +269,6 @@ export function Dashboard() {
   const [data, setData] = useState<DashboardData>(() => dashboardKosong());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [terakhir, setTerakhir] = useState<string | null>(null);
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -248,9 +280,6 @@ export function Dashboard() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as DashboardData;
       setData(json);
-      setTerakhir(
-        new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-      );
       setError(null);
     } catch (err) {
       console.error('Failed to fetch dashboard:', err);
@@ -303,17 +332,10 @@ export function Dashboard() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-sky-800 text-xs font-semibold mb-1 border border-sky-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Monitoring • Sync tiap 15 detik
-          </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Dashboard Panitia</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Ringkasan pembayaran grup, data peserta, serta kehadiran & konsumsi Family Camp.
           </p>
-        </div>
-        <div className="flex items-center text-xs text-slate-500">
-          <span>Diperbarui: {terakhir ?? '-'}</span>
         </div>
       </div>
 
@@ -324,26 +346,26 @@ export function Dashboard() {
       )}
 
       {/* Strip KPI */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KpiCard
           label="Total Peserta"
           value={loading ? '...' : peserta.terdaftar.total}
           hint={`${peserta.terdaftar.gender.ikhwan} ikhwan • ${peserta.terdaftar.gender.akhwat} akhwat`}
           tone="white"
         />
-        <StatCard
+        <KpiCard
           label="Total Grup"
           value={loading ? '...' : pembayaran.total.jumlah_grup}
           hint="Seluruh grup terdaftar"
           tone="white"
         />
-        <StatCard
+        <KpiCard
           label="Hadir (Check-in)"
           value={loading ? '...' : peserta.hadir.total}
           hint={`dari ${peserta.terdaftar.total} peserta terdaftar`}
           tone="emerald"
         />
-        <StatCard
+        <KpiCard
           label="% Kehadiran"
           value={loading ? '...' : `${persentase_kehadiran.terhadap_semua_terdaftar}%`}
           hint={`vs lunas: ${persentase_kehadiran.terhadap_lunas}%`}
@@ -376,11 +398,18 @@ export function Dashboard() {
               const selisihLebih = Math.max(k.row.lebih ?? 0, 0);
               return (
                 <div key={k.label} className={`border rounded-2xl p-4 sm:p-5 shadow-xs ${TONE_KELAS[k.tone]}`}>
-                  <span className="text-xs font-bold uppercase tracking-wider opacity-70">{k.label}</span>
-                  <div className="mt-1 flex items-baseline gap-1.5">
-                    <span className="text-2xl sm:text-3xl font-black leading-tight">{k.row.jumlah_grup}</span>
-                    <span className="text-xs font-medium opacity-70">grup</span>
+                  <div className="flex items-center justify-between gap-3 sm:block">
+                    <span className="text-xs font-bold uppercase tracking-wider opacity-70">{k.label}</span>
+                    <span className="text-2xl sm:text-3xl font-black leading-tight whitespace-nowrap sm:block sm:mt-1">
+                      {k.row.jumlah_grup} <span className="text-xs font-medium opacity-70">grup</span>
+                    </span>
                   </div>
+
+                  <div className="sm:hidden flex items-center justify-between gap-3 text-xs mt-2">
+                    <span className="opacity-70">Jumlah peserta</span>
+                    <span className="font-bold tabular-nums">{k.row.jumlah_peserta} peserta</span>
+                  </div>
+
                   <dl className="mt-2 space-y-1 text-xs">
                     <div className="flex items-center justify-between gap-2">
                       <dt className="opacity-70">Tagihan</dt>
@@ -441,10 +470,6 @@ export function Dashboard() {
         <div className="space-y-6">
           <BlokPeserta title="Peserta Terdaftar" data={peserta.terdaftar} tone="white" />
           <BlokPeserta title="Hadir (Check-in)" data={peserta.hadir} tone="emerald" />
-          <p className="text-[11px] text-slate-500">
-            Terdaftar = seluruh anggota pada grup selain ditolak/draft. Hadir = status check-in
-            (status_hadir = hadir).
-          </p>
         </div>
       )}
 

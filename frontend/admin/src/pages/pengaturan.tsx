@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { PembayaranSetting } from './pembayaran-setting';
 import { TemplateWaSetting } from './template-wa-setting';
 
@@ -2500,7 +2500,29 @@ export function Pengaturan() {
           </div>
         </div>
 
-        {/* 2. SUBMENU: MANAJEMEN PENGGUNA (RBAC) - KHUSUS SUPERADMIN */}
+        {/* 2. SUBMENU: KELOLA ADD-ON */}
+        <Link
+          to="/kelola-addon"
+          className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 hover:bg-slate-50/60 transition-all duration-150 active:scale-[0.99] flex items-center justify-between gap-4"
+        >
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-slate-900">
+              Kelola Add-on
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5 truncate">
+              Kelola katalog item add-on / barang sewa beserta harga, stok, dan status
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 text-slate-400 shrink-0">
+            <span className="text-xs font-semibold hidden sm:inline">Kelola</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </Link>
+
+        {/* 3. SUBMENU: MANAJEMEN PENGGUNA (RBAC) - KHUSUS SUPERADMIN */}
         {currentUser?.role === 'superadmin' && (
           <div
             onClick={() => openSubmenu('rbac')}

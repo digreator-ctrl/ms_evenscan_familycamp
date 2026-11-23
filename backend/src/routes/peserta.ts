@@ -530,6 +530,35 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
     }
   }
 
+  // Cek duplikasi nomor WhatsApp PIC (satu nomor hanya untuk satu pendaftaran aktif)
+  try {
+    const [phone62, phone08] = getPhoneVariants(pic_whatsapp);
+    const existing = await db
+      .prepare(
+        `SELECT id, pic_nama, status FROM pendaftaran_grup
+         WHERE (
+           replace(replace(replace(pic_whatsapp, ' ', ''), '-', ''), '+', '') IN (?, ?)
+           OR pic_whatsapp IN (?, ?)
+         )
+         AND status != 'ditolak'
+         LIMIT 1`
+      )
+      .bind(phone62, phone08, phone62, phone08)
+      .first<{ id: string; pic_nama: string; status: string }>();
+
+    if (existing) {
+      return c.json(
+        {
+          error: `Nomor WhatsApp ${pic_whatsapp} sudah terdaftar atas nama "${existing.pic_nama}". Gunakan nomor WhatsApp lain yang belum terdaftar.`,
+          code: 'DUPLICATE_WHATSAPP',
+        },
+        409
+      );
+    }
+  } catch (err) {
+    console.warn('Pengecekan duplikasi nomor WhatsApp dilewati:', err);
+  }
+
   // Harga per orang dapat diatur admin (app_settings.harga_per_orang)
   let hargaPerOrang = BIAYA_PER_ORANG_DEFAULT;
   try {

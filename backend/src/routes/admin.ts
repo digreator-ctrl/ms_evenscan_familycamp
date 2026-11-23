@@ -590,7 +590,8 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
     // 4. Link cek status untuk PIC (halaman status ada di FE Peserta)
     const cleanPhone = WALinkService.normalizePhoneNumber(grup.pic_whatsapp);
     const pesertaUrl = (c.env.PESERTA_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
-    const linkTiket = `${pesertaUrl}/status?wa=${encodeURIComponent(grup.pic_whatsapp)}`;
+    const linkTiket = `${pesertaUrl}/status?token=${encodeURIComponent(grup.payment_token)}`;
+    const kodeAkses = grup.payment_token || '';
 
     let pesanWa: string;
     const tpl = await db.prepare(`SELECT body FROM wa_templates WHERE id = 'wa_lunas' AND aktif = 1`).first<{ body: string }>();
@@ -603,6 +604,7 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
         nomor_grup: grup.nomor_grup || '',
         link_status: linkTiket,
         link_pembayaran: linkTiket,
+        kode_akses: kodeAkses,
       });
     } else {
       pesanWa = `بسم الله
@@ -614,8 +616,12 @@ Alhamdulillah, pendaftaran *Family Camp* Anda telah *BERHASIL DIKONFIRMASI & LUN
 Total Peserta: ${grup.jumlah_anggota} orang
 Total Pembayaran: Rp ${grandTotal.toLocaleString('id-ID')}
 
-Silakan cek status pendaftaran dan unduh ID/QR kehadiran seluruh anggota melalui tautan berikut:
+Silakan cek status pendaftaran dan unduh *ID/QR kehadiran* seluruh anggota melalui tautan berikut:
 🔗 ${linkTiket}
+
+*Kode Akses Tiket:* ${kodeAkses}
+
+Mohon tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
 
 جزاكم الله خيرا`;
     }
@@ -1291,11 +1297,11 @@ adminRoutes.get('/grup/:id/wa-link', async (c) => {
 
     const pesertaUrl = (c.env.PESERTA_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
     const linkPembayaran = `${pesertaUrl}/pembayaran?token=${encodeURIComponent(grup.payment_token)}`;
-    const linkStatus = `${pesertaUrl}/status?wa=${encodeURIComponent(grup.pic_whatsapp)}`;
+    const linkStatus = `${pesertaUrl}/status?token=${encodeURIComponent(grup.payment_token)}`;
 
     const fallback =
       jenis === 'lunas'
-        ? `Halo {nama_pic}, pembayaran {nama_acara} Anda sudah LUNAS ✅. Cek tiket QR di: {link_status}`
+        ? `Halo {nama_pic}, pembayaran {nama_acara} Anda sudah LUNAS ✅. Cek tiket QR di: {link_status}\n\nKode Akses: {kode_akses}`
         : jenis === 'pengingat'
         ? `Halo {nama_pic}, tagihan {nama_acara} sebesar {total} belum kami terima. Bayar di: {link_pembayaran}`
         : `Halo {nama_pic}, terima kasih telah mendaftar {nama_acara}. Total {total}. Bayar di: {link_pembayaran}`;
@@ -1310,6 +1316,7 @@ adminRoutes.get('/grup/:id/wa-link', async (c) => {
       nomor_grup: grup.nomor_grup || '',
       link_pembayaran: linkPembayaran,
       link_status: linkStatus,
+      kode_akses: grup.payment_token || '',
     });
 
     const cleanPhone = WALinkService.normalizePhoneNumber(grup.pic_whatsapp || '');

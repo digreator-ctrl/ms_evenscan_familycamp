@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Verifikasi } from './verifikasi';
 import { RiwayatScan } from './riwayat-scan';
 
@@ -14,7 +15,9 @@ function initialTab(): Tab {
 }
 
 export function Peserta() {
+  const [searchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>(initialTab);
+  const detailId = searchParams.get('id');
 
   const tabBtn = (id: Tab, label: string) => (
     <button
@@ -30,10 +33,12 @@ export function Peserta() {
 
   return (
     <div className="space-y-5">
-      <div className="inline-flex w-full sm:w-auto p-1 bg-white border border-slate-200 rounded-xl shadow-xs gap-1">
-        {tabBtn('verifikasi', 'Verifikasi Grup')}
-        {tabBtn('individu', 'Data Individu')}
-      </div>
+      {!detailId && (
+        <div className="inline-flex w-full sm:w-auto p-1 bg-white border border-slate-200 rounded-xl shadow-xs gap-1">
+          {tabBtn('verifikasi', 'Verifikasi Grup')}
+          {tabBtn('individu', 'Data Individu')}
+        </div>
+      )}
 
       {tab === 'verifikasi' ? <Verifikasi /> : <RiwayatScan />}
     </div>

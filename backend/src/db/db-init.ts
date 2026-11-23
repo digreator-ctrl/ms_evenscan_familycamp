@@ -426,6 +426,25 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       db.prepare(`INSERT OR IGNORE INTO kas_pos (id, nama, tipe, deskripsi, aktif, urutan) VALUES ('pos_lain_lain', 'Lain-lain', 'pengeluaran', 'Pengeluaran lain yang belum berkategori', 1, 4)`),
     ]);
 
+    const WA_LUNAS_BODY = `بسم الله
+السلام عليكم ورحمة الله وبركاته
+Halo *{nama_pic}*,
+
+Alhamdulillah, pembayaran *{nama_acara}* Anda telah kami verifikasi *LUNAS* ✅
+
+Total Peserta: {jumlah_anggota} orang
+Total Pembayaran: {total}
+
+Silakan cek status pendaftaran dan unduh *ID/QR kehadiran* seluruh anggota melalui tautan berikut:
+🔗 {link_status}
+
+*Kode Akses Tiket:* {kode_akses}
+
+Mohon tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
+
+جزاكم الله خيرا
+_Panitia {nama_acara}_`;
+
     // Seed awal template WhatsApp
     await db.batch([
       db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_undangan_bayar', 'Undangan / Simpan Link Pembayaran',
@@ -458,24 +477,16 @@ Jika sudah transfer, mohon unggah bukti pembayaran pada tautan tersebut.
 
 جزاكم الله خيرا
 _Panitia {nama_acara}_', 1)`),
-      db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_lunas', 'Konfirmasi Lunas & Link Cek Status',
-        'بسم الله
-السلام عليكم ورحمة الله وبركاته
-Halo *{nama_pic}*,
-
-Alhamdulillah, pembayaran *{nama_acara}* Anda telah kami verifikasi *LUNAS* ✅
-
-Total Peserta: {jumlah_anggota} orang
-Total Pembayaran: {total}
-
-Silakan cek status pendaftaran dan unduh *ID/QR kehadiran* seluruh anggota melalui tautan berikut:
-🔗 {link_status}
-
-Mohon tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
-
-جزاكم الله خيرا
-_Panitia {nama_acara}_', 1)`),
+      db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_lunas', 'Konfirmasi Lunas & Link Cek Status', ?, 1)`).bind(WA_LUNAS_BODY),
     ]);
+
+    // Migrasi ringan: pastikan template lunas memuat kode akses pada DB yang sudah ada.
+    await db
+      .prepare(
+        `UPDATE wa_templates SET body = ? WHERE id = 'wa_lunas' AND (body IS NULL OR body NOT LIKE '%{kode_akses}%')`
+      )
+      .bind(WA_LUNAS_BODY)
+      .run();
 
     initialized = true;
     console.log('[DB] Family Camp tables initialized successfully.');

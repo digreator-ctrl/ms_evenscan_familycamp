@@ -2,17 +2,17 @@
 import Layout from '../layouts/Layout.astro';
 ---
 
-<Layout title="Cek Status Pendaftaran & Tiket QR - Muslim Scene">
+<Layout title="Cek Status & Tiket QR - Muslim Scene">
   <section class="py-12 sm:py-16">
-    <div class="max-w-xl mx-auto px-4">
+    <div class="max-w-2xl mx-auto px-4 space-y-6">
       <!-- Section Header -->
-      <div class="text-center mb-8">
+      <div class="text-center">
         <span class="inline-block px-3 py-1 bg-primary-100 text-primary-800 text-xs font-bold rounded-full uppercase tracking-wider mb-2">
           Portal Peserta
         </span>
         <h1 class="text-3xl font-black text-slate-900 tracking-tight">Cek Status & Tiket QR</h1>
         <p class="text-sm text-slate-500 mt-2 max-w-md mx-auto">
-          Periksa status verifikasi pendaftaran Anda dan unduh tiket QR Code kehadiran untuk ditunjukkan saat acara.
+          Masukkan kode akses yang dikirim panitia melalui WhatsApp untuk melihat status pendaftaran dan tiket QR seluruh anggota.
         </p>
       </div>
 
@@ -23,32 +23,30 @@ import Layout from '../layouts/Layout.astro';
         role="alert"
         aria-live="assertive"
       >
-        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-base font-bold">
-          ⚠️
-        </div>
+        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0 text-base font-bold">⚠️</div>
         <div class="flex-1">
           <p class="text-xs font-bold text-white" id="toastTitle">Kolom Belum Terisi</p>
           <p class="text-[11px] text-slate-300 mt-0.5 leading-snug" id="toastMessage">Harap masukkan kode akses tiket Anda.</p>
         </div>
       </div>
 
-      <!-- Search Card: 1 Kolom Kode Akses (NIP + 4 Digit Terakhir No WA) -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 mb-6">
+      <!-- Search Card -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6">
         <form id="formStatus" novalidate class="space-y-4">
           <div>
             <label for="inputKode" class="block text-xs font-bold text-slate-700 mb-1.5">
-              Nomor WhatsApp PIC, Token Pembayaran, atau Kode Akses Tiket
+              Kode Akses / Token Pembayaran / Nomor WhatsApp PIC
             </label>
             <input
               type="text"
               id="inputKode"
-              placeholder="Contoh: 081234567890 atau pay_xxxx atau ARN..."
+              placeholder="Contoh: pay_xxxx atau 081234567890"
               required
               class="w-full border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-mono tracking-wide"
             />
             <p class="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1">
               <span>💡</span>
-              <span>Masukkan nomor WhatsApp yang didaftarkan, link/token pembayaran, atau kode akses konfirmasi.</span>
+              <span>Gunakan kode akses pada pesan WhatsApp panitia, atau nomor WhatsApp PIC yang didaftarkan.</span>
             </p>
           </div>
 
@@ -60,7 +58,7 @@ import Layout from '../layouts/Layout.astro';
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <span>Periksa Status Kehadiran</span>
+            <span>Periksa Status & Tiket</span>
           </button>
         </form>
       </div>
@@ -71,123 +69,12 @@ import Layout from '../layouts/Layout.astro';
         <p class="text-sm font-medium text-slate-500">Mencari data pendaftaran...</p>
       </div>
 
-      <!-- Result 1: Status Menunggu Verifikasi -->
-      <div id="resultMenunggu" class="hidden bg-amber-50/80 border border-amber-200 rounded-3xl p-6 sm:p-8 text-center space-y-3">
-        <div class="w-16 h-16 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
-          ⏳
-        </div>
-        <h2 class="text-xl font-bold text-amber-900">Menunggu Verifikasi Panitia</h2>
-        <p class="text-sm text-amber-800/80 max-w-sm mx-auto leading-relaxed">
-          Pendaftaran Anda atas nama <strong id="namaMenunggu" class="text-amber-950"></strong> sudah masuk. Mohon tunggu, panitia sedang memeriksa bukti tangkapan layar Anda.
-        </p>
-        <div class="pt-2">
-          <span class="inline-block px-3 py-1 bg-amber-200/70 text-amber-900 rounded-full text-xs font-semibold">
-            Status: Menunggu Konfirmasi
-          </span>
-        </div>
-      </div>
-
-      <!-- Result 2: Status Dikonfirmasi (Kartu Hijau Lengkap) -->
-      <div id="resultDikonfirmasi" class="hidden space-y-4">
-        <!-- Kotak Penuh Desain Tiket Hijau -->
-        <div id="ticketCard" class="bg-emerald-50/90 border-2 border-emerald-300 rounded-3xl p-6 sm:p-8 text-center space-y-4 shadow-sm">
-          <div class="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold shadow-xs border border-emerald-200">
-            ✓
-          </div>
-          <div>
-            <span class="inline-block px-3 py-1 bg-emerald-200/80 text-emerald-900 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-              Terverifikasi & Diterima
-            </span>
-            <h2 class="text-2xl font-black text-slate-900">Tiket QR Code Kehadiran</h2>
-            <p class="text-xs font-bold text-emerald-700 tracking-wide mt-0.5">Muslim Scene Event</p>
-            <p id="pesertaNama" class="text-lg font-bold text-emerald-950 mt-2"></p>
-            <p id="pesertaInstansi" class="text-xs text-slate-600 mt-0.5"></p>
-          </div>
-
-          <!-- Frame Gambar QR Code Putih di Tengah -->
-          <div class="bg-white p-5 rounded-2xl inline-block shadow-sm border border-emerald-200/80 my-2">
-            <img id="qrImage" class="w-60 h-60 mx-auto rounded-lg object-contain" alt="QR Code Kehadiran" />
-            <p class="text-xs text-slate-500 mt-2 font-mono font-bold" id="qrTokenDisplay"></p>
-          </div>
-
-          <p class="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-            ⚠️ Simpan atau screenshot QR Code ini. Tunjukkan ke panitia di meja registrasi pada hari acara untuk dipindai.
-          </p>
-        </div>
-
-        <!-- Tombol Download Tiket Lengkap -->
-        <div class="flex flex-col sm:flex-row gap-3 justify-center pt-1">
-          <button
-            id="downloadQR"
-            type="button"
-            class="bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold px-6 py-3.5 rounded-xl transition duration-150 text-sm shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <span>📥</span>
-            <span id="downloadBtnText">Unduh Gambar Tiket Lengkap</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Result 3: Status Sudah Hadir -->
-      <div id="resultHadir" class="hidden bg-blue-50/80 border border-blue-200 rounded-3xl p-6 sm:p-8 text-center space-y-4">
-        <div class="w-16 h-16 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
-          🎉
-        </div>
-        <h2 class="text-2xl font-black text-blue-900">Anda Sudah Tercatat Hadir!</h2>
-        <p id="namaHadir" class="text-sm font-bold text-blue-900"></p>
-        <p class="text-xs text-blue-700 max-w-sm mx-auto leading-relaxed">
-          Absensi kehadiran Anda di lokasi acara telah berhasil divalidasi oleh panitia. Selamat mengikuti rangkaian acara!
-        </p>
-      </div>
-
-      <!-- Result 4: Status Ditolak -->
-      <div id="resultDitolak" class="hidden bg-rose-50/80 border border-rose-200 rounded-3xl p-6 sm:p-8 text-center space-y-3">
-        <div class="w-16 h-16 bg-rose-100 text-rose-700 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
-          ✕
-        </div>
-        <h2 class="text-xl font-bold text-rose-900">Pendaftaran Ditolak</h2>
-        <p class="text-sm text-rose-800/80 max-w-sm mx-auto">
-          Mohon maaf, pendaftaran Anda tidak dapat disetujui oleh panitia.
-        </p>
-        <div id="boxAlasan" class="bg-white/80 border border-rose-200/80 rounded-xl p-3 text-xs text-rose-700 font-medium max-w-sm mx-auto">
-          <span id="alasanTolak"></span>
-        </div>
-      </div>
-
-      <!-- Result 5: Status Pendaftaran Family Camp (Grup) -->
-      <div id="resultFamilyCamp" class="hidden bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-7 text-center space-y-4 shadow-sm">
-        <div class="w-14 h-14 bg-primary-100 text-primary-700 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
-          ⛺
-        </div>
-        <div>
-          <span id="fcStatusBadge" class="inline-block px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-            Status: Menunggu Pembayaran
-          </span>
-          <h2 class="text-xl font-black text-slate-900" id="fcPicNama">-</h2>
-          <p class="text-xs text-slate-500 mt-1" id="fcRincian">-</p>
-        </div>
-
-        <!-- Daftar Anggota & Status Tiket/Makan (muncul saat LUNAS) -->
-        <div id="fcAnggotaSection" class="hidden text-left space-y-2"></div>
-        <div class="pt-2">
-          <a
-            id="fcLinkPembayaran"
-            href="#"
-            class="inline-block w-full py-3.5 px-6 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-xs sm:text-sm transition shadow-md shadow-primary-600/20 active:scale-95"
-          >
-            Buka Halaman Pembayaran & Tiket Keluarga →
-          </a>
-        </div>
-      </div>
-
-      <!-- Result 6: Tidak Ditemukan -->
+      <!-- Result: Tidak Ditemukan -->
       <div id="resultNotFound" class="hidden bg-slate-100/90 border border-slate-200 rounded-3xl p-6 sm:p-8 text-center space-y-3">
-        <div class="w-16 h-16 bg-slate-200 text-slate-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">
-          🔍
-        </div>
+        <div class="w-16 h-16 bg-slate-200 text-slate-500 rounded-2xl flex items-center justify-center mx-auto text-2xl font-bold">🔍</div>
         <h2 class="text-lg font-bold text-slate-800">Data Tidak Ditemukan</h2>
         <p class="text-xs text-slate-500 max-w-xs mx-auto">
-          Data pendaftar dengan kode akses tersebut tidak ditemukan. Pastikan kode akses yang dimasukkan sesuai dengan pesan WhatsApp dari panitia.
+          Data pendaftaran dengan kode akses tersebut tidak ditemukan. Pastikan kode akses yang dimasukkan sesuai dengan pesan WhatsApp dari panitia.
         </p>
         <div class="pt-2">
           <a href="/daftar" class="inline-block bg-primary-600 hover:bg-primary-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition">
@@ -195,108 +82,291 @@ import Layout from '../layouts/Layout.astro';
           </a>
         </div>
       </div>
-    </div>
+
+      <!-- Result: Beberapa Pendaftaran (pilih salah satu) -->
+      <div id="resultList" class="hidden bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-center gap-2 pb-1">
+          <span class="text-xl">👥</span>
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Ditemukan beberapa pendaftaran dengan nomor ini
+          </p>
+        </div>
+        <div id="listContainer" class="space-y-2"></div>
+      </div>
+
+      <!-- Result: Status Grup Family Camp -->
+      <div id="resultGrup" class="hidden space-y-4">
+        <div class="bg-white border border-slate-200/90 rounded-3xl p-5 sm:p-7 shadow-sm space-y-5">
+          <!-- Status Banner -->
+          <div id="grupStatusBanner" class="rounded-2xl p-4 border"></div>
+
+          <!-- Info PIC & Grup -->
+          <div id="grupInfo" class="space-y-1.5"></div>
+
+          <!-- Daftar Anggota & Tiket QR -->
+          <div id="grupAnggota" class="space-y-3"></div>
+        </div>
+      </div>
   </section>
 
   <script>
-    function initStatusPage() {
-      const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
+    const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8787';
 
+    const SESI_LIST = [
+      { id: 'checkin', label: 'Check-in' },
+      { id: 'makan_sabtu_siang', label: 'Sbt Siang' },
+      { id: 'makan_sabtu_malam', label: 'Sbt Malam' },
+      { id: 'makan_ahad_pagi', label: 'Ahad Pagi' },
+    ];
+
+    function initStatusPage() {
       const form = document.getElementById('formStatus') as HTMLFormElement | null;
-      const inputKode = document.getElementById('inputKode') as HTMLInputElement | null;
+      const input = document.getElementById('inputKode') as HTMLInputElement | null;
       const loading = document.getElementById('loading');
+      const notFound = document.getElementById('resultNotFound');
+      const resultGrup = document.getElementById('resultGrup');
+      const resultList = document.getElementById('resultList');
+      const listContainer = document.getElementById('listContainer');
+      const grupStatusBanner = document.getElementById('grupStatusBanner');
+      const grupInfo = document.getElementById('grupInfo');
+      const grupAnggota = document.getElementById('grupAnggota');
+
       const toast = document.getElementById('toastAlert');
       const toastTitle = document.getElementById('toastTitle');
       const toastMessage = document.getElementById('toastMessage');
 
-      const resultMenunggu = document.getElementById('resultMenunggu');
-      const resultDikonfirmasi = document.getElementById('resultDikonfirmasi');
-      const resultDitolak = document.getElementById('resultDitolak');
-      const resultHadir = document.getElementById('resultHadir');
-      const resultNotFound = document.getElementById('resultNotFound');
-      const resultFamilyCamp = document.getElementById('resultFamilyCamp');
-      const fcStatusBadge = document.getElementById('fcStatusBadge');
-      const fcPicNama = document.getElementById('fcPicNama');
-      const fcRincian = document.getElementById('fcRincian');
-      const fcAnggotaSection = document.getElementById('fcAnggotaSection');
-      const fcLinkPembayaran = document.getElementById('fcLinkPembayaran') as HTMLAnchorElement | null;
-
-      const namaMenunggu = document.getElementById('namaMenunggu');
-      const pesertaNama = document.getElementById('pesertaNama');
-      const pesertaInstansi = document.getElementById('pesertaInstansi');
-      const qrImage = document.getElementById('qrImage') as HTMLImageElement | null;
-      const qrTokenDisplay = document.getElementById('qrTokenDisplay');
-      const namaHadir = document.getElementById('namaHadir');
-      const alasanTolak = document.getElementById('alasanTolak');
-      const downloadQR = document.getElementById('downloadQR');
-      const downloadBtnText = document.getElementById('downloadBtnText');
-
-      if (!form || !inputKode || !loading) return;
+      if (!form || !input || !resultGrup) return;
 
       let toastTimer: ReturnType<typeof setTimeout> | null = null;
-      function showToast(message = 'Harap lengkapi data periksa.', title = 'Kolom Belum Terisi', targetInput?: HTMLInputElement | null) {
+      function showToast(message: string, title = 'Kolom Wajib Diisi') {
         if (!toast) return;
         if (toastTitle) toastTitle.textContent = title;
         if (toastMessage) toastMessage.textContent = message;
-
         toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
         toast.classList.add('opacity-100', 'translate-y-0');
-
-        const el = targetInput || inputKode;
-        if (el) {
-          el.classList.add('border-amber-500', 'ring-2', 'ring-amber-500/30');
-          el.focus();
-        }
-
         if (toastTimer) clearTimeout(toastTimer);
-
         toastTimer = setTimeout(() => {
           toast.classList.remove('opacity-100', 'translate-y-0');
           toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
-          inputKode?.classList.remove('border-amber-500', 'ring-2', 'ring-amber-500/30');
         }, 3000);
       }
 
       function hideAll() {
-        [resultMenunggu, resultDikonfirmasi, resultDitolak, resultHadir, resultNotFound, resultFamilyCamp].forEach((el) =>
-          el?.classList.add('hidden')
-        );
+        notFound?.classList.add('hidden');
+        resultGrup.classList.add('hidden');
+        resultList?.classList.add('hidden');
       }
 
-      function renderFcAnggota(g: any) {
-        if (!fcAnggotaSection) return;
-        const anggota = Array.isArray(g.anggota) ? g.anggota : [];
-        const isLunas = g.status === 'lunas';
+      function formatRupiah(n: number): string {
+        return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
+      }
 
-        if (!isLunas || anggota.length === 0) {
-          fcAnggotaSection.classList.add('hidden');
-          fcAnggotaSection.innerHTML = '';
-          return;
+      function statusLabelOf(status: string): string {
+        const map: Record<string, string> = {
+          lunas: 'Lunas',
+          menunggu_verifikasi: 'Menunggu Verifikasi',
+          menunggu_pembayaran: 'Menunggu Pembayaran',
+          ditolak: 'Ditolak',
+          draft: 'Draft',
+        };
+        return map[status] || status;
+      }
+
+      function statusToneOf(status: string): string {
+        const map: Record<string, string> = {
+          lunas: 'bg-emerald-100 text-emerald-800',
+          menunggu_verifikasi: 'bg-sky-100 text-sky-800',
+          menunggu_pembayaran: 'bg-amber-100 text-amber-800',
+          ditolak: 'bg-rose-100 text-rose-800',
+          draft: 'bg-slate-100 text-slate-600',
+        };
+        return map[status] || 'bg-slate-100 text-slate-600';
+      }
+
+      function renderGroupList(groups: any[]) {
+        if (!listContainer) return;
+        listContainer.innerHTML = groups
+          .map((g, idx) => {
+            return `
+              <button type="button" data-idx="${idx}" class="list-item w-full text-left bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-2xl p-4 transition flex items-center justify-between gap-3 cursor-pointer">
+                <div class="min-w-0">
+                  <p class="text-xs font-mono font-black text-primary-700">${g.nomor_grup || g.id}</p>
+                  <p class="text-sm font-bold text-slate-900 truncate">${g.pic_nama}</p>
+                  <p class="text-[11px] text-slate-500">${g.tipe === 'keluarga' ? 'Keluarga' : 'Rombongan'} • ${g.jumlah_anggota} anggota</p>
+                </div>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${statusToneOf(g.status)}">${statusLabelOf(g.status)}</span>
+              </button>
+            `;
+          })
+          .join('');
+
+        listContainer.querySelectorAll('.list-item').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const idx = Number((btn as HTMLElement).dataset.idx);
+            const g = groups[idx];
+            if (g) {
+              renderGroup(g);
+              resultList?.classList.add('hidden');
+              resultGrup.classList.remove('hidden');
+            }
+          });
+        });
+      }
+
+      async function fetchGroup(query: string, byToken: boolean) {
+        hideAll();
+        loading?.classList.remove('hidden');
+        try {
+          const res = await fetch(`${API_URL}/api/peserta/status-grup?${query}`);
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.data || json.data.length === 0) {
+            throw new Error(json.error || 'Data tidak ditemukan');
+          }
+          if (!byToken && json.data.length > 1) {
+            renderGroupList(json.data);
+            resultList?.classList.remove('hidden');
+          } else {
+            renderGroup(json.data[0]);
+            resultGrup.classList.remove('hidden');
+          }
+        } catch (err: any) {
+          notFound?.classList.remove('hidden');
+        } finally {
+          loading?.classList.add('hidden');
+        }
+      }
+
+      function renderGroup(g: any) {
+        // 1. Status banner
+        if (grupStatusBanner) {
+          if (g.status === 'lunas') {
+            grupStatusBanner.className = 'rounded-2xl p-4 border border-emerald-200 bg-emerald-50 text-emerald-900';
+            grupStatusBanner.innerHTML = `
+              <div class="flex items-center gap-3">
+                <span class="text-3xl">✅</span>
+                <div>
+                  <span class="inline-block px-2.5 py-0.5 bg-emerald-200 text-emerald-800 rounded-md text-[10px] font-black uppercase tracking-wider mb-1">Status: LUNAS & TIKET TERBIT</span>
+                  <h2 class="text-base font-black text-emerald-950">Pembayaran Berhasil Dikonfirmasi</h2>
+                  <p class="text-xs text-emerald-700 mt-0.5">Tiket QR seluruh anggota sudah terbit. Simpan atau screenshot masing-masing QR Code untuk check-in dan jatah makan.</p>
+                </div>
+              </div>
+            `;
+          } else if (g.status === 'menunggu_verifikasi') {
+            grupStatusBanner.className = 'rounded-2xl p-4 border border-sky-200 bg-sky-50 text-sky-900';
+            grupStatusBanner.innerHTML = `
+              <div class="flex items-center gap-3">
+                <span class="text-3xl">⏳</span>
+                <div>
+                  <span class="inline-block px-2.5 py-0.5 bg-sky-200 text-sky-800 rounded-md text-[10px] font-black uppercase tracking-wider mb-1">Status: MENUNGGU VERIFIKASI</span>
+                  <h2 class="text-base font-black text-sky-950">Bukti Transfer Sedang Diverifikasi</h2>
+                  <p class="text-xs text-sky-700 mt-0.5">Panitia sedang memeriksa bukti transfer Anda. Tiket QR akan otomatis muncul di halaman ini setelah disetujui.</p>
+                </div>
+              </div>
+            `;
+          } else if (g.status === 'ditolak') {
+            grupStatusBanner.className = 'rounded-2xl p-4 border border-rose-200 bg-rose-50 text-rose-900';
+            grupStatusBanner.innerHTML = `
+              <div class="flex items-center gap-3">
+                <span class="text-3xl">❌</span>
+                <div>
+                  <span class="inline-block px-2.5 py-0.5 bg-rose-200 text-rose-800 rounded-md text-[10px] font-black uppercase tracking-wider mb-1">Status: PEMBAYARAN DITOLAK</span>
+                  <h2 class="text-base font-black text-rose-950">Verifikasi Pembayaran Ditolak</h2>
+                  <p class="text-xs text-rose-700 mt-0.5">${g.alasan_tolak || 'Bukti transfer tidak valid atau nominal tidak sesuai'}</p>
+                </div>
+              </div>
+            `;
+          } else {
+            grupStatusBanner.className = 'rounded-2xl p-4 border border-amber-200 bg-amber-50 text-amber-950';
+            grupStatusBanner.innerHTML = `
+              <div class="flex items-center gap-3">
+                <span class="text-3xl">🔔</span>
+                <div>
+                  <span class="inline-block px-2.5 py-0.5 bg-amber-200 text-amber-900 rounded-md text-[10px] font-black uppercase tracking-wider mb-1">Status: MENUNGGU PEMBAYARAN</span>
+                  <h2 class="text-base font-black text-amber-950">Langkah Terakhir: Pembayaran</h2>
+                  <p class="text-xs text-amber-800 mt-0.5">Segera transfer sebesar ${formatRupiah(g.grand_total)} lalu unggah bukti transfer untuk menerbitkan tiket QR.</p>
+                </div>
+              </div>
+            `;
+          }
         }
 
-        const sesi = [
-          { id: 'checkin', label: 'Check-in' },
-          { id: 'makan_sabtu_siang', label: 'Sbt Siang' },
-          { id: 'makan_sabtu_malam', label: 'Sbt Malam' },
-          { id: 'makan_ahad_pagi', label: 'Ahad Pagi' },
-        ];
+        // 2. Info PIC & Grup
+        if (grupInfo) {
+          const linkPembayaran = g.payment_token
+            ? `/pembayaran?token=${encodeURIComponent(g.payment_token)}`
+            : '#';
+          grupInfo.innerHTML = `
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="inline-block px-2.5 py-1 bg-primary-50 text-primary-700 border border-primary-200 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                  ${g.tipe === 'keluarga' ? 'Pendaftaran Keluarga' : 'Rombongan / Non-Keluarga'}
+                </span>
+                <h3 class="text-lg font-extrabold text-slate-900 mt-1.5">${g.pic_nama}</h3>
+                <p class="text-xs text-slate-500 font-mono">${g.nomor_grup || g.id}</p>
+              </div>
+              <div class="text-right">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Anggota</span>
+                <span class="text-lg font-black text-slate-800">${g.jumlah_anggota} orang</span>
+                <span class="text-[11px] text-slate-500 block">${formatRupiah(g.grand_total)}</span>
+              </div>
+            </div>
+            ${g.status === 'menunggu_pembayaran' ? `
+              <a href="${linkPembayaran}" class="mt-3 inline-flex w-full items-center justify-center gap-2 py-3 px-5 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-xl text-sm transition shadow-md shadow-primary-600/20">
+                <span>Buka Halaman Pembayaran & Upload Bukti</span>
+                <span>→</span>
+              </a>
+            ` : ''}
+          `;
+        }
 
+        // 3. Daftar Anggota & Tiket QR
+        if (grupAnggota) {
+          grupAnggota.innerHTML = renderAnggota(g);
+        }
+      }
+
+      function renderAnggota(g: any): string {
+        const anggota = Array.isArray(g.anggota) ? g.anggota : [];
+        if (anggota.length === 0) return '';
+
+        const heading = `<p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Daftar Anggota & Tiket QR</p>`;
+
+        if (g.status !== 'lunas') {
+          // Belum lunas: tampilkan daftar nama saja tanpa QR
+          const rows = anggota
+            .map((a: any) => `
+              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div class="flex items-center justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-xs font-mono font-black text-primary-700">${a.nomor_peserta || '-'}</p>
+                    <p class="text-sm font-bold text-slate-900 truncate">${a.nama}</p>
+                    <p class="text-[11px] text-slate-500">${a.peran || ''} • ${a.jenis_kelamin || ''}${a.usia != null ? ' • ' + a.usia + ' th' : ''}</p>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-400 shrink-0">QR menunggu verifikasi</span>
+                </div>
+              </div>
+            `)
+            .join('');
+          return heading + `<div class="space-y-2">${rows}</div>`;
+        }
+
+        // Lunas: tampilkan QR code per anggota
         const rows = anggota
           .map((a: any) => {
             const scan = a.scan_sesi || {};
             const noJatah = (a.is_gratis === 1 || a.is_gratis === true) && !(a.makan_dicover === 1 || a.makan_dicover === true);
-            const sesiBadges = sesi
-              .map((s) => {
-                if (s.id !== 'checkin' && noJatah) {
-                  return `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-400" title="Tanpa jatah makan">${s.label} —</span>`;
-                }
-                const done = !!scan[s.id];
-                return `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold ${done ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}">${done ? '✓' : '○'} ${s.label}</span>`;
-              })
-              .join(' ');
+            const qrUrl = a.qr_token ? `${API_URL}/api/peserta/qr/${a.qr_token}` : '';
+
+            const sesiBadges = SESI_LIST.map((s) => {
+              if (s.id !== 'checkin' && noJatah) {
+                return `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-400" title="Tanpa jatah makan">${s.label} —</span>`;
+              }
+              const done = !!scan[s.id];
+              return `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold ${done ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}">${done ? '✓' : '○'} ${s.label}</span>`;
+            }).join(' ');
 
             return `
-              <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
                 <div class="flex items-center justify-between gap-2">
                   <div class="min-w-0">
                     <p class="text-xs font-mono font-black text-primary-700">${a.nomor_peserta || '-'}</p>
@@ -305,390 +375,71 @@ import Layout from '../layouts/Layout.astro';
                   </div>
                   ${a.status_hadir === 'hadir' ? '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold shrink-0">✓ Hadir</span>' : ''}
                 </div>
-                <div class="flex flex-wrap gap-1 mt-2">${sesiBadges}</div>
-                ${noJatah ? '<p class="text-[10px] text-amber-700 mt-1">🍼 Balita gratis — jatah makan dicover orang tua.</p>' : ''}
+
+                ${qrUrl ? `
+                  <div class="flex items-center gap-4 mt-3">
+                    <div class="p-2 bg-white rounded-xl border border-slate-200 shrink-0">
+                      <img src="${qrUrl}" alt="QR ${a.nama}" class="w-28 h-28 object-contain" />
+                    </div>
+                    <div class="flex-1 min-w-0 space-y-2">
+                      <div class="flex flex-wrap gap-1">${sesiBadges}</div>
+                      ${noJatah ? '<p class="text-[10px] text-amber-700">🍼 Balita gratis — jatah makan dicover orang tua.</p>' : '<p class="text-[10px] text-slate-400">QR yang sama dipakai untuk check-in & jatah makan.</p>'}
+                      <a href="${qrUrl}?format=png" download="Tiket-${String(a.nama || a.id).replace(/\s+/g, '_')}.png" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[11px] font-bold rounded-lg transition">
+                        <span>📥 Unduh QR</span>
+                      </a>
+                    </div>
+                  </div>
+                ` : `
+                  <div class="mt-3 p-3 bg-white rounded-xl border border-slate-200 text-slate-400 text-[11px] font-semibold">
+                    QR Code sedang diproses panitia...
+                  </div>
+                `}
               </div>
             `;
           })
           .join('');
 
-        fcAnggotaSection.innerHTML = `
-          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Daftar Anggota & Tiket</p>
-          <div class="space-y-2">${rows}</div>
-        `;
-        fcAnggotaSection.classList.remove('hidden');
-      }
-
-      async function checkFamilyCamp(inputVal: string): Promise<boolean> {
-        try {
-          const res = await fetch(`${API_URL}/api/peserta/status-grup?wa=${encodeURIComponent(inputVal)}&token=${encodeURIComponent(inputVal)}`);
-          if (res.ok) {
-            const json = await res.json();
-            if (json.data && json.data.length > 0) {
-              const g = json.data[0];
-              if (fcPicNama) fcPicNama.textContent = `${g.tipe === 'keluarga' ? 'Keluarga' : 'Rombongan'} ${g.pic_nama}`;
-              if (fcRincian) fcRincian.textContent = `Total Anggota: ${g.jumlah_anggota} orang • Total Biaya: Rp ${g.grand_total.toLocaleString('id-ID')}`;
-              if (fcLinkPembayaran) fcLinkPembayaran.href = `/pembayaran?token=${encodeURIComponent(g.payment_token)}`;
-              
-              if (fcStatusBadge) {
-                if (g.status === 'lunas') {
-                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
-                  fcStatusBadge.textContent = 'Status: LUNAS & TIKET TERBIT ✓';
-                } else if (g.status === 'menunggu_verifikasi') {
-                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-sky-100 text-sky-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
-                  fcStatusBadge.textContent = 'Status: MENUNGGU VERIFIKASI PANITIA';
-                } else if (g.status === 'ditolak') {
-                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
-                  fcStatusBadge.textContent = 'Status: PEMBAYARAN DITOLAK';
-                } else {
-                  fcStatusBadge.className = 'inline-block px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase tracking-wider mb-2';
-                  fcStatusBadge.textContent = 'Status: MENUNGGU PEMBAYARAN';
-                }
-              }
-
-              resultFamilyCamp?.classList.remove('hidden');
-              renderFcAnggota(g);
-              return true;
-            }
-          }
-        } catch (err) {}
-        return false;
-      }
-
-      async function checkStatus(nipParam = '', wa4Param = '', waFullParam = '', kodeParam = '') {
-        if (!nipParam && !wa4Param && !waFullParam && !kodeParam) return;
-        hideAll();
-        loading?.classList.remove('hidden');
-
-        // Jika input berupa nomor WA / token langsung coba cek family camp dulu
-        const rawInput = kodeParam || waFullParam || '';
-        const digitsOnly = rawInput.replace(/\D/g, '');
-        if (digitsOnly.length >= 9 || rawInput.startsWith('pay_') || rawInput.startsWith('grp_')) {
-          const foundFc = await checkFamilyCamp(rawInput);
-          if (foundFc) {
-            loading?.classList.add('hidden');
-            return;
-          }
-        }
-
-        try {
-          let url = `${API_URL}/api/peserta/status`;
-          if (nipParam && wa4Param) {
-            url += `?nip=${encodeURIComponent(nipParam)}&wa4=${encodeURIComponent(wa4Param)}`;
-          } else if (waFullParam) {
-            url += `?wa=${encodeURIComponent(waFullParam)}`;
-          } else if (kodeParam) {
-            url += `?kode=${encodeURIComponent(kodeParam)}`;
-          }
-
-          const res = await fetch(url);
-          loading?.classList.add('hidden');
-
-          if (res.status === 404) {
-            // Fallback cek family camp jika ada
-            const foundFc = await checkFamilyCamp(kodeParam || waFullParam || '');
-            if (!foundFc) {
-              resultNotFound?.classList.remove('hidden');
-            }
-            return;
-          }
-
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            showToast(errData.error || 'Gagal memeriksa status kehadiran', 'Pemeriksaan Gagal');
-            resultNotFound?.classList.remove('hidden');
-            return;
-          }
-
-          const data = await res.json();
-
-          switch (data.status) {
-            case 'menunggu':
-              if (namaMenunggu) namaMenunggu.textContent = data.nama;
-              resultMenunggu?.classList.remove('hidden');
-              break;
-            case 'dikonfirmasi':
-              if (pesertaNama) pesertaNama.textContent = data.nama;
-              if (pesertaInstansi) pesertaInstansi.textContent = data.instansi ? `Asal: ${data.instansi}` : '';
-              if (qrImage) {
-                qrImage.src = `${API_URL}/api/peserta/qr/${data.qr_token}`;
-              }
-              if (qrTokenDisplay) qrTokenDisplay.textContent = `Token: ${data.qr_token}`;
-              resultDikonfirmasi?.classList.remove('hidden');
-              break;
-            case 'hadir':
-              if (namaHadir) namaHadir.textContent = data.nama;
-              resultHadir?.classList.remove('hidden');
-              break;
-            case 'ditolak':
-              if (alasanTolak) alasanTolak.textContent = data.alasan_tolak ? `Catatan: ${data.alasan_tolak}` : 'Tidak memenuhi kualifikasi';
-              resultDitolak?.classList.remove('hidden');
-              break;
-            default:
-              resultNotFound?.classList.remove('hidden');
-          }
-        } catch (err) {
-          loading?.classList.add('hidden');
-          resultNotFound?.classList.remove('hidden');
-        }
+        return heading + `<div class="space-y-2.5">${rows}</div>`;
       }
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const rawKode = inputKode.value.trim();
-        const cleanKode = rawKode.replace(/[()]/g, '').trim();
-
-        if (!cleanKode) {
-          showToast('Harap masukkan nomor WhatsApp, token pembayaran, atau kode akses tiket Anda.', 'Kolom Wajib Diisi', inputKode);
+        const val = input.value.trim();
+        if (!val) {
+          showToast('Masukkan kode akses / token pembayaran / nomor WhatsApp PIC Anda.');
+          input.focus();
           return;
         }
 
-        const digitsOnly = cleanKode.replace(/\D/g, '');
-        const isPhoneNumber = digitsOnly.length >= 9 && (cleanKode.startsWith('08') || cleanKode.startsWith('62') || cleanKode.startsWith('+62'));
-        const isPaymentToken = cleanKode.startsWith('pay_') || cleanKode.startsWith('grp_');
+        const isToken = val.startsWith('pay_') || val.startsWith('grp_');
+        const query = isToken ? `token=${encodeURIComponent(val)}` : `wa=${encodeURIComponent(val)}`;
 
-        if (isPhoneNumber || isPaymentToken) {
-          // Update URL tanpa reload
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.set('wa', cleanKode);
-          window.history.pushState({}, '', newUrl.toString());
-          checkStatus('', '', cleanKode, cleanKode);
-          return;
-        }
-
-        if (cleanKode.length < 5) {
-          showToast('Kode akses harus berisi gabungan NIP dan 4 digit terakhir nomor WhatsApp, atau masukkan nomor WhatsApp lengkap.', 'Format Tidak Sesuai', inputKode);
-          return;
-        }
-
-        const wa4Val = cleanKode.slice(-4);
-        const nipVal = cleanKode.slice(0, -4).trim();
-
-        // Update URL tanpa reload
         const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('kode', cleanKode);
-        newUrl.searchParams.delete('nip');
-        newUrl.searchParams.delete('wa4');
-        newUrl.searchParams.delete('wa');
+        newUrl.search = '';
+        newUrl.searchParams.set(isToken ? 'token' : 'wa', val);
         window.history.pushState({}, '', newUrl.toString());
 
-        checkStatus(nipVal, wa4Val, '', cleanKode);
+        fetchGroup(query, isToken);
       });
 
-      // Generator Gambar Tiket Lengkap (Desain Kotak Penuh Kartu Hijau)
-      async function generateFullTicketBlob(): Promise<Blob> {
-        const canvas = document.createElement('canvas');
-        const width = 800;
-        const height = 1040;
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Canvas 2D tidak tersedia');
-
-        // Background putih kanvas luar
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, width, height);
-
-        // Card background hijau lembut (#f0fdf4)
-        const margin = 24;
-        const cardW = width - margin * 2;
-        const cardH = height - margin * 2;
-        const cardRadius = 36;
-
-        ctx.save();
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(margin, margin, cardW, cardH, cardRadius);
-        } else {
-          ctx.rect(margin, margin, cardW, cardH);
-        }
-        ctx.fillStyle = '#f0fdf4'; // emerald-50
-        ctx.fill();
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = '#86efac'; // emerald-300
-        ctx.stroke();
-        ctx.restore();
-
-        // 1. Icon Box Centang Hijau
-        const iconSize = 70;
-        const iconX = width / 2 - iconSize / 2;
-        const iconY = 65;
-        ctx.save();
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(iconX, iconY, iconSize, iconSize, 20);
-        } else {
-          ctx.rect(iconX, iconY, iconSize, iconSize);
-        }
-        ctx.fillStyle = '#d1fae5'; // emerald-100
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#a7f3d0';
-        ctx.stroke();
-
-        ctx.fillStyle = '#059669'; // emerald-600
-        ctx.font = 'bold 36px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('✓', width / 2, iconY + iconSize / 2);
-        ctx.restore();
-
-        // 2. Badge Status: "TERVERIFIKASI & DITERIMA"
-        const badgeY = 160;
-        const badgeW = 240;
-        const badgeH = 34;
-        ctx.save();
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(width / 2 - badgeW / 2, badgeY, badgeW, badgeH, 17);
-        } else {
-          ctx.rect(width / 2 - badgeW / 2, badgeY, badgeW, badgeH);
-        }
-        ctx.fillStyle = '#d1fae5';
-        ctx.fill();
-        ctx.fillStyle = '#065f46';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('TERVERIFIKASI & DITERIMA', width / 2, badgeY + badgeH / 2);
-        ctx.restore();
-
-        // 3. Judul: "Tiket QR Code Kehadiran" & Acara
-        ctx.fillStyle = '#0f172a'; // slate-900
-        ctx.font = '900 28px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'alphabetic';
-        ctx.fillText('Tiket QR Code Kehadiran', width / 2, 230);
-
-        ctx.fillStyle = '#059669'; // emerald-600
-        ctx.font = 'bold 14px sans-serif';
-        ctx.fillText('Muslim Scene Event', width / 2, 256);
-
-        // 4. Nama Peserta & Asal/Instansi
-        const nama = pesertaNama?.textContent || 'Peserta';
-        const instansi = pesertaInstansi?.textContent || '';
-        ctx.fillStyle = '#064e3b'; // emerald-950
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(nama, width / 2, 292);
-
-        if (instansi) {
-          ctx.fillStyle = '#64748b'; // slate-500
-          ctx.font = '14px sans-serif';
-          ctx.fillText(instansi, width / 2, 318);
-        }
-
-        // 5. White Box Frame untuk QR Code
-        const qrBoxW = 420;
-        const qrBoxH = 450;
-        const qrBoxX = width / 2 - qrBoxW / 2;
-        const qrBoxY = instansi ? 335 : 320;
-        ctx.save();
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(qrBoxX, qrBoxY, qrBoxW, qrBoxH, 24);
-        } else {
-          ctx.rect(qrBoxX, qrBoxY, qrBoxW, qrBoxH);
-        }
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = '#e2e8f0';
-        ctx.stroke();
-        ctx.restore();
-
-        // 6. Draw QR Code Image via local blob URL
-        if (qrImage && qrImage.src) {
-          const res = await fetch(qrImage.src);
-          const blob = await res.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          const img = new Image();
-          img.src = blobUrl;
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-          });
-
-          const qrDrawSize = 330;
-          const qrDrawX = width / 2 - qrDrawSize / 2;
-          const qrDrawY = qrBoxY + 30;
-          ctx.drawImage(img, qrDrawX, qrDrawY, qrDrawSize, qrDrawSize);
-          URL.revokeObjectURL(blobUrl);
-        }
-
-        // Token QR Text
-        const tokenText = qrTokenDisplay?.textContent || '';
-        ctx.fillStyle = '#64748b';
-        ctx.font = 'bold 14px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(tokenText, width / 2, qrBoxY + qrBoxH - 35);
-
-        // 7. Advisory Text
-        const noticeY = qrBoxY + qrBoxH + 42;
-        ctx.fillStyle = '#475569';
-        ctx.font = '13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('⚠️ Simpan atau screenshot QR Code ini. Tunjukkan ke panitia', width / 2, noticeY);
-        ctx.fillText('di meja registrasi pada hari acara untuk dipindai.', width / 2, noticeY + 22);
-
-        // 8. Footer Branding
-        ctx.fillStyle = '#06305d';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText('Muslim Scene • EvenScan System', width / 2, height - margin - 18);
-
-        return new Promise((resolve, reject) => {
-          canvas.toBlob((b) => {
-            if (b) resolve(b);
-            else reject(new Error('Gagal mengekspor blob kanvas'));
-          }, 'image/png');
-        });
-      }
-
-      downloadQR?.addEventListener('click', async () => {
-        if (!qrImage || !qrImage.src) return;
-        try {
-          if (downloadBtnText) downloadBtnText.textContent = 'Membuat Gambar Tiket...';
-          downloadQR.setAttribute('disabled', 'true');
-
-          const blob = await generateFullTicketBlob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          const namaFile = pesertaNama?.textContent?.replace(/\s+/g, '-').toLowerCase() || 'kehadiran';
-          a.download = `tiket-lengkap-${namaFile}.png`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(url);
-        } catch (err: any) {
-          console.error('Download ticket error:', err);
-          showToast('Gagal memproses gambar tiket lengkap, mencoba unduh QR langsung.', 'Gagal Buat Tiket');
-          window.open(qrImage.src, '_blank');
-        } finally {
-          if (downloadBtnText) downloadBtnText.textContent = 'Unduh Gambar Tiket Lengkap';
-          downloadQR?.removeAttribute('disabled');
-        }
-      });
-
-      // Auto-search jika ada parameter di URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const kodeParam = urlParams.get('kode');
-      const nipParam = urlParams.get('nip');
-      const wa4Param = urlParams.get('wa4');
-      const waParam = urlParams.get('wa');
-
-      if (kodeParam) {
-        inputKode.value = kodeParam;
-        const clean = kodeParam.replace(/[()]/g, '').trim();
-        checkStatus(clean.slice(0, -4), clean.slice(-4), '', clean);
-      } else if (nipParam && wa4Param) {
-        const combined = `${nipParam}${wa4Param}`;
-        inputKode.value = combined;
-        checkStatus(nipParam, wa4Param, '', combined);
+      // Auto-search dari parameter URL
+      const params = new URLSearchParams(window.location.search);
+      const tokenParam = params.get('token');
+      const waParam = params.get('wa');
+      if (tokenParam) {
+        input.value = tokenParam;
+        fetchGroup(`token=${encodeURIComponent(tokenParam)}`, true);
       } else if (waParam) {
-        checkStatus('', '', waParam);
+        input.value = waParam;
+        fetchGroup(`wa=${encodeURIComponent(waParam)}`, false);
       }
     }
 
     document.addEventListener('astro:page-load', initStatusPage);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initStatusPage);
+    } else {
+      initStatusPage();
+    }
   </script>
 </Layout>

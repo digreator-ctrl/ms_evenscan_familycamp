@@ -291,7 +291,7 @@ export function Scanner() {
           </p>
         </div>
         <Link
-          to="/riwayat-scan"
+          to="/peserta?tab=individu"
           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-xs transition active:scale-95 shrink-0"
         >
           <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

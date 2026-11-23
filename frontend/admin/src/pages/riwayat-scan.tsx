@@ -201,7 +201,7 @@ export function RiwayatScan() {
             {data.map((d) => (
               <div
                 key={d.id}
-                onClick={() => navigate(`/riwayat-scan/${d.id}`)}
+                onClick={() => navigate(`/peserta/anggota/${d.id}`)}
                 className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs active:bg-slate-50 transition cursor-pointer"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -255,7 +255,7 @@ export function RiwayatScan() {
                   {data.map((d) => (
                     <tr
                       key={d.id}
-                      onClick={() => navigate(`/riwayat-scan/${d.id}`)}
+                      onClick={() => navigate(`/peserta/anggota/${d.id}`)}
                       className="hover:bg-slate-50/70 cursor-pointer transition"
                     >
                       <td className="py-3 px-4 font-mono font-bold text-[#06305d] whitespace-nowrap">{d.nomor_peserta}</td>

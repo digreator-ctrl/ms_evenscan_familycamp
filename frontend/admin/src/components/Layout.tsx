@@ -78,16 +78,19 @@ export function Layout() {
               <span>Dashboard</span>
             </Link>
 
-            {/* 2. Scan History */}
+            {/* 2. Peserta (Verifikasi Grup + Data Individu) */}
             <Link
-              to="/riwayat-scan"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs transition duration-150 ${isActiveDesktop('/riwayat-scan')}`}
+              to="/peserta"
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs transition duration-150 ${
+                location.pathname.startsWith('/peserta')
+                  ? 'bg-white/15 text-white font-bold border border-white/20 shadow-xs'
+                  : 'text-sky-100/80 hover:bg-white/10 hover:text-white font-medium'
+              }`}
             >
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 3v2m6-2v2M4 11a9 9 0 0116 0" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z" />
               </svg>
-              <span>Data Peserta</span>
+              <span>Peserta</span>
             </Link>
 
             {/* 3. Fast Action Scan */}
@@ -102,18 +105,7 @@ export function Layout() {
               <span>Fast Action Scan</span>
             </Link>
 
-            {/* 4. Verification */}
-            <Link
-              to="/verifikasi"
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs transition duration-150 ${isActiveDesktop('/verifikasi')}`}
-            >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Verification</span>
-            </Link>
-
-            {/* 5. Kelola Add-on */}
+            {/* 4. Kelola Add-on */}
             <Link
               to="/kelola-addon"
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-xs transition duration-150 ${isActiveDesktop('/kelola-addon')}`}
@@ -263,30 +255,23 @@ export function Layout() {
               )}
             </Link>
 
-            {/* 2. Tab Riwayat Scan */}
+            {/* 2. Tab Peserta (Verifikasi Grup + Data Individu) */}
             <Link
-              to="/riwayat-scan"
+              to="/peserta"
               className={`flex flex-col items-center justify-center flex-1 py-1 transition duration-150 active:scale-90 ${
-                location.pathname === '/riwayat-scan' ? 'text-[#06305d]' : 'text-slate-400 hover:text-slate-600'
+                location.pathname.startsWith('/peserta') ? 'text-[#06305d]' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={location.pathname === '/riwayat-scan' ? '2.4' : '1.8'}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={location.pathname === '/riwayat-scan' ? '2.4' : '1.8'}
-                  d="M9 3v2m6-2v2M4 11a9 9 0 0116 0"
+                  strokeWidth={location.pathname.startsWith('/peserta') ? '2.4' : '1.8'}
+                  d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4z"
                 />
               </svg>
               <span className="text-[9.5px] font-semibold tracking-tight mt-0.5">Peserta</span>
-              {/* Indikator Dot di Bawah Ikon Aktif */}
-              {location.pathname === '/riwayat-scan' ? (
+              {location.pathname.startsWith('/peserta') ? (
                 <span className="w-1.5 h-1.5 bg-[#06305d] rounded-full mt-0.5" />
               ) : (
                 <span className="w-1.5 h-1.5 mt-0.5 opacity-0" />
@@ -336,29 +321,32 @@ export function Layout() {
               </div>
             </div>
 
-            {/* 4. Tab Verifikasi */}
-            <Link
-              to="/verifikasi"
-              className={`flex flex-col items-center justify-center flex-1 py-1 transition duration-150 active:scale-90 ${
-                location.pathname === '/verifikasi' ? 'text-[#06305d]' : 'text-slate-400 hover:text-slate-600'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={location.pathname === '/verifikasi' ? '2.4' : '1.8'}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <span className="text-[9.5px] font-semibold tracking-tight mt-0.5">Verification</span>
-              {/* Indikator Dot di Bawah Ikon Aktif */}
-              {location.pathname === '/verifikasi' ? (
-                <span className="w-1.5 h-1.5 bg-[#06305d] rounded-full mt-0.5" />
-              ) : (
-                <span className="w-1.5 h-1.5 mt-0.5 opacity-0" />
-              )}
-            </Link>
+            {/* 4. Tab Keuangan (bila berhak) — jika tidak, spacer agar simetri tetap */}
+            {canKeuangan ? (
+              <Link
+                to="/keuangan"
+                className={`flex flex-col items-center justify-center flex-1 py-1 transition duration-150 active:scale-90 ${
+                  location.pathname === '/keuangan' ? 'text-[#06305d]' : 'text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={location.pathname === '/keuangan' ? '2.4' : '1.8'}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V6m0 12v-2m0 0c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="text-[9.5px] font-semibold tracking-tight mt-0.5">Keuangan</span>
+                {location.pathname === '/keuangan' ? (
+                  <span className="w-1.5 h-1.5 bg-[#06305d] rounded-full mt-0.5" />
+                ) : (
+                  <span className="w-1.5 h-1.5 mt-0.5 opacity-0" />
+                )}
+              </Link>
+            ) : (
+              <div className="flex-1 py-1" aria-hidden="true" />
+            )}
 
             {/* 5. Tab Settings */}
             <Link

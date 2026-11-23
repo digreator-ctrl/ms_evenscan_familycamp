@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+
 function readRole(): string {
   try {
     const raw = localStorage.getItem('user');
@@ -22,12 +24,31 @@ export function Layout() {
 
   const canKeuangan = role === 'superadmin' || role === 'bendahara';
 
-  // Proteksi rute admin
+  // Proteksi rute admin + validasi token (deteksi token usang/kedaluwarsa)
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
       navigate('/login');
+      return;
     }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/admin/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok && !cancelled) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          navigate('/login');
+        }
+      } catch {
+        /* gangguan jaringan: jangan paksa logout */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [navigate]);
 
   const isActiveDesktop = (path: string) =>

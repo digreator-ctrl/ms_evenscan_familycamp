@@ -16,7 +16,8 @@
     "build:backend": "pnpm --filter backend build",
     "build:peserta": "pnpm --filter peserta build",
     "build:admin": "pnpm --filter admin build",
-    "build": "pnpm build:backend && pnpm build:peserta && pnpm build:admin"
+    "build": "pnpm build:backend && pnpm build:peserta && pnpm build:admin",
+    "seed:admin": "pnpm --filter backend seed:admin"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

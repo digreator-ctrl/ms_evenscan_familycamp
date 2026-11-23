@@ -36,6 +36,13 @@ Atau menjalankan per layanan:
 - **Situs Peserta**: `pnpm dev:peserta` *(berjalan di `http://localhost:3001`)*
 - **Dashboard Admin**: `pnpm dev:admin` *(berjalan di `http://localhost:3002`)*
 
+### 3b. Seed Admin Lokal (wajib sekali di DB lokal)
+Akun admin **tidak** dibuat otomatis (demi keamanan). Untuk DB lokal (`wrangler dev`), buat akun dev dengan:
+```bash
+pnpm seed:admin
+```
+Lalu login di `http://localhost:3002/login` dengan **admin / admin123** (khusus lokal).
+
 ### 4. Menjalankan Test Suite Otomatis
 Backend sudah dilengkapi dengan pengujian integrasi otomatis 10 langkah (health check, pendaftaran, cek status, login admin, konfirmasi, download QR binary, scan absensi, dan deteksi scan duplikat):
 ```bash
@@ -71,6 +78,8 @@ flowchart TD
 ---
 
 ## 🔑 Akun Default Login Admin (Development)
+
+> Jalankan `pnpm seed:admin` sekali untuk membuat akun ini di DB **lokal**.
 
 - **URL Dashboard Admin**: `http://localhost:3002/login`
 - **Username**: `admin`

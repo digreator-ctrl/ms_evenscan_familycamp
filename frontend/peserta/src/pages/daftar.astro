@@ -281,7 +281,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
               />
             </div>
 
-            <!-- Domisili Asal (Provinsi & Kota/Kabupaten) -->
+            <!-- Domisili Asal (Provinsi & Kota/Kabupaten) — bisa diketik bebas -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
                 <label
@@ -290,19 +290,20 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 >
                   Provinsi Asal <span class="text-rose-500">*</span>
                 </label>
-                <select
+                <input
                   id="pic_provinsi"
                   name="pic_provinsi"
                   required
-                  class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition text-slate-800 font-medium cursor-pointer"
-                >
-                  <option value="" disabled selected>
-                    Pilih Provinsi...
-                  </option>
+                  list="listProvinsi"
+                  autocomplete="off"
+                  placeholder="Ketik atau pilih provinsi..."
+                  class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition text-slate-800 font-medium"
+                />
+                <datalist id="listProvinsi">
                   {LIST_PROVINSI.map((prov) => (
-                    <option value={prov}>{prov}</option>
+                    <option value={prov} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div>
@@ -312,17 +313,16 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 >
                   Kota / Kabupaten <span class="text-rose-500">*</span>
                 </label>
-                <select
+                <input
                   id="pic_kota"
                   name="pic_kota"
                   required
-                  disabled
-                  class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-xs sm:text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition text-slate-800 font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="" disabled selected>
-                    Pilih Provinsi terlebih dahulu...
-                  </option>
-                </select>
+                  list="listKota"
+                  autocomplete="off"
+                  placeholder="Ketik atau pilih kota/kabupaten..."
+                  class="w-full border border-slate-300 rounded-xl px-3.5 py-3 text-xs sm:text-sm bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition text-slate-800 font-medium"
+                />
+                <datalist id="listKota"></datalist>
               </div>
             </div>
           </div>
@@ -1102,46 +1102,47 @@ import { LIST_PROVINSI } from "../data/wilayah";
     }
 
     function setupWilayahSelector() {
-      const picProvinsiSelect = document.getElementById(
+      const picProvinsiInput = document.getElementById(
         "pic_provinsi",
-      ) as HTMLSelectElement | null;
-      const picKotaSelect = document.getElementById(
+      ) as HTMLInputElement | null;
+      const picKotaInput = document.getElementById(
         "pic_kota",
-      ) as HTMLSelectElement | null;
+      ) as HTMLInputElement | null;
+      const listKota = document.getElementById(
+        "listKota",
+      ) as HTMLDataListElement | null;
 
-      if (!picProvinsiSelect || !picKotaSelect) return;
+      if (!picProvinsiInput || !picKotaInput) return;
 
-      picProvinsiSelect.addEventListener("change", () => {
-        clearInvalid(picProvinsiSelect);
-        const prov = picProvinsiSelect.value;
+      // Isi saran kota berdasarkan provinsi yang diketik (bila cocok dengan data wilayah).
+      const refreshKotaSuggestions = () => {
+        if (!listKota) return;
+        const prov = picProvinsiInput.value.trim();
         const kotaList = DATA_WILAYAH[prov] || [];
+        listKota.innerHTML = kotaList
+          .map((kota) => `<option value="${kota}"></option>`)
+          .join("");
+      };
 
-        if (kotaList.length === 0) {
-          picKotaSelect.innerHTML =
-            '<option value="" disabled selected>Pilih Provinsi terlebih dahulu...</option>';
-          picKotaSelect.disabled = true;
-          picKotaSelect.classList.add(
-            "bg-slate-50",
-            "disabled:opacity-50",
-            "disabled:cursor-not-allowed",
-          );
-        } else {
-          picKotaSelect.disabled = false;
-          picKotaSelect.classList.remove(
-            "bg-slate-50",
-            "disabled:opacity-50",
-            "disabled:cursor-not-allowed",
-          );
-          picKotaSelect.innerHTML = `
-            <option value="" disabled selected>Pilih Kota / Kabupaten...</option>
-            ${kotaList.map((kota) => `<option value="${kota}">${kota}</option>`).join("")}
-          `;
-        }
-        clearInvalid(picKotaSelect);
+      // Saran awal: gabungan semua kota agar peserta tetap bisa memilih meski provinsi belum pas.
+      if (listKota && !listKota.childElementCount) {
+        const allKota = new Set<string>();
+        Object.values(DATA_WILAYAH).forEach((arr) =>
+          (arr as string[]).forEach((k) => allKota.add(k)),
+        );
+        listKota.innerHTML = Array.from(allKota)
+          .sort()
+          .map((kota) => `<option value="${kota}"></option>`)
+          .join("");
+      }
+
+      picProvinsiInput.addEventListener("input", () => {
+        clearInvalid(picProvinsiInput);
+        refreshKotaSuggestions();
       });
 
-      picKotaSelect.addEventListener("change", () => {
-        clearInvalid(picKotaSelect);
+      picKotaInput.addEventListener("input", () => {
+        clearInvalid(picKotaInput);
       });
     }
 
@@ -1254,18 +1255,18 @@ import { LIST_PROVINSI } from "../data/wilayah";
       ) as HTMLInputElement | null;
       const picProvinsiSelect = document.getElementById(
         "pic_provinsi",
-      ) as HTMLSelectElement | null;
+      ) as HTMLInputElement | null;
       const picKotaSelect = document.getElementById(
         "pic_kota",
-      ) as HTMLSelectElement | null;
+      ) as HTMLInputElement | null;
 
       if (picProvinsiSelect) {
-        picProvinsiSelect.addEventListener("change", () =>
+        picProvinsiSelect.addEventListener("input", () =>
           clearInvalid(picProvinsiSelect),
         );
       }
       if (picKotaSelect) {
-        picKotaSelect.addEventListener("change", () =>
+        picKotaSelect.addEventListener("input", () =>
           clearInvalid(picKotaSelect),
         );
       }
@@ -1403,13 +1404,13 @@ import { LIST_PROVINSI } from "../data/wilayah";
             return;
           }
 
-          // Set nama anggota pertama otomatis sama dengan PIC jika masih kosong
-          if (anggotaData[0] && !anggotaData[0].nama) {
+          // Peserta #1 = PIC: nama selalu mengikuti data PIC dan tidak bisa diubah di langkah biodata
+          if (anggotaData[0]) {
             anggotaData[0].nama = picNama;
-            renderAnggotaForms();
           }
 
           goToStep(2);
+          renderAnggotaForms();
           checkKeluargaConstraint();
         };
       }
@@ -1779,7 +1780,20 @@ import { LIST_PROVINSI } from "../data/wilayah";
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
                   Nama Lengkap <span class="text-rose-500">*</span>
+                  ${idx === 0 ? '<span class="text-[10px] text-primary-600 font-semibold ml-1">(dari data PIC, tidak bisa diubah)</span>' : ""}
                 </label>
+                ${
+                  idx === 0
+                    ? `
+                <input
+                  type="text"
+                  readonly
+                  value="${(document.getElementById("pic_nama") as HTMLInputElement | null)?.value.trim() || a.nama}"
+                  placeholder="Nama Peserta"
+                  class="input-nama w-full border border-slate-200 bg-slate-100 text-slate-700 font-semibold rounded-xl px-3.5 py-2.5 text-xs cursor-not-allowed select-none"
+                />
+                `
+                    : `
                 <input
                   type="text"
                   required
@@ -1787,6 +1801,8 @@ import { LIST_PROVINSI } from "../data/wilayah";
                   placeholder="Nama Peserta"
                   class="input-nama w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition"
                 />
+                `
+                }
               </div>
 
               <!-- Peran / Status -->
@@ -2305,10 +2321,10 @@ import { LIST_PROVINSI } from "../data/wilayah";
         document.getElementById("pic_whatsapp") as HTMLInputElement
       ).value.trim();
       const picProvinsi =
-        (document.getElementById("pic_provinsi") as HTMLSelectElement)?.value ||
+        (document.getElementById("pic_provinsi") as HTMLInputElement)?.value.trim() ||
         "";
       const picKota =
-        (document.getElementById("pic_kota") as HTMLSelectElement)?.value || "";
+        (document.getElementById("pic_kota") as HTMLInputElement)?.value.trim() || "";
 
       const rekapTipe = document.getElementById("rekapTipe");
       if (rekapTipe)
@@ -2451,10 +2467,10 @@ import { LIST_PROVINSI } from "../data/wilayah";
         ) as HTMLInputElement | null;
         const picProvinsiSelect = document.getElementById(
           "pic_provinsi",
-        ) as HTMLSelectElement | null;
+        ) as HTMLInputElement | null;
         const picKotaSelect = document.getElementById(
           "pic_kota",
-        ) as HTMLSelectElement | null;
+        ) as HTMLInputElement | null;
 
         const picNama = (picNamaInput?.value || "").trim();
         const picWa = (picWaInput?.value || "").replace(/\D/g, "");

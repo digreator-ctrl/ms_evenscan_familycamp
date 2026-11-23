@@ -84,8 +84,9 @@ absensiRoutes.get('/stats', async (c) => {
       const kat = getKategoriUsia(a.usia);
       breakdownUsia[kat] = (breakdownUsia[kat] || 0) + 1;
 
-      // Gender
-      const g = a.jenis_kelamin === 'L' ? 'L' : a.jenis_kelamin === 'P' ? 'P' : 'tidak_diketahui';
+      // Gender (DB menyimpan 'Ikhwan'/'Akhwat'; dukung juga 'L'/'P')
+      const jk = String(a.jenis_kelamin || '').toLowerCase();
+      const g = jk === 'ikhwan' || jk === 'l' ? 'L' : jk === 'akhwat' || jk === 'p' ? 'P' : 'tidak_diketahui';
       breakdownGender[g] = (breakdownGender[g] || 0) + 1;
 
       // Bayar
@@ -142,9 +143,14 @@ absensiRoutes.get('/stats', async (c) => {
       breakdown_grup_status: breakdownGrupStatus,
       kehadiran,
       persentase_checkin: persentaseCheckin,
-      // Backward compatibility
       sudah_hadir: totalHadir,
       belum_hadir: totalDariGrupLunas - totalHadir,
+      // Backward compatibility untuk Dashboard lama
+      total: anggotaList.length,
+      menunggu: breakdownGrupStatus.menunggu_verifikasi || 0,
+      dikonfirmasi: totalDariGrupLunas,
+      ditolak: breakdownGrupStatus.ditolak || 0,
+      hadir: totalHadir,
     });
   } catch (err: any) {
     console.error('Error stats absensi:', err);

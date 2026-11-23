@@ -1001,10 +1001,12 @@ adminRoutes.get('/anggota', async (c) => {
       }
     }
 
-    // Filter: jenis kelamin
+    // Filter: jenis kelamin (DB menyimpan 'Ikhwan'/'Akhwat'; terima juga 'L'/'P')
     if (jenisKelamin && jenisKelamin !== 'semua') {
+      const jkMap: Record<string, string> = { L: 'Ikhwan', P: 'Akhwat', Ikhwan: 'Ikhwan', Akhwat: 'Akhwat' };
+      const jkValue = jkMap[jenisKelamin] || jenisKelamin;
       sql += ` AND a.jenis_kelamin = ?`;
-      params.push(jenisKelamin);
+      params.push(jkValue);
     }
 
     // Filter: is_gratis

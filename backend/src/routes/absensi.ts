@@ -4,6 +4,7 @@ import {
   getKategoriUsia,
   getKategoriUsiaLabel,
   isBerbayar,
+  dapatJatahMakan,
   KATEGORI_USIA,
   SESI_MAKAN,
   isSesiScanValid,
@@ -217,6 +218,234 @@ absensiRoutes.get('/stats-grup', async (c) => {
   } catch (err: any) {
     console.error('Error stats grup:', err);
     return c.json({ error: 'Gagal memuat statistik grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * GET /api/absensi/dashboard
+ * Ringkasan dashboard admin bertab: pembayaran & grup, peserta, kehadiran & konsumsi.
+ *
+ * Aturan hitung:
+ * - "Terdaftar" = anggota pada grup selain 'ditolak' (dan 'draft' dianggap belum terdaftar).
+ * - "Hadir" = anggota terdaftar dengan status_hadir = 'hadir'.
+ * - Konsumsi hanya menghitung peserta grup 'lunas' yang berjatah makan (dapatJatahMakan).
+ */
+type GenderKey = 'ikhwan' | 'akhwat' | 'tidak_diketahui';
+
+interface KategoriBreakdown {
+  total: number;
+  ikhwan: number;
+  akhwat: number;
+}
+
+interface PesertaBreakdown {
+  total: number;
+  gender: Record<GenderKey, number>;
+  per_kategori: Record<string, KategoriBreakdown>;
+}
+
+const KATEGORI_DASHBOARD = [...KATEGORI_USIA.map((k) => k.id), 'tidak_diketahui'];
+
+function normalizeGender(jenisKelamin: unknown): GenderKey {
+  const jk = String(jenisKelamin ?? '').trim().toLowerCase();
+  if (jk === 'ikhwan' || jk === 'l') return 'ikhwan';
+  if (jk === 'akhwat' || jk === 'p') return 'akhwat';
+  return 'tidak_diketahui';
+}
+
+function buatBreakdownPeserta(): PesertaBreakdown {
+  const per_kategori: Record<string, KategoriBreakdown> = {};
+  for (const id of KATEGORI_DASHBOARD) {
+    per_kategori[id] = { total: 0, ikhwan: 0, akhwat: 0 };
+  }
+  return {
+    total: 0,
+    gender: { ikhwan: 0, akhwat: 0, tidak_diketahui: 0 },
+    per_kategori,
+  };
+}
+
+function tambahKeBreakdown(target: PesertaBreakdown, usia: unknown, gender: GenderKey): void {
+  const kategori = getKategoriUsia(usia === null || usia === undefined ? null : Number(usia));
+  const row = target.per_kategori[kategori] || (target.per_kategori[kategori] = { total: 0, ikhwan: 0, akhwat: 0 });
+
+  target.total++;
+  target.gender[gender]++;
+  row.total++;
+  if (gender === 'ikhwan') row.ikhwan++;
+  if (gender === 'akhwat') row.akhwat++;
+}
+
+function dashboardKosong() {
+  return {
+    pembayaran: {
+      menunggu_pembayaran: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      menunggu_verifikasi: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      lunas: { jumlah_grup: 0, tagihan: 0, diterima: 0, kurang: 0, lebih: 0 },
+      ditolak: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      total: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+    },
+    peserta: {
+      terdaftar: buatBreakdownPeserta(),
+      hadir: buatBreakdownPeserta(),
+    },
+    konsumsi: {
+      total_berjatah: 0,
+      tanpa_jatah: 0,
+      sesi: Object.fromEntries(
+        SESI_MAKAN.filter((s) => s.id !== 'checkin').map((s) => [
+          s.id,
+          { sudah: 0, belum: 0, total: 0, persentase: 0 },
+        ])
+      ) as Record<string, { sudah: number; belum: number; total: number; persentase: number }>,
+    },
+    persentase_kehadiran: { terhadap_semua_terdaftar: 0, terhadap_lunas: 0 },
+    generated_at: new Date().toISOString(),
+  };
+}
+
+absensiRoutes.get('/dashboard', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json(dashboardKosong());
+  }
+
+  try {
+    const hasil = dashboardKosong();
+
+    // Query independen dijalankan paralel agar tidak menambah latensi D1 berganda.
+    const [grupRes, anggotaRes, scanRes] = await Promise.all([
+      db
+        .prepare(
+          `SELECT status,
+                  COUNT(*) as jumlah_grup,
+                  COALESCE(SUM(grand_total), 0) as tagihan,
+                  COALESCE(SUM(CASE WHEN status = 'lunas'
+                                    THEN COALESCE(nominal_dibayar, grand_total, 0)
+                                    ELSE COALESCE(nominal_dibayar, 0) END), 0) as diterima
+           FROM pendaftaran_grup
+           GROUP BY status`
+        )
+        .all<{ status: string; jumlah_grup: number; tagihan: number; diterima: number }>(),
+      db
+        .prepare(
+          `SELECT a.id, a.usia, a.jenis_kelamin, a.makan_dicover, a.status_hadir, g.status as grup_status
+           FROM anggota a
+           JOIN pendaftaran_grup g ON a.grup_id = g.id`
+        )
+        .all<{
+          id: string;
+          usia: number | null;
+          jenis_kelamin: string | null;
+          makan_dicover: number | null;
+          status_hadir: string | null;
+          grup_status: string | null;
+        }>(),
+      db
+        .prepare(
+          `SELECT DISTINCT sl.sesi, sl.anggota_id
+           FROM scan_log sl
+           JOIN anggota a ON sl.anggota_id = a.id
+           JOIN pendaftaran_grup g ON a.grup_id = g.id
+           WHERE g.status = 'lunas'`
+        )
+        .all<{ sesi: string; anggota_id: string }>(),
+    ]);
+
+    // 1. Pembayaran & grup per status
+
+    const statusUtama = ['menunggu_pembayaran', 'menunggu_verifikasi', 'lunas', 'ditolak'] as const;
+    let totalGrup = 0;
+    let totalTagihan = 0;
+    let totalDiterima = 0;
+
+    for (const row of grupRes.results || []) {
+      const status = String(row.status || '');
+      // 'draft' dianggap pendaftaran yang belum jadi; tidak dihitung pada rekap.
+      if (status === 'draft') continue;
+
+      const jumlah = Number(row.jumlah_grup) || 0;
+      const tagihan = Number(row.tagihan) || 0;
+      const diterima = Number(row.diterima) || 0;
+
+      totalGrup += jumlah;
+      totalTagihan += tagihan;
+      totalDiterima += diterima;
+
+      if ((statusUtama as readonly string[]).includes(status)) {
+        const target = hasil.pembayaran[status as (typeof statusUtama)[number]] as any;
+        target.jumlah_grup = jumlah;
+        target.tagihan = tagihan;
+        target.diterima = diterima;
+      }
+    }
+
+    hasil.pembayaran.lunas.kurang = Math.max(hasil.pembayaran.lunas.tagihan - hasil.pembayaran.lunas.diterima, 0);
+    hasil.pembayaran.lunas.lebih = Math.max(hasil.pembayaran.lunas.diterima - hasil.pembayaran.lunas.tagihan, 0);
+    hasil.pembayaran.total = { jumlah_grup: totalGrup, tagihan: totalTagihan, diterima: totalDiterima };
+
+    // 2. Peserta terdaftar & hadir
+    const jatahMap = new Map<string, boolean>();
+    let totalLunas = 0;
+    let hadirLunas = 0;
+
+    for (const a of anggotaRes.results || []) {
+      const grupStatus = String(a.grup_status || '');
+
+      if (grupStatus === 'lunas') {
+        totalLunas++;
+        jatahMap.set(a.id, dapatJatahMakan(a.usia, Boolean(a.makan_dicover)));
+        if (dapatJatahMakan(a.usia, Boolean(a.makan_dicover))) {
+          hasil.konsumsi.total_berjatah++;
+        } else {
+          hasil.konsumsi.tanpa_jatah++;
+        }
+        if (a.status_hadir === 'hadir') {
+          hadirLunas++;
+        }
+      }
+
+      // 'ditolak' & 'draft' bukan peserta terdaftar.
+      if (grupStatus === 'ditolak' || grupStatus === 'draft') continue;
+
+      const gender = normalizeGender(a.jenis_kelamin);
+      tambahKeBreakdown(hasil.peserta.terdaftar, a.usia, gender);
+      if (a.status_hadir === 'hadir') {
+        tambahKeBreakdown(hasil.peserta.hadir, a.usia, gender);
+      }
+    }
+
+    // 3. Scan konsumsi per sesi makan (peserta lunas & berjatah makan)
+    const scanPerSesi = new Map<string, Set<string>>();
+    for (const row of scanRes.results || []) {
+      const set = scanPerSesi.get(row.sesi) || new Set<string>();
+      if (jatahMap.get(row.anggota_id)) set.add(row.anggota_id);
+      scanPerSesi.set(row.sesi, set);
+    }
+
+    for (const sesi of Object.keys(hasil.konsumsi.sesi)) {
+      const sudah = scanPerSesi.get(sesi)?.size || 0;
+      const total = hasil.konsumsi.total_berjatah;
+      hasil.konsumsi.sesi[sesi] = {
+        sudah,
+        belum: Math.max(total - sudah, 0),
+        total,
+        persentase: total > 0 ? Math.round((sudah / total) * 100) : 0,
+      };
+    }
+
+    // 4. Persentase kehadiran
+    hasil.persentase_kehadiran.terhadap_semua_terdaftar =
+      hasil.peserta.terdaftar.total > 0
+        ? Math.round((hasil.peserta.hadir.total / hasil.peserta.terdaftar.total) * 100)
+        : 0;
+    hasil.persentase_kehadiran.terhadap_lunas =
+      totalLunas > 0 ? Math.round((hadirLunas / totalLunas) * 100) : 0;
+
+    return c.json(hasil);
+  } catch (err: any) {
+    console.error('Error dashboard absensi:', err);
+    return c.json(dashboardKosong());
   }
 });
 

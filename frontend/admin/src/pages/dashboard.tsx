@@ -1,215 +1,536 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
-interface Stats {
+type GenderKey = 'ikhwan' | 'akhwat' | 'tidak_diketahui';
+
+interface KategoriBreakdown {
   total: number;
-  menunggu: number;
-  dikonfirmasi: number;
-  ditolak: number;
-  hadir: number;
-  sudah_hadir?: number;
-  belum_hadir?: number;
-  persentase_kehadiran?: number;
+  ikhwan: number;
+  akhwat: number;
 }
 
-interface GrupStats {
-  total_grup: number;
-  menunggu_pembayaran: number;
-  menunggu_verifikasi: number;
-  lunas: number;
-  ditolak: number;
-  total_anggota: number;
-  total_hadir: number;
-  total_revenue: number;
+interface PesertaBreakdown {
+  total: number;
+  gender: Record<GenderKey, number>;
+  per_kategori: Record<string, KategoriBreakdown>;
+}
+
+interface PembayaranRow {
+  jumlah_grup: number;
+  tagihan: number;
+  diterima: number;
+  kurang?: number;
+  lebih?: number;
+}
+
+interface SesiKonsumsi {
+  sudah: number;
+  belum: number;
+  total: number;
+  persentase: number;
+}
+
+interface DashboardData {
+  pembayaran: {
+    menunggu_pembayaran: PembayaranRow;
+    menunggu_verifikasi: PembayaranRow;
+    lunas: PembayaranRow;
+    ditolak: PembayaranRow;
+    total: PembayaranRow;
+  };
+  peserta: {
+    terdaftar: PesertaBreakdown;
+    hadir: PesertaBreakdown;
+  };
+  konsumsi: {
+    total_berjatah: number;
+    tanpa_jatah: number;
+    sesi: Record<string, SesiKonsumsi>;
+  };
+  persentase_kehadiran: {
+    terhadap_semua_terdaftar: number;
+    terhadap_lunas: number;
+  };
+  generated_at: string;
+}
+
+const KATEGORI_URUTAN = ['balita', 'anak', 'remaja', 'dewasa', 'lansia', 'tidak_diketahui'];
+
+const LABEL_KATEGORI: Record<string, string> = {
+  balita: 'Balita (0-5 th)',
+  anak: 'Anak-Anak (6-10 th)',
+  remaja: 'Remaja (11-17 th)',
+  dewasa: 'Dewasa (18-50 th)',
+  lansia: 'Lansia (51+ th)',
+  tidak_diketahui: 'Tidak diketahui',
+};
+
+const LABEL_SESI: Record<string, string> = {
+  makan_sabtu_siang: 'Makan Sabtu Siang',
+  makan_sabtu_malam: 'Makan Sabtu Malam',
+  makan_ahad_pagi: 'Makan Ahad Pagi',
+};
+
+function barisKategori(data: PesertaBreakdown): { id: string; label: string }[] {
+  const ids = Array.from(new Set([...KATEGORI_URUTAN, ...Object.keys(data.per_kategori)]));
+  return ids.map((id) => ({ id, label: LABEL_KATEGORI[id] ?? id.replace(/_/g, ' ') }));
+}
+
+const TONE_KELAS = {
+  white: 'bg-white border-slate-200 text-slate-900',
+  amber: 'bg-amber-50/70 border-amber-200 text-amber-950',
+  sky: 'bg-sky-50/70 border-sky-200 text-sky-950',
+  emerald: 'bg-emerald-50/70 border-emerald-200 text-emerald-950',
+  slate: 'bg-slate-50 border-slate-200 text-slate-700',
+} as const;
+
+type Tone = keyof typeof TONE_KELAS;
+
+type Tab = 'pembayaran' | 'peserta' | 'kehadiran';
+
+const TAB_LIST: { id: Tab; label: string }[] = [
+  { id: 'pembayaran', label: 'Pembayaran & Grup' },
+  { id: 'peserta', label: 'Peserta' },
+  { id: 'kehadiran', label: 'Kehadiran & Konsumsi' },
+];
+
+function buatKategoriKosong(): Record<string, KategoriBreakdown> {
+  const rows: Record<string, KategoriBreakdown> = {};
+  for (const id of KATEGORI_URUTAN) rows[id] = { total: 0, ikhwan: 0, akhwat: 0 };
+  return rows;
+}
+
+function buatBreakdownKosong(): PesertaBreakdown {
+  return {
+    total: 0,
+    gender: { ikhwan: 0, akhwat: 0, tidak_diketahui: 0 },
+    per_kategori: buatKategoriKosong(),
+  };
+}
+
+function dashboardKosong(): DashboardData {
+  return {
+    pembayaran: {
+      menunggu_pembayaran: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      menunggu_verifikasi: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      lunas: { jumlah_grup: 0, tagihan: 0, diterima: 0, kurang: 0, lebih: 0 },
+      ditolak: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+      total: { jumlah_grup: 0, tagihan: 0, diterima: 0 },
+    },
+    peserta: {
+      terdaftar: buatBreakdownKosong(),
+      hadir: buatBreakdownKosong(),
+    },
+    konsumsi: {
+      total_berjatah: 0,
+      tanpa_jatah: 0,
+      sesi: Object.fromEntries(
+        Object.keys(LABEL_SESI).map((id) => [id, { sudah: 0, belum: 0, total: 0, persentase: 0 }])
+      ),
+    },
+    persentase_kehadiran: { terhadap_semua_terdaftar: 0, terhadap_lunas: 0 },
+    generated_at: new Date().toISOString(),
+  };
+}
+
+function tabDariUrl(raw: string | null): Tab {
+  return raw === 'peserta' || raw === 'kehadiran' ? raw : 'pembayaran';
+}
+
+function formatRupiah(n: number): string {
+  return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+  tone = 'white',
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  tone?: Tone;
+}) {
+  return (
+    <div className={`border rounded-2xl p-4 sm:p-5 shadow-xs ${TONE_KELAS[tone]}`}>
+      <span className="text-xs font-bold uppercase tracking-wider opacity-70">{label}</span>
+      <span className="block text-2xl sm:text-3xl font-black mt-1 leading-tight">{value}</span>
+      {hint && <p className="text-[11px] opacity-70 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+function ProgressBar({ value }: { value: number }) {
+  const pct = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  return (
+    <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+      <div className="h-full rounded-full bg-[#06305d] transition-all" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function MatrixTable({ data }: { data: PesertaBreakdown }) {
+  return (
+    <div className="overflow-x-auto rounded-xl border border-slate-200">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-50 text-slate-600">
+          <tr>
+            <th className="text-left font-bold px-3 py-2">Kategori</th>
+            <th className="text-right font-bold px-3 py-2">Ikhwan</th>
+            <th className="text-right font-bold px-3 py-2">Akhwat</th>
+            <th className="text-right font-bold px-3 py-2">Total</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {barisKategori(data).map((k) => {
+            const row = data.per_kategori[k.id] || { total: 0, ikhwan: 0, akhwat: 0 };
+            return (
+              <tr key={k.id} className="text-slate-700">
+                <td className="px-3 py-2">{k.label}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{row.ikhwan}</td>
+                <td className="px-3 py-2 text-right tabular-nums">{row.akhwat}</td>
+                <td className="px-3 py-2 text-right font-bold tabular-nums">{row.total}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+        <tfoot className="bg-slate-50 font-bold text-slate-900">
+          <tr>
+            <td className="px-3 py-2">Total</td>
+            <td className="px-3 py-2 text-right tabular-nums">{data.gender.ikhwan}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{data.gender.akhwat}</td>
+            <td className="px-3 py-2 text-right tabular-nums">{data.total}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function BlokPeserta({ title, data, tone }: { title: string; data: PesertaBreakdown; tone: Tone }) {
+  return (
+    <section className="space-y-2.5">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h2>
+      <div className="grid grid-cols-3 gap-3">
+        <StatCard label="Total" value={data.total} tone={tone} />
+        <StatCard label="Ikhwan" value={data.gender.ikhwan} tone={tone} />
+        <StatCard label="Akhwat" value={data.gender.akhwat} tone={tone} />
+      </div>
+      <MatrixTable data={data} />
+      {data.gender.tidak_diketahui > 0 && (
+        <p className="text-[11px] text-slate-500">
+          Termasuk {data.gender.tidak_diketahui} peserta dengan jenis kelamin tidak diketahui.
+        </p>
+      )}
+    </section>
+  );
 }
 
 export function Dashboard() {
-  const [stats, setStats] = useState<Stats>({
-    total: 0,
-    menunggu: 0,
-    dikonfirmasi: 0,
-    ditolak: 0,
-    hadir: 0,
-    sudah_hadir: 0,
-    belum_hadir: 0,
-    persentase_kehadiran: 0,
-  });
-  const [grupStats, setGrupStats] = useState<GrupStats>({
-    total_grup: 0,
-    menunggu_pembayaran: 0,
-    menunggu_verifikasi: 0,
-    lunas: 0,
-    ditolak: 0,
-    total_anggota: 0,
-    total_hadir: 0,
-    total_revenue: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = tabDariUrl(searchParams.get('tab'));
 
-  // Ambil data statistik dashboard secara real-time
-  const fetchStats = async (silent = false) => {
+  const [data, setData] = useState<DashboardData>(() => dashboardKosong());
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [terakhir, setTerakhir] = useState<string | null>(null);
+
+  const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/absensi/stats`, {
+      const res = await fetch(`${API_URL}/api/absensi/dashboard`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setStats(data);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as DashboardData;
+      setData(json);
+      setTerakhir(
+        new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      );
+      setError(null);
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      console.error('Failed to fetch dashboard:', err);
+      setError('Gagal memuat data dashboard. Pastikan sesi login masih valid.');
     } finally {
       if (!silent) setLoading(false);
     }
-  };
-
-  // Ambil statistik Family Camp (grup + revenue)
-  const fetchGrupStats = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/absensi/stats-grup`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setGrupStats(data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch grup stats:', err);
-    }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchStats(false);
-    fetchGrupStats();
-
-    // Polling background setiap 5 detik agar data selalu terbarui otomatis
-    const interval = setInterval(() => {
-      fetchStats(true);
-      fetchGrupStats();
-    }, 5000);
-
-    const handleFocus = () => {
-      fetchStats(true);
-      fetchGrupStats();
-    };
+    fetchData(false);
+    const interval = setInterval(() => fetchData(true), 15000);
+    const handleFocus = () => fetchData(true);
     window.addEventListener('focus', handleFocus);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, []);
+  }, [fetchData]);
 
-  // Total peserta (dari tabel anggota Family Camp)
-  const totalPendaftar = stats.total || 0;
+  const gantiTab = (next: Tab) => {
+    setSearchParams({ tab: next }, { replace: true });
+  };
+
+  const { pembayaran, peserta, konsumsi, persentase_kehadiran } = data;
+
+  const kartuPembayaran: { label: string; hint: string; row: PembayaranRow; tone: Tone }[] = [
+    {
+      label: 'Menunggu Bayar',
+      hint: 'Belum unggah bukti transfer',
+      row: pembayaran.menunggu_pembayaran,
+      tone: 'amber',
+    },
+    {
+      label: 'Menunggu Verifikasi',
+      hint: 'Bukti transfer masuk, perlu ACC',
+      row: pembayaran.menunggu_verifikasi,
+      tone: 'sky',
+    },
+    {
+      label: 'Lunas (Terverifikasi)',
+      hint: 'QR tiket telah diterbitkan',
+      row: pembayaran.lunas,
+      tone: 'emerald',
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header Halaman (Tombol verifikasi dan scan dihapus agar fokus analisa data) */}
-      <div>
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-sky-800 text-xs font-semibold mb-1 border border-sky-200">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          Live Monitoring • Realtime Sync
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-sky-50 text-sky-800 text-xs font-semibold mb-1 border border-sky-200">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live Monitoring • Sync tiap 15 detik
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Dashboard Panitia</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Ringkasan pembayaran grup, data peserta, serta kehadiran & konsumsi Family Camp.
+          </p>
         </div>
-        <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Dashboard Panitia</h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-          Ringkasan data pendaftaran Family Camp dan revenue.
-        </p>
+        <div className="flex items-center text-xs text-slate-500">
+          <span>Diperbarui: {terakhir ?? '-'}</span>
+        </div>
       </div>
 
-      {/* ======================================================== */}
-      {/* TOTAL PENDAFTAR KESELURUHAN                              */}
-      {/* ======================================================== */}
-      <section className="space-y-2">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Total Pendaftar Keseluruhan
-        </h2>
-
-        <div className="bg-gradient-to-br from-[#06305d] via-[#08407c] to-[#0a529b] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md relative overflow-hidden">
-          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-          
-          <div className="relative z-10">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-sm sm:text-base font-bold text-sky-200 uppercase tracking-wide">
-                Total Seluruh Pendaftar
-              </span>
-              <div className="text-2xl sm:text-4xl font-black tracking-tight text-white shrink-0">
-                {loading ? '...' : totalPendaftar}
-                <span className="text-xs sm:text-sm font-medium text-sky-200 ml-1.5">Peserta</span>
-              </div>
-            </div>
-            <p className="text-xs text-sky-100/80 mt-2">
-              Akumulasi seluruh pendaftar yang masuk melalui formulir registrasi online.
-            </p>
-          </div>
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs font-semibold px-3 py-2">
+          {error}
         </div>
+      )}
+
+      {/* Strip KPI */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          label="Total Peserta"
+          value={loading ? '...' : peserta.terdaftar.total}
+          hint={`${peserta.terdaftar.gender.ikhwan} ikhwan • ${peserta.terdaftar.gender.akhwat} akhwat`}
+          tone="white"
+        />
+        <StatCard
+          label="Total Grup"
+          value={loading ? '...' : pembayaran.total.jumlah_grup}
+          hint="Seluruh grup terdaftar"
+          tone="white"
+        />
+        <StatCard
+          label="Hadir (Check-in)"
+          value={loading ? '...' : peserta.hadir.total}
+          hint={`dari ${peserta.terdaftar.total} peserta terdaftar`}
+          tone="emerald"
+        />
+        <StatCard
+          label="% Kehadiran"
+          value={loading ? '...' : `${persentase_kehadiran.terhadap_semua_terdaftar}%`}
+          hint={`vs lunas: ${persentase_kehadiran.terhadap_lunas}%`}
+          tone="sky"
+        />
       </section>
 
-      {/* ======================================================== */}
-      {/* FAMILY CAMP: GRUP & REVENUE                              */}
-      {/* ======================================================== */}
-      <section className="space-y-2.5">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-          Family Camp — Pendaftaran Grup & Revenue
-        </h2>
+      {/* Tab */}
+      <div className="inline-flex w-full sm:w-auto p-1 bg-white border border-slate-200 rounded-xl shadow-xs gap-1 overflow-x-auto">
+        {TAB_LIST.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => gantiTab(t.id)}
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              tab === t.id ? 'bg-[#06305d] text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
-            <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Total Grup</span>
-            <span className="block text-2xl sm:text-3xl font-black text-slate-900 mt-1">
-              {loading ? '...' : grupStats.total_grup}
-            </span>
-            <p className="text-[11px] text-slate-400 mt-1">{grupStats.total_anggota} anggota terdaftar</p>
+      {/* Tab 1 — Pembayaran & Grup */}
+      {tab === 'pembayaran' && (
+        <section className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            {kartuPembayaran.map((k) => {
+              const selisihKurang = Math.max(k.row.kurang ?? 0, 0);
+              const selisihLebih = Math.max(k.row.lebih ?? 0, 0);
+              return (
+                <div key={k.label} className={`border rounded-2xl p-4 sm:p-5 shadow-xs ${TONE_KELAS[k.tone]}`}>
+                  <span className="text-xs font-bold uppercase tracking-wider opacity-70">{k.label}</span>
+                  <div className="mt-1 flex items-baseline gap-1.5">
+                    <span className="text-2xl sm:text-3xl font-black leading-tight">{k.row.jumlah_grup}</span>
+                    <span className="text-xs font-medium opacity-70">grup</span>
+                  </div>
+                  <dl className="mt-2 space-y-1 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="opacity-70">Tagihan</dt>
+                      <dd className="font-bold tabular-nums">{formatRupiah(k.row.tagihan)}</dd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <dt className="opacity-70">Diterima</dt>
+                      <dd className="font-bold tabular-nums">{formatRupiah(k.row.diterima)}</dd>
+                    </div>
+                    {k.row.kurang !== undefined && (
+                      <div className="flex items-center justify-between gap-2">
+                        <dt className="opacity-70">Kurang / Lebih</dt>
+                        <dd className="font-bold tabular-nums">
+                          {formatRupiah(selisihKurang)} / {formatRupiah(selisihLebih)}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                  <p className="text-[11px] opacity-70 mt-2">{k.hint}</p>
+                </div>
+              );
+            })}
           </div>
 
-          <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 sm:p-5 shadow-xs">
-            <span className="text-xs font-bold text-amber-900 uppercase tracking-wider">Menunggu Bayar</span>
-            <span className="block text-2xl sm:text-3xl font-black text-amber-950 mt-1">
-              {loading ? '...' : grupStats.menunggu_pembayaran}
-            </span>
-            <p className="text-[11px] text-amber-800/80 mt-1">Belum unggah bukti transfer</p>
-          </div>
-
-          <div className="bg-sky-50/70 border border-sky-200 rounded-2xl p-4 sm:p-5 shadow-xs">
-            <span className="text-xs font-bold text-sky-900 uppercase tracking-wider">Menunggu Verifikasi</span>
-            <span className="block text-2xl sm:text-3xl font-black text-sky-950 mt-1">
-              {loading ? '...' : grupStats.menunggu_verifikasi}
-            </span>
-            <p className="text-[11px] text-sky-800/80 mt-1">Bukti transfer masuk, perlu ACC</p>
-          </div>
-
-          <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 sm:p-5 shadow-xs">
-            <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Lunas</span>
-            <span className="block text-2xl sm:text-3xl font-black text-emerald-950 mt-1">
-              {loading ? '...' : grupStats.lunas}
-            </span>
-            <p className="text-[11px] text-emerald-800/80 mt-1">QR tiket telah diterbitkan</p>
-          </div>
-        </div>
-
-        {/* Revenue Card */}
-        <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-md relative overflow-hidden">
-          <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-          <div className="relative z-10">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-sm sm:text-base font-bold text-emerald-100 uppercase tracking-wide">
-                Total Revenue (Lunas)
-              </span>
-              <div className="text-2xl sm:text-4xl font-black tracking-tight text-white shrink-0">
-                {loading ? '...' : 'Rp ' + grupStats.total_revenue.toLocaleString('id-ID')}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Ditolak</span>
+                <p className="text-[11px] text-slate-400 mt-0.5">Tidak dihitung sebagai peserta terdaftar</p>
+              </div>
+              <div className="text-right">
+                <span className="block text-2xl font-black text-slate-700">{pembayaran.ditolak.jumlah_grup} grup</span>
+                <span className="text-[11px] text-slate-500 tabular-nums">
+                  {formatRupiah(pembayaran.ditolak.tagihan)}
+                </span>
               </div>
             </div>
-            <p className="text-xs text-emerald-100/80 mt-2">
-              Akumulasi grand total seluruh grup yang sudah dikonfirmasi lunas.
-            </p>
-          </div>
-        </div>
-      </section>
 
+            <div className="rounded-2xl border border-[#06305d]/20 bg-[#06305d] text-white p-4 flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-sky-200">Total</span>
+                <p className="text-[11px] text-sky-100/80 mt-0.5">Akumulasi seluruh grup aktif</p>
+              </div>
+              <div className="text-right">
+                <span className="block text-2xl font-black">{pembayaran.total.jumlah_grup} grup</span>
+                <span className="text-[11px] text-sky-100/90 tabular-nums">
+                  Tagihan {formatRupiah(pembayaran.total.tagihan)} • Diterima{' '}
+                  {formatRupiah(pembayaran.total.diterima)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Tab 2 — Peserta */}
+      {tab === 'peserta' && (
+        <div className="space-y-6">
+          <BlokPeserta title="Peserta Terdaftar" data={peserta.terdaftar} tone="white" />
+          <BlokPeserta title="Hadir (Check-in)" data={peserta.hadir} tone="emerald" />
+          <p className="text-[11px] text-slate-500">
+            Terdaftar = seluruh anggota pada grup selain ditolak/draft. Hadir = status check-in
+            (status_hadir = hadir).
+          </p>
+        </div>
+      )}
+
+      {/* Tab 3 — Kehadiran & Konsumsi */}
+      {tab === 'kehadiran' && (
+        <div className="space-y-4">
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Ringkasan Check-in</h2>
+                <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+                  {peserta.hadir.total}
+                  <span className="text-sm font-medium text-slate-400 ml-1.5">/ {peserta.terdaftar.total} peserta</span>
+                </p>
+              </div>
+              <div className="text-right text-xs text-slate-500">
+                <p>
+                  <span className="font-bold text-slate-700">{persentase_kehadiran.terhadap_semua_terdaftar}%</span>{' '}
+                  dari terdaftar
+                </p>
+                <p>
+                  <span className="font-bold text-slate-700">{persentase_kehadiran.terhadap_lunas}%</span> dari
+                  peserta lunas
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <span>Terhadap semua terdaftar</span>
+                <span className="font-bold">{persentase_kehadiran.terhadap_semua_terdaftar}%</span>
+              </div>
+              <ProgressBar value={persentase_kehadiran.terhadap_semua_terdaftar} />
+              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+                <span>Terhadap peserta lunas</span>
+                <span className="font-bold">{persentase_kehadiran.terhadap_lunas}%</span>
+              </div>
+              <ProgressBar value={persentase_kehadiran.terhadap_lunas} />
+            </div>
+          </section>
+
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <StatCard
+              label="Total Berjatah Makan"
+              value={konsumsi.total_berjatah}
+              hint="Peserta lunas & berhak jatah makan panitia"
+              tone="emerald"
+            />
+            <StatCard
+              label="Tanpa Jatah"
+              value={konsumsi.tanpa_jatah}
+              hint="Balita gratis tanpa cover (makan dicover orang tua)"
+              tone="slate"
+            />
+          </section>
+
+          <section className="space-y-2.5">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">Konsumsi per Sesi</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+              {Object.entries(konsumsi.sesi).map(([id, row]) => {
+                return (
+                  <div key={id} className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      {LABEL_SESI[id] ?? id.replace(/_/g, ' ')}
+                    </span>
+                    <div className="mt-1 flex items-baseline gap-1">
+                      <span className="text-2xl sm:text-3xl font-black text-slate-900">{row.sudah}</span>
+                      <span className="text-xs font-medium text-slate-400">/ {row.total} sudah</span>
+                    </div>
+                    <div className="mt-2">
+                      <ProgressBar value={row.persentase} />
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>Belum: {row.belum}</span>
+                      <span className="font-bold text-slate-700">{row.persentase}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Persentase konsumsi dihitung dari peserta lunas & berjatah makan.
+            </p>
+          </section>
+        </div>
+      )}
     </div>
   );
 }

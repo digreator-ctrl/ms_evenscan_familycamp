@@ -726,25 +726,27 @@ export function Verifikasi() {
               ))}
             </div>
 
-            {/* DESKTOP */}
+{/* DESKTOP */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="px-5 py-3.5">PIC / Grup</th>
+                    <th className="px-5 py-3.5">PIC</th>
                     <th className="px-5 py-3.5">Tipe</th>
                     <th className="px-5 py-3.5">Anggota</th>
                     <th className="px-5 py-3.5">Grand Total</th>
                     <th className="px-5 py-3.5">Status</th>
-                    <th className="px-5 py-3.5 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {filtered.map((g) => (
-                    <tr key={g.id} className="hover:bg-slate-50/70 transition">
+                    <tr
+                      key={g.id}
+                      onClick={() => setSearchParams({ id: g.id })}
+                      className="hover:bg-slate-50/70 transition cursor-pointer group"
+                    >
                       <td className="px-5 py-3.5">
-                        <div className="font-semibold text-slate-900">{g.pic_nama}</div>
-                        <div className="text-[11px] font-normal text-slate-400 font-mono">{g.id}</div>
+                        <div className="font-semibold text-slate-900 group-hover:text-[#06305d] transition">{g.pic_nama}</div>
                         <div className="text-[11px] font-normal text-slate-400">{g.pic_whatsapp}</div>
                       </td>
                       <td className="px-5 py-3.5 text-slate-600">
@@ -757,49 +759,8 @@ export function Verifikasi() {
                           {statusLabel(g.status)}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => setSearchParams({ id: g.id })}
-                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer flex items-center gap-1"
-                          >
-                            <span>👁️</span>
-                            <span>Detail</span>
-                          </button>
-                          {g.status === 'menunggu_verifikasi' && (
-                            <>
-                              <button
-                                type="button"
-                                disabled={actionLoading === g.id}
-                                onClick={() => handleKonfirmasi(g)}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-lg text-[11px] font-bold transition shadow-xs disabled:opacity-50 cursor-pointer"
-                              >
-                                {actionLoading === g.id ? '...' : '✓ Lunas'}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={actionLoading === g.id}
-                                onClick={() => handleTolak(g)}
-                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[11px] font-semibold transition disabled:opacity-50 cursor-pointer"
-                              >
-                                ✕ Tolak
-                              </button>
-                            </>
-                          )}
-                          <button
-                            type="button"
-                            title="Hapus Data"
-                            disabled={actionLoading === g.id}
-                            onClick={() => setHapusModal(g)}
-                            className="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg text-[11px] transition disabled:opacity-50 cursor-pointer"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
                     </tr>
-                  ))}
+))}
                 </tbody>
               </table>
             </div>

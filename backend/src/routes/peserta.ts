@@ -67,6 +67,44 @@ pesertaRoutes.get('/config', async (c) => {
 });
 
 /**
+ * GET /api/peserta/cek-wa?wa=08xxxxxxxxxx
+ * Mengecek apakah nomor WhatsApp PIC sudah pernah terdaftar (dipakai pada grup aktif).
+ * Dipakai oleh form pendaftaran untuk validasi dini di langkah Tipe & PIC.
+ */
+pesertaRoutes.get('/cek-wa', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ terdaftar: false });
+  }
+
+  const wa = c.req.query('wa')?.trim();
+  if (!wa) {
+    return c.json({ error: 'Nomor WhatsApp wajib dikirim.' }, 400);
+  }
+
+  try {
+    const [phone62, phone08] = getPhoneVariants(wa);
+    const existing = await db
+      .prepare(
+        `SELECT id FROM pendaftaran_grup
+         WHERE (
+           replace(replace(replace(pic_whatsapp, ' ', ''), '-', ''), '+', '') IN (?, ?)
+           OR pic_whatsapp IN (?, ?)
+         )
+         AND status != 'ditolak'
+         LIMIT 1`
+      )
+      .bind(phone62, phone08, phone62, phone08)
+      .first();
+
+    return c.json({ terdaftar: Boolean(existing) });
+  } catch (err) {
+    console.warn('Pengecekan nomor WhatsApp dilewati:', err);
+    return c.json({ terdaftar: false });
+  }
+});
+
+/**
  * POST /api/peserta/daftar
  * Menerima formulir pendaftaran + file screenshot bukti
  */
@@ -549,7 +587,7 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
     if (existing) {
       return c.json(
         {
-          error: `Nomor WhatsApp ${pic_whatsapp} sudah terdaftar atas nama "${existing.pic_nama}". Gunakan nomor WhatsApp lain yang belum terdaftar.`,
+          error: 'Nomor WhatsApp sudah pernah digunakan mendaftar. Silakan gunakan nomor WhatsApp lain yang belum terdaftar.',
           code: 'DUPLICATE_WHATSAPP',
         },
         409

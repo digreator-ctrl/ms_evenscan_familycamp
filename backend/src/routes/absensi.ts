@@ -382,7 +382,9 @@ absensiRoutes.get('/dashboard', async (c) => {
 
     hasil.pembayaran.lunas.kurang = Math.max(hasil.pembayaran.lunas.tagihan - hasil.pembayaran.lunas.diterima, 0);
     hasil.pembayaran.lunas.lebih = Math.max(hasil.pembayaran.lunas.diterima - hasil.pembayaran.lunas.tagihan, 0);
-    hasil.pembayaran.total = { jumlah_grup: totalGrup, tagihan: totalTagihan, diterima: totalDiterima };
+    hasil.pembayaran.total.jumlah_grup = totalGrup;
+    hasil.pembayaran.total.tagihan = totalTagihan;
+    hasil.pembayaran.total.diterima = totalDiterima;
 
     // 2. Peserta terdaftar & hadir
     const jatahMap = new Map<string, boolean>();

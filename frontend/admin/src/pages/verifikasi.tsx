@@ -111,6 +111,7 @@ export function Verifikasi() {
 
   const [grup, setGrup] = useState<Grup[]>([]);
   const [filter, setFilter] = useState<string>('semua');
+  const [showFilter, setShowFilter] = useState(false);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -625,55 +626,111 @@ export function Verifikasi() {
       </div>
 
       {/* SEARCH & FILTER BAR */}
-      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-xs flex flex-row items-center gap-2 sm:gap-3">
-        <div className="relative flex-1 min-w-0">
-          <svg
-            className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+      <div className="bg-white rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-xs space-y-2">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Search (dibuat lebih besar / full width di mobile) */}
+          <div className="relative flex-1 min-w-0">
+            <svg
+              className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Cari nama PIC, WhatsApp, ID grup..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
+            />
+          </div>
+
+          {/* Tombol toggle filter (opsional, hanya mobile) */}
+          <button
+            type="button"
+            onClick={() => setShowFilter((v) => !v)}
+            className={`sm:hidden shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl border transition active:scale-95 cursor-pointer ${
+              filter !== 'semua'
+                ? 'bg-[#06305d] text-white border-[#06305d]'
+                : 'bg-slate-50 text-slate-600 border-slate-200'
+            }`}
+            title="Filter status"
+            aria-label="Filter status"
+            aria-expanded={showFilter}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Cari nama PIC, WhatsApp, ID grup..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
-          />
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+          </button>
+
+          {/* Filter desktop (sejajar dengan search pada layar sm ke atas) */}
+          <div className="shrink-0 relative hidden sm:block">
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="appearance-none pl-8 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 transition"
+              title="Filter Status"
+            >
+              <option value="semua">Semua Status ({grup.length})</option>
+              <option value="menunggu_pembayaran">Menunggu Pembayaran ({grup.filter((g) => g.status === 'menunggu_pembayaran').length})</option>
+              <option value="menunggu_verifikasi">Menunggu Verifikasi ({grup.filter((g) => g.status === 'menunggu_verifikasi').length})</option>
+              <option value="lunas">Lunas ({grup.filter((g) => g.status === 'lunas').length})</option>
+              <option value="ditolak">Ditolak ({grup.filter((g) => g.status === 'ditolak').length})</option>
+            </select>
+            <svg
+              className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <svg
+              className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
 
-        <div className="shrink-0 relative">
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="appearance-none pl-8 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 transition"
-            title="Filter Status"
-          >
-            <option value="semua">Semua Status ({grup.length})</option>
-            <option value="menunggu_pembayaran">Menunggu Pembayaran ({grup.filter((g) => g.status === 'menunggu_pembayaran').length})</option>
-            <option value="menunggu_verifikasi">Menunggu Verifikasi ({grup.filter((g) => g.status === 'menunggu_verifikasi').length})</option>
-            <option value="lunas">Lunas ({grup.filter((g) => g.status === 'lunas').length})</option>
-            <option value="ditolak">Ditolak ({grup.filter((g) => g.status === 'ditolak').length})</option>
-          </select>
-          <svg
-            className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-          </svg>
-          <svg
-            className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
+        {/* Filter mobile (muncul saat tombol filter diklik) */}
+        {showFilter && (
+          <div className="sm:hidden relative">
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="w-full appearance-none pl-8 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 transition"
+              title="Filter Status"
+            >
+              <option value="semua">Semua Status ({grup.length})</option>
+              <option value="menunggu_pembayaran">Menunggu Pembayaran ({grup.filter((g) => g.status === 'menunggu_pembayaran').length})</option>
+              <option value="menunggu_verifikasi">Menunggu Verifikasi ({grup.filter((g) => g.status === 'menunggu_verifikasi').length})</option>
+              <option value="lunas">Lunas ({grup.filter((g) => g.status === 'lunas').length})</option>
+              <option value="ditolak">Ditolak ({grup.filter((g) => g.status === 'ditolak').length})</option>
+            </select>
+            <svg
+              className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+            </svg>
+            <svg
+              className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
@@ -704,7 +761,7 @@ export function Verifikasi() {
                         {g.pic_nama}
                       </h3>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        {g.tipe === 'keluarga' ? '👨‍👩‍👧 Keluarga' : '👥 Non-Keluarga'} • {g.jumlah_anggota} anggota
+                        {g.tipe === 'keluarga' ? 'Keluarga' : 'Non-Keluarga'} • {g.jumlah_anggota} anggota
                       </p>
                       <p className="text-xs text-slate-500 font-mono mt-0.5">{formatRupiah(g.grand_total)}</p>
                     </div>
@@ -712,14 +769,6 @@ export function Verifikasi() {
                       <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${statusBadge(g.status)}`}>
                         {statusLabel(g.status)}
                       </span>
-                      <svg
-                        className="w-4 h-4 text-slate-400 group-hover:text-[#06305d] transition shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                      </svg>
                     </div>
                   </div>
                 </div>

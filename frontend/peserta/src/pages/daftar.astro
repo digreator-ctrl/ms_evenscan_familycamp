@@ -161,9 +161,9 @@ import { LIST_PROVINSI } from "../data/wilayah";
                   checked
                   class="peer sr-only"
                 />
-                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 font-bold text-xs sm:text-sm text-slate-600 transition peer-checked:bg-white peer-checked:text-primary-700 peer-checked:shadow-xs border border-transparent peer-checked:border-slate-200/60">
+                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 font-bold text-xs sm:text-sm text-slate-600 transition border border-transparent hover:bg-slate-50 hover:border-slate-200 peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-700 peer-checked:shadow-md peer-checked:svg:text-white">
                   <svg
-                    class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-primary-600"
+                    class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-white"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -187,9 +187,9 @@ import { LIST_PROVINSI } from "../data/wilayah";
                   value="non_keluarga"
                   class="peer sr-only"
                 />
-                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 font-bold text-xs sm:text-sm text-slate-600 transition peer-checked:bg-white peer-checked:text-primary-700 peer-checked:shadow-xs border border-transparent peer-checked:border-slate-200/60">
+                <div class="py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 font-bold text-xs sm:text-sm text-slate-600 transition border border-transparent hover:bg-slate-50 hover:border-slate-200 peer-checked:bg-primary-600 peer-checked:text-white peer-checked:border-primary-700 peer-checked:shadow-md peer-checked:svg:text-white">
                   <svg
-                    class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-primary-600"
+                    class="w-4 h-4 shrink-0 text-slate-400 peer-checked:text-white"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -1326,7 +1326,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
       }
 
       if (btnNextStep1) {
-        btnNextStep1.onclick = () => {
+        btnNextStep1.onclick = async () => {
           const picNama = (picNamaInput?.value || "").trim();
           const rawWa = picWaInput?.value || "";
           const cleanWa = rawWa.replace(/\D/g, "");
@@ -1402,6 +1402,38 @@ import { LIST_PROVINSI } from "../data/wilayah";
               showFloatingToast("Mohon lengkapi kolom yang ditandai merah.");
             }
             return;
+          }
+
+          // Validasi ke backend: nomor WhatsApp tidak boleh sudah dipakai pendaftaran aktif
+          const btnEl = btnNextStep1 as HTMLButtonElement;
+          const prevBtnHtml = btnEl.innerHTML;
+          btnEl.disabled = true;
+          btnEl.innerHTML = "Memeriksa nomor...";
+          try {
+            const res = await fetch(
+              `${API_URL}/api/peserta/cek-wa?wa=${encodeURIComponent(cleanWa)}`,
+            );
+            const json = await res.json().catch(() => ({}));
+            if (res.ok && json.terdaftar) {
+              markInvalid(picWaInput);
+              if (picWaInput) {
+                bindClearOnInput(picWaInput);
+                picWaInput.focus();
+                picWaInput.scrollIntoView({
+                  behavior: "smooth",
+                  block: "center",
+                });
+              }
+              showFloatingToast(
+                "Nomor WhatsApp sudah pernah digunakan untuk mendaftar. Gunakan nomor lain.",
+              );
+              return;
+            }
+          } catch (err) {
+            // Abaikan bila pengecekan gagal karena jaringan; server tetap memvalidasi saat submit.
+          } finally {
+            btnEl.disabled = false;
+            btnEl.innerHTML = prevBtnHtml;
           }
 
           // Peserta #1 = PIC: nama selalu mengikuti data PIC dan tidak bisa diubah di langkah biodata

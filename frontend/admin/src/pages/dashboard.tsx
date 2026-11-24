@@ -398,14 +398,14 @@ export function Dashboard() {
               const selisihLebih = Math.max(k.row.lebih ?? 0, 0);
               return (
                 <div key={k.label} className={`border rounded-2xl p-4 sm:p-5 shadow-xs ${TONE_KELAS[k.tone]}`}>
-                  <div className="flex items-center justify-between gap-3 sm:block">
+                  <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-bold uppercase tracking-wider opacity-70">{k.label}</span>
-                    <span className="text-2xl sm:text-3xl font-black leading-tight whitespace-nowrap sm:block sm:mt-1">
+                    <span className="text-2xl sm:text-3xl font-black leading-tight whitespace-nowrap">
                       {k.row.jumlah_grup} <span className="text-xs font-medium opacity-70">grup</span>
                     </span>
                   </div>
 
-                  <div className="sm:hidden flex items-center justify-between gap-3 text-xs mt-2">
+                  <div className="flex items-center justify-between gap-3 text-xs mt-2">
                     <span className="opacity-70">Jumlah peserta</span>
                     <span className="font-bold tabular-nums">{k.row.jumlah_peserta} peserta</span>
                   </div>

@@ -461,6 +461,10 @@ Silakan lanjutkan pembayaran & simpan tautan berikut agar tidak hilang:
 
 Setelah transfer, unggah bukti pembayaran pada tautan di atas.
 
+Simpan pula *Kode Akses* Anda untuk mengecek status pendaftaran kapan saja:
+🔎 {link_status}
+*Kode Akses:* {kode_akses}
+
 جزاكم الله خيرا
 _Panitia {nama_acara}_', 1)`),
       db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_pengingat_bayar', 'Pengingat Tagihan',
@@ -475,6 +479,10 @@ Silakan lakukan pembayaran melalui tautan berikut:
 
 Jika sudah transfer, mohon unggah bukti pembayaran pada tautan tersebut.
 
+Simpan pula *Kode Akses* Anda untuk mengecek status pendaftaran kapan saja:
+🔎 {link_status}
+*Kode Akses:* {kode_akses}
+
 جزاكم الله خيرا
 _Panitia {nama_acara}_', 1)`),
       db.prepare(`INSERT OR IGNORE INTO wa_templates (id, nama, body, aktif) VALUES ('wa_lunas', 'Konfirmasi Lunas & Link Cek Status', ?, 1)`).bind(WA_LUNAS_BODY),
@@ -487,6 +495,16 @@ _Panitia {nama_acara}_', 1)`),
       )
       .bind(WA_LUNAS_BODY)
       .run();
+
+    // Migrasi ringan: pastikan template undangan & pengingat memuat kode akses (cek status mandiri).
+    await db.batch([
+      db
+        .prepare(
+          `UPDATE wa_templates SET body = body || char(10) || char(10) || 'Simpan pula *Kode Akses* Anda untuk mengecek status pendaftaran kapan saja:' || char(10) || '🔎 {link_status}' || char(10) || '*Kode Akses:* {kode_akses}'
+           WHERE id IN ('wa_undangan_bayar', 'wa_pengingat_bayar') AND (body IS NULL OR body NOT LIKE '%{kode_akses}%')`
+        )
+        .run(),
+    ]);
 
     initialized = true;
     console.log('[DB] Family Camp tables initialized successfully.');

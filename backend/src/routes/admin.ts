@@ -1311,8 +1311,8 @@ adminRoutes.get('/grup/:id/wa-link', async (c) => {
       jenis === 'lunas'
         ? `Halo {nama_pic}, pembayaran {nama_acara} Anda sudah LUNAS ✅. Cek tiket QR di: {link_status}\n\nKode Akses: {kode_akses}`
         : jenis === 'pengingat'
-        ? `Halo {nama_pic}, tagihan {nama_acara} sebesar {total} belum kami terima. Bayar di: {link_pembayaran}`
-        : `Halo {nama_pic}, terima kasih telah mendaftar {nama_acara}. Total {total}. Bayar di: {link_pembayaran}`;
+        ? `Halo {nama_pic}, tagihan {nama_acara} sebesar {total} belum kami terima. Bayar di: {link_pembayaran}\n\nKode Akses (cek status): {kode_akses}`
+        : `Halo {nama_pic}, terima kasih telah mendaftar {nama_acara}. Total {total}. Bayar di: {link_pembayaran}\n\nKode Akses (cek status): {kode_akses}`;
 
     const bodyTpl = tpl?.aktif ? tpl.body : fallback;
 

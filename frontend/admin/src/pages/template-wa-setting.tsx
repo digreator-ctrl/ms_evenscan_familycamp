@@ -17,6 +17,7 @@ const VARIABEL = [
   '{nomor_grup}',
   '{link_pembayaran}',
   '{link_status}',
+  '{kode_akses}',
 ];
 
 function renderPreview(body: string): string {
@@ -27,7 +28,8 @@ function renderPreview(body: string): string {
     .replace(/\{jumlah_anggota\}/g, '4')
     .replace(/\{nomor_grup\}/g, 'K-001')
     .replace(/\{link_pembayaran\}/g, 'https://contoh.id/pembayaran?token=XXX')
-    .replace(/\{link_status\}/g, 'https://contoh.id/status?wa=0812...');
+    .replace(/\{link_status\}/g, 'https://contoh.id/status?wa=0812...')
+    .replace(/\{kode_akses\}/g, 'ahmad1234');
 }
 
 export function TemplateWaSetting({ onBack }: { onBack: () => void }) {

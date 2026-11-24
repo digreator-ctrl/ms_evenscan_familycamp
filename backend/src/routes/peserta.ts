@@ -35,6 +35,35 @@ function getPhoneVariants(phone: string): [string, string] {
 }
 
 /**
+ * Membuat kode akses sederhana & mudah diingat:
+ * nama depan PIC + 4 digit terakhir nomor HP, mis. "ahmad1234".
+ * Dibuat unik terhadap payment_token yang sudah ada.
+ */
+async function generateKodeAkses(db: D1Database, picNama: string, picWhatsapp: string): Promise<string> {
+  const namaDepan =
+    (picNama || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter(Boolean)[0] || 'peserta';
+  const slug = namaDepan.slice(0, 15);
+  const digits = (picWhatsapp || '').replace(/\D/g, '');
+  const last4 = digits.slice(-4).padStart(4, '0');
+  const base = `${slug}${last4}`;
+
+  for (let i = 1; i <= 50; i++) {
+    const candidate = i === 1 ? base : `${base}${i}`;
+    const existing = await db
+      .prepare(`SELECT id FROM pendaftaran_grup WHERE payment_token = ?`)
+      .bind(candidate)
+      .first();
+    if (!existing) return candidate;
+  }
+  return `${base}${nanoid(4)}`;
+}
+
+/**
  * GET /api/peserta/config
  * Mengembalikan konfigurasi status kuota & pendaftaran publik
  */
@@ -707,7 +736,7 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
   const grand_total = biaya_wajib + biaya_addon;
 
   const grupId = 'grp_' + nanoid(10);
-  const paymentToken = 'pay_' + nanoid(16);
+  const paymentToken = await generateKodeAkses(db, pic_nama, pic_whatsapp);
 
   try {
     // 1. Simpan Pendaftaran Grup

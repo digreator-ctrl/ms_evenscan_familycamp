@@ -116,9 +116,8 @@ export function Verifikasi() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const [waModal, setWaModal] = useState<{ waUrl: string; nama: string } | null>(null);
-  const [tolakModal, setTolakModal] = useState<Grup | null>(null);
-  const [tolakAlasan, setTolakAlasan] = useState('');
+  const [waModal, setWaModal] = useState<{ waUrl: string; nama: string; kodeAkses?: string } | null>(null);
+  const [batalLunasModal, setBatalLunasModal] = useState<Grup | null>(null);
   const [hapusModal, setHapusModal] = useState<Grup | null>(null);
   const [konfirmasiModal, setKonfirmasiModal] = useState<Grup | null>(null);
   const [konfirmasiNominal, setKonfirmasiNominal] = useState('');
@@ -198,9 +197,9 @@ export function Verifikasi() {
   const openKonfirmasi = async (g: Grup) => {
     setKonfirmasiNominal(String(g.grand_total || 0));
     setKonfirmasiModal(g);
-    const list = await fetchDompet();
-    const def = list.find((d) => d.jenis === 'rekening') || list[0];
-    setKonfirmasiDompet(def?.id || '');
+    const dList = await fetchDompet();
+    const defDompet = dList.find((d) => d.jenis === 'rekening') || dList[0];
+    setKonfirmasiDompet(defDompet?.id || '');
   };
 
   const submitKonfirmasi = async () => {
@@ -216,7 +215,11 @@ export function Verifikasi() {
       const res = await fetch(`${API_URL}/api/admin/grup/${konfirmasiModal.id}/konfirmasi`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nominal_dibayar: nominal, dompet_id: konfirmasiDompet || undefined }),
+        body: JSON.stringify({
+          nominal_dibayar: nominal,
+          dompet_id: konfirmasiDompet || undefined,
+          pos_id: 'pos_pendaftaran',
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
@@ -224,7 +227,7 @@ export function Verifikasi() {
         setKonfirmasiModal(null);
         await fetchGrup(true);
         if (data.wa_url) {
-          setWaModal({ waUrl: data.wa_url, nama });
+          setWaModal({ waUrl: data.wa_url, nama, kodeAkses: data.kode_akses });
         } else {
           setToast({ type: 'success', message: 'Pendaftaran grup berhasil dikonfirmasi (Lunas).' });
         }
@@ -238,17 +241,22 @@ export function Verifikasi() {
     }
   };
 
-  const handleBatalLunas = async (g: Grup) => {
-    if (!confirm(`Batalkan status LUNAS untuk "${g.pic_nama}"? Jurnal pembalik kas akan dicatat.`)) return;
-    setActionLoading(g.id);
+  const handleBatalLunas = (g: Grup) => {
+    setBatalLunasModal(g);
+  };
+
+  const confirmBatalLunas = async () => {
+    if (!batalLunasModal) return;
+    setActionLoading(batalLunasModal.id);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/admin/grup/${g.id}/batal-lunas`, {
+      const res = await fetch(`${API_URL}/api/admin/grup/${batalLunasModal.id}/batal-lunas`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        setBatalLunasModal(null);
         await fetchGrup(true);
         setToast({ type: 'success', message: 'Status lunas dibatalkan & jurnal pembalik dicatat.' });
       } else {
@@ -282,46 +290,6 @@ export function Verifikasi() {
     }
   };
 
-  const handleTolak = (g: Grup) => {
-    setTolakAlasan('');
-    setTolakModal(g);
-  };
-
-  const submitTolak = async () => {
-    if (!tolakModal) return;
-    const alasan = tolakAlasan.trim();
-    if (!alasan) {
-      setToast({ type: 'error', message: 'Alasan penolakan wajib diisi.' });
-      return;
-    }
-
-    setActionLoading(tolakModal.id);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/admin/grup/${tolakModal.id}/tolak`, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ alasan }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        await fetchGrup(true);
-        setToast({ type: 'success', message: 'Pendaftaran grup berhasil ditolak.' });
-      } else {
-        setToast({ type: 'error', message: data.error || 'Gagal menolak grup.' });
-      }
-      setTolakModal(null);
-      setTolakAlasan('');
-    } catch (err) {
-      setToast({ type: 'error', message: 'Terjadi kesalahan saat menolak grup.' });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const confirmHapus = async () => {
     if (!hapusModal) return;
     setActionLoading(hapusModal.id);
@@ -351,17 +319,28 @@ export function Verifikasi() {
     <>
       {waModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-emerald-100 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto mb-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-emerald-100 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h3 className="text-base font-black text-slate-900 mb-1.5">Pembayaran Dikonfirmasi!</h3>
-            <p className="text-xs text-slate-500 leading-relaxed mb-6">
-              Grup <strong className="text-slate-800">{waModal.nama}</strong> berhasil dikonfirmasi LUNAS. Kirim
-              tiket QR ke WhatsApp PIC sekarang?
-            </p>
+            <div>
+              <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold uppercase tracking-wider mb-1">
+                Proses 2: Kirim Tiket WA
+              </span>
+              <h3 className="text-base font-black text-slate-900">Pembayaran Dikonfirmasi Lunas!</h3>
+              <p className="text-xs text-slate-500 leading-relaxed mt-1">
+                Grup <strong className="text-slate-800">{waModal.nama}</strong> telah lunas dan QR Code diterbitkan. Kirim
+                pesan WA lunas berisi kode akses untuk cek status &amp; QR Code sekarang?
+              </p>
+            </div>
+            {waModal.kodeAkses && (
+              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200 text-xs">
+                <span className="text-[10px] text-slate-400 uppercase font-bold block">Kode Akses Cek Status</span>
+                <span className="font-mono font-bold text-[#06305d] select-all">{waModal.kodeAkses}</span>
+              </div>
+            )}
             <div className="flex gap-2.5">
               <button
                 type="button"
@@ -378,57 +357,41 @@ export function Verifikasi() {
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
               >
-                Buka WhatsApp
+                Kirim WA Sekarang
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {tolakModal && (
+      {batalLunasModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-rose-100">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-base font-black text-slate-900">Tolak Pendaftaran Grup</h3>
-                <p className="text-xs text-slate-500 truncate">
-                  PIC: <span className="font-bold text-slate-700">{tolakModal.pic_nama}</span>
-                </p>
-              </div>
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-100 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
             </div>
-
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">Alasan Penolakan</label>
-            <textarea
-              rows={3}
-              value={tolakAlasan}
-              onChange={(e) => setTolakAlasan(e.target.value)}
-              placeholder="Tuliskan alasan penolakan pembayaran..."
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 resize-none"
-            />
-
-            <div className="flex gap-2.5 mt-4">
+            <h3 className="text-base font-black text-slate-900 mb-1.5">Batalkan Status Lunas?</h3>
+            <p className="text-xs text-slate-500 leading-relaxed mb-6">
+              Batalkan status LUNAS untuk grup <strong className="text-slate-800">{batalLunasModal.pic_nama}</strong>?
+              Status akan dikembalikan dan jurnal pembalik kas akan dicatat secara otomatis.
+            </p>
+            <div className="flex gap-2.5">
               <button
                 type="button"
-                onClick={() => {
-                  setTolakModal(null);
-                  setTolakAlasan('');
-                }}
+                onClick={() => setBatalLunasModal(null)}
                 className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition active:scale-95 cursor-pointer"
               >
                 Batal
               </button>
               <button
                 type="button"
-                onClick={submitTolak}
-                disabled={actionLoading === tolakModal.id}
+                onClick={confirmBatalLunas}
+                disabled={actionLoading === batalLunasModal.id}
                 className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
               >
-                Tolak
+                {actionLoading === batalLunasModal.id ? 'Memproses...' : 'Ya, Batalkan Lunas'}
               </button>
             </div>
           </div>
@@ -484,17 +447,18 @@ export function Verifikasi() {
                 </svg>
               </div>
               <div className="min-w-0">
-                <h3 className="text-base font-black text-slate-900">Konfirmasi Lunas</h3>
+                <span className="inline-block text-[10px] font-bold uppercase tracking-wider text-emerald-700">Proses 1: Catat Pemasukan</span>
+                <h3 className="text-base font-black text-slate-900">Konfirmasi Lunas & Terbitkan QR</h3>
                 <p className="text-xs text-slate-500 truncate">PIC: <span className="font-bold text-slate-700">{konfirmasiModal.pic_nama}</span></p>
               </div>
             </div>
 
             <div className="bg-slate-50 rounded-xl p-3 text-xs space-y-1 border border-slate-100">
-              <div className="flex justify-between"><span className="text-slate-500">Grand Total</span><span className="font-bold text-slate-800">{formatRupiah(konfirmasiModal.grand_total)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Grand Total Tagihan</span><span className="font-bold text-slate-800">{formatRupiah(konfirmasiModal.grand_total)}</span></div>
             </div>
 
             <label className="block text-xs font-bold text-slate-600">
-              Nominal yang Diterima (Rp)
+              Nominal Pembayaran (Sesuai Bukti Transfer)
               <input
                 type="text"
                 inputMode="numeric"
@@ -513,12 +477,20 @@ export function Verifikasi() {
               return <p className="text-[11px] font-semibold text-emerald-600">✓ Nominal sesuai tagihan.</p>;
             })()}
 
+            <div>
+              <span className="block text-xs font-bold text-slate-600 mb-1">Pos Pemasukan</span>
+              <div className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-between cursor-not-allowed select-none">
+                <span>Pendaftaran</span>
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-600">Otomatis / Paten</span>
+              </div>
+            </div>
+
             <label className="block text-xs font-bold text-slate-600">
               Dompet Tujuan
               <select
                 value={konfirmasiDompet}
                 onChange={(e) => setKonfirmasiDompet(e.target.value)}
-                className="mt-1 w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="mt-1 w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700"
               >
                 <option value="">-- Pilih Dompet --</option>
                 {dompetList.map((d) => (
@@ -526,6 +498,10 @@ export function Verifikasi() {
                 ))}
               </select>
             </label>
+
+            <p className="text-[11px] text-slate-400">
+              Setelah konfirmasi, akan dilanjutkan ke pengiriman WA lunas beserta kode akses cek status &amp; QR Code peserta.
+            </p>
 
             <div className="flex gap-2.5 pt-1">
               <button type="button" onClick={() => setKonfirmasiModal(null)} className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer">
@@ -537,7 +513,7 @@ export function Verifikasi() {
                 disabled={actionLoading === konfirmasiModal.id}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm disabled:opacity-50 cursor-pointer"
               >
-                {actionLoading === konfirmasiModal.id ? 'Memproses...' : 'Konfirmasi Lunas'}
+                {actionLoading === konfirmasiModal.id ? 'Memproses...' : 'Konfirmasi & Lanjut'}
               </button>
             </div>
           </div>
@@ -584,7 +560,6 @@ export function Verifikasi() {
         actionLoading={actionLoading}
         onBack={() => setSearchParams({})}
         onKonfirmasi={handleKonfirmasi}
-        onTolak={handleTolak}
         onHapus={(g) => setHapusModal(g)}
         onBatalLunas={handleBatalLunas}
         onKirimWa={handleKirimWa}
@@ -650,7 +625,7 @@ export function Verifikasi() {
           {/* Tombol toggle filter (opsional, hanya mobile) */}
           <button
             type="button"
-            onClick={() => setShowFilter((v) => !v)}
+            onClick={() => setShowFilter(true)}
             className={`sm:hidden shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl border transition active:scale-95 cursor-pointer ${
               filter !== 'semua'
                 ? 'bg-[#06305d] text-white border-[#06305d]'
@@ -697,41 +672,64 @@ export function Verifikasi() {
             </svg>
           </div>
         </div>
-
-        {/* Filter mobile (muncul saat tombol filter diklik) */}
-        {showFilter && (
-          <div className="sm:hidden relative">
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="w-full appearance-none pl-8 pr-8 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 transition"
-              title="Filter Status"
-            >
-              <option value="semua">Semua Status ({grup.length})</option>
-              <option value="menunggu_pembayaran">Menunggu Pembayaran ({grup.filter((g) => g.status === 'menunggu_pembayaran').length})</option>
-              <option value="menunggu_verifikasi">Menunggu Verifikasi ({grup.filter((g) => g.status === 'menunggu_verifikasi').length})</option>
-              <option value="lunas">Lunas ({grup.filter((g) => g.status === 'lunas').length})</option>
-              <option value="ditolak">Ditolak ({grup.filter((g) => g.status === 'ditolak').length})</option>
-            </select>
-            <svg
-              className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            <svg
-              className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        )}
       </div>
+
+      {/* Modal Popup Filter Mobile */}
+      {showFilter && (
+        <div
+          className="sm:hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4"
+          onClick={() => setShowFilter(false)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-sm p-5 shadow-2xl border border-slate-200 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-black text-slate-900">Filter Status</h3>
+              <button
+                type="button"
+                onClick={() => setShowFilter(false)}
+                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center cursor-pointer"
+                aria-label="Tutup filter"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {[
+                { val: 'semua', label: 'Semua Status', count: grup.length },
+                { val: 'menunggu_pembayaran', label: 'Menunggu Pembayaran', count: grup.filter((g) => g.status === 'menunggu_pembayaran').length },
+                { val: 'menunggu_verifikasi', label: 'Menunggu Verifikasi', count: grup.filter((g) => g.status === 'menunggu_verifikasi').length },
+                { val: 'lunas', label: 'Lunas', count: grup.filter((g) => g.status === 'lunas').length },
+                { val: 'ditolak', label: 'Ditolak', count: grup.filter((g) => g.status === 'ditolak').length },
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => {
+                    setFilter(opt.val);
+                    setShowFilter(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    filter === opt.val
+                      ? 'bg-[#06305d] text-white'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <span>{opt.label}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                      filter === opt.val ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'
+                    }`}
+                  >
+                    {opt.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {loading ? (
@@ -756,18 +754,20 @@ export function Verifikasi() {
                   className="p-3.5 sm:p-4 hover:bg-slate-50 active:bg-slate-100 transition cursor-pointer group"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 space-y-1">
                       <h3 className="font-bold text-slate-900 text-sm truncate group-hover:text-[#06305d] transition">
                         {g.pic_nama}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 truncate">
                         {g.tipe === 'keluarga' ? 'Keluarga' : 'Non-Keluarga'} • {g.jumlah_anggota} anggota
                       </p>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">{formatRupiah(g.grand_total)}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <span className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold ${statusBadge(g.status)}`}>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusBadge(g.status)}`}>
                         {statusLabel(g.status)}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 font-mono">
+                        {formatRupiah(g.grand_total)}
                       </span>
                     </div>
                   </div>
@@ -832,14 +832,13 @@ function DetailGrupView(props: {
   actionLoading: string | null;
   onBack: () => void;
   onKonfirmasi: (g: Grup) => void;
-  onTolak: (g: Grup) => void;
   onHapus: (g: Grup) => void;
   onBatalLunas: (g: Grup) => void;
   onKirimWa: (g: Grup, jenis: 'undangan' | 'pengingat' | 'lunas') => void;
   onRefreshDetail: (id: string) => void;
   renderModals: () => JSX.Element;
 }) {
-  const { detailId, selectedGrup, loading, actionLoading, onBack, onKonfirmasi, onTolak, onHapus, onBatalLunas, onKirimWa, onRefreshDetail, renderModals } = props;
+  const { detailId, selectedGrup, loading, actionLoading, onBack, onKonfirmasi, onHapus, onBatalLunas, onKirimWa, onRefreshDetail, renderModals } = props;
 
   useEffect(() => {
     if (detailId) onRefreshDetail(detailId);
@@ -882,7 +881,7 @@ function DetailGrupView(props: {
 
   return (
     <div className="space-y-5 animate-in fade-in duration-150">
-      <div>
+      <div className="flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={onBack}
@@ -893,51 +892,45 @@ function DetailGrupView(props: {
           </svg>
           <span>Kembali ke Verifikasi</span>
         </button>
+
+        <button
+          type="button"
+          disabled={actionLoading === g.id}
+          onClick={() => onHapus(g)}
+          className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs shrink-0"
+        >
+          <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+          <span>Hapus Data</span>
+        </button>
       </div>
 
       {/* HEADER */}
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center flex-wrap gap-2">
-              <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
-                {g.pic_nama}
-              </h1>
-              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold uppercase ${statusBadge(g.status)}`}>
-                {statusLabel(g.status)}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 font-mono mt-0.5">
-              ID: {g.id} • {g.tipe === 'keluarga' ? 'Keluarga' : 'Non-Keluarga'} • Terdaftar: {formatTanggal(g.created_at)}
-            </p>
-          </div>
-
-          <div className="flex items-center justify-end shrink-0">
-            <button
-              type="button"
-              disabled={actionLoading === g.id}
-              onClick={() => onHapus(g)}
-              className="px-4 py-2 bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
-            >
-              <svg className="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-              <span>Hapus Data</span>
-            </button>
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight truncate min-w-0">
+            {g.pic_nama}
+          </h1>
+          <span className={`shrink-0 inline-block px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold uppercase ${statusBadge(g.status)}`}>
+            {statusLabel(g.status)}
+          </span>
         </div>
+        <p className="text-xs text-slate-400 font-mono mt-1">
+          ID: {g.id} • {g.tipe === 'keluarga' ? 'Keluarga' : 'Non-Keluarga'} • Terdaftar: {formatTanggal(g.created_at)}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* KIRI: Info grup + anggota + addon */}
         <div className="lg:col-span-7 space-y-4">
           {/* Info PIC & Biaya */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
               <h2 className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#06305d]"></span>
@@ -945,35 +938,39 @@ function DetailGrupView(props: {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3.5 text-xs">
-              <div>
-                <span className="text-slate-400 font-semibold block text-[11px]">Nama PIC</span>
-                <p className="font-bold text-slate-900 text-sm mt-0.5">{g.pic_nama}</p>
-              </div>
-              <div>
-                <span className="text-slate-400 font-semibold block text-[11px]">Nomor WhatsApp</span>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <p className="font-mono font-bold text-slate-800 text-sm">{g.pic_whatsapp}</p>
-                  <a
-                    href={`https://wa.me/${g.pic_whatsapp.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold hover:underline"
-                  >
-                    Chat WA ↗
-                  </a>
+            <div className="grid grid-cols-2 gap-3 sm:gap-6 items-start text-xs">
+              {/* Sisi Kiri: Informasi Penanggung Jawab */}
+              <div className="pr-3 sm:pr-6 border-r border-slate-200 space-y-3 min-w-0">
+                <div>
+                  <span className="text-slate-400 font-semibold block text-[11px]">Nama PIC</span>
+                  <p className="font-bold text-slate-900 text-xs sm:text-sm mt-0.5 break-words">{g.pic_nama}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block text-[11px]">Nomor WhatsApp</span>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                    <p className="font-mono font-bold text-slate-800 text-xs sm:text-sm break-all">{g.pic_whatsapp}</p>
+                    <a
+                      href={`https://wa.me/${g.pic_whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[10px] text-emerald-600 hover:text-emerald-700 font-bold hover:underline shrink-0"
+                    >
+                      Chat WA ↗
+                    </a>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block text-[11px]">Email</span>
+                  <p className="font-semibold text-slate-700 text-xs mt-0.5 truncate">{g.pic_email || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-semibold block text-[11px]">Total Anggota</span>
+                  <p className="font-bold text-slate-800 mt-0.5">{g.jumlah_anggota} orang</p>
                 </div>
               </div>
-              <div>
-                <span className="text-slate-400 font-semibold block text-[11px]">Email</span>
-                <p className="font-semibold text-slate-700 text-xs mt-0.5 truncate">{g.pic_email || '-'}</p>
-              </div>
-              <div>
-                <span className="text-slate-400 font-semibold block text-[11px]">Total Anggota</span>
-                <p className="font-bold text-slate-800 mt-0.5">{g.jumlah_anggota} orang</p>
-              </div>
 
-              <div className="sm:col-span-2 mt-2 border-t border-slate-100 pt-3 grid grid-cols-2 gap-3">
+              {/* Sisi Kanan: Rincian Biaya */}
+              <div className="space-y-3 min-w-0">
                 <div>
                   <span className="text-slate-400 font-semibold block text-[11px]">Biaya Wajib</span>
                   <p className="font-bold text-slate-800 mt-0.5">{formatRupiah(g.biaya_wajib)}</p>
@@ -1126,37 +1123,40 @@ function DetailGrupView(props: {
             <span>Tindakan Verifikasi Panitia</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Tinjau bukti transfer lalu konfirmasi lunas untuk menerbitkan QR seluruh anggota, atau tolak.
+            {g.status === 'menunggu_pembayaran'
+              ? 'Peserta belum mengunggah bukti transfer. Kirim pengingat tagihan ke WhatsApp PIC.'
+              : g.status === 'menunggu_verifikasi'
+              ? 'Tinjau bukti transfer lalu input nominal & pos pemasukan untuk konfirmasi lunas, terbitkan QR, dan kirim kode akses ke WA PIC.'
+              : g.status === 'lunas'
+              ? 'Pembayaran telah dikonfirmasi lunas. Anda dapat membatalkan status lunas jika diperlukan.'
+              : 'Pendaftaran ini berstatus ditolak.'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {g.status === 'menunggu_verifikasi' && (
-            <>
-              <button
-                type="button"
-                disabled={actionLoading === g.id}
-                onClick={() => onKonfirmasi(g)}
-                className="flex-1 min-w-[160px] px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>{actionLoading === g.id ? 'Memproses...' : 'Konfirmasi Lunas & Terbitkan QR'}</span>
-              </button>
+          {g.status === 'menunggu_pembayaran' && (
+            <button
+              type="button"
+              onClick={() => onKirimWa(g, 'pengingat')}
+              className="w-full sm:w-auto px-5 py-3 bg-amber-50 hover:bg-amber-100 active:scale-98 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>🔔</span>
+              <span>Pengingat Tagihan</span>
+            </button>
+          )}
 
-              <button
-                type="button"
-                disabled={actionLoading === g.id}
-                onClick={() => onTolak(g)}
-                className="px-5 py-3 bg-rose-50 hover:bg-rose-100 active:scale-98 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                <span>Tolak</span>
-              </button>
-            </>
+          {g.status === 'menunggu_verifikasi' && (
+            <button
+              type="button"
+              disabled={actionLoading === g.id}
+              onClick={() => onKonfirmasi(g)}
+              className="w-full sm:w-auto flex-1 min-w-[160px] px-5 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white rounded-xl text-xs font-bold transition shadow-xs disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+              </svg>
+              <span>{actionLoading === g.id ? 'Memproses...' : 'Konfirmasi Lunas & Terbitkan QR'}</span>
+            </button>
           )}
 
           {g.status === 'lunas' && (
@@ -1184,48 +1184,12 @@ function DetailGrupView(props: {
                 type="button"
                 disabled={actionLoading === g.id}
                 onClick={() => onBatalLunas(g)}
-                className="mt-2 px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-lg text-[11px] font-bold transition disabled:opacity-50 cursor-pointer"
+                className="mt-2.5 px-3.5 py-2 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-[11px] font-bold transition disabled:opacity-50 cursor-pointer"
               >
-                {actionLoading === g.id ? '...' : 'Batalkan Lunas'}
+                {actionLoading === g.id ? 'Memproses...' : 'Batalkan Lunas'}
               </button>
             </div>
           )}
-
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-5 py-3 bg-slate-100 hover:bg-slate-200 active:scale-98 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
-          >
-            Kembali ke Daftar
-          </button>
-        </div>
-
-        {/* Kirim Pesan WhatsApp */}
-        <div className="border-t border-slate-100 pt-4">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2">Kirim Pesan WhatsApp ke PIC</p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onKirimWa(g, 'undangan')}
-              className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold transition active:scale-95 cursor-pointer"
-            >
-              💬 Undangan Bayar
-            </button>
-            <button
-              type="button"
-              onClick={() => onKirimWa(g, 'pengingat')}
-              className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[11px] font-bold transition active:scale-95 cursor-pointer"
-            >
-              🔔 Pengingat Tagihan
-            </button>
-            <button
-              type="button"
-              onClick={() => onKirimWa(g, 'lunas')}
-              className="px-3.5 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-lg text-[11px] font-bold transition active:scale-95 cursor-pointer"
-            >
-              ✅ Konfirmasi Lunas
-            </button>
-          </div>
         </div>
       </div>
 

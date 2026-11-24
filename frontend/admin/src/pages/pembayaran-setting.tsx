@@ -13,6 +13,7 @@ export function PembayaranSetting({ onBack }: { onBack: () => void }) {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<'rekening' | 'umum'>('rekening');
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
@@ -111,18 +112,42 @@ export function PembayaranSetting({ onBack }: { onBack: () => void }) {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-4">
-          <div className="space-y-3">
-            <p className="text-[11px] font-black uppercase tracking-wider text-slate-400">Rekening Tujuan</p>
-            {field('rekening_bank', 'Bank', 'BCA Syariah')}
-            {field('rekening_nomor', 'Nomor Rekening', '0680909090')}
-            {field('rekening_atas_nama', 'Atas Nama', 'Yayasan Muslim Scene Official')}
+          <div className="flex gap-1.5">
+            {(
+              [
+                { id: 'rekening', label: 'Rekening Tujuan' },
+                { id: 'umum', label: 'Umum' },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer border ${
+                  tab === t.id
+                    ? 'bg-[#06305d] text-white border-[#06305d]'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-          <div className="border-t border-slate-100 pt-4 space-y-3">
-            <p className="text-[11px] font-black uppercase tracking-wider text-slate-400">Umum</p>
-            {field('nama_acara', 'Nama Acara', 'Family Camp')}
-            {field('kontak_panitia_wa', 'Kontak WA Panitia', '081234567890')}
-            {field('harga_per_orang', 'Harga per Orang (Rp)', '200000', 'number')}
-          </div>
+
+          {tab === 'rekening' && (
+            <div className="space-y-3">
+              {field('rekening_bank', 'Bank', 'BCA Syariah')}
+              {field('rekening_nomor', 'Nomor Rekening', '0680909090')}
+              {field('rekening_atas_nama', 'Atas Nama', 'Yayasan Muslim Scene Official')}
+            </div>
+          )}
+          {tab === 'umum' && (
+            <div className="space-y-3">
+              {field('nama_acara', 'Nama Acara', 'Family Camp')}
+              {field('kontak_panitia_wa', 'Kontak WA Panitia', '081234567890')}
+              {field('harga_per_orang', 'Harga per Orang (Rp)', '200000', 'number')}
+            </div>
+          )}
           <div className="pt-2">
             <button
               type="button"

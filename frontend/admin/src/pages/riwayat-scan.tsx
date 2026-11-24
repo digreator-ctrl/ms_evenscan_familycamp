@@ -133,7 +133,7 @@ export function RiwayatScan() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Data Peserta</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -142,7 +142,7 @@ export function RiwayatScan() {
         </div>
         <button
           onClick={handleExportCSV}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm active:scale-95 cursor-pointer"
+          className="self-end sm:self-auto shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm active:scale-95 cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -182,9 +182,9 @@ export function RiwayatScan() {
           {/* Tombol toggle filter (mobile) */}
           <button
             type="button"
-            onClick={() => setShowFilter((v) => !v)}
+            onClick={() => setShowFilter(true)}
             className={`sm:hidden shrink-0 relative inline-flex items-center justify-center w-10 h-10 rounded-xl border transition active:scale-95 cursor-pointer ${
-              showFilter || fHadir !== 'semua' || fKategori !== 'semua' || fGender !== 'semua' || fStatus !== 'semua'
+              fHadir !== 'semua' || fKategori !== 'semua' || fGender !== 'semua' || fStatus !== 'semua'
                 ? 'bg-[#06305d] text-white border-[#06305d]'
                 : 'bg-slate-50 text-slate-600 border-slate-200'
             }`}
@@ -198,12 +198,8 @@ export function RiwayatScan() {
           </button>
         </div>
 
-        {/* Filter fields: tersembunyi di mobile (muncul saat diklik), selalu tampil di sm+ */}
-        <div
-          className={`${
-            showFilter ? 'grid' : 'hidden'
-          } sm:grid grid-cols-2 sm:grid-cols-5 gap-2`}
-        >
+        {/* Filter fields desktop */}
+        <div className="hidden sm:grid sm:grid-cols-5 gap-2">
           <select
             value={fHadir}
             onChange={(e) => setFHadir(e.target.value)}
@@ -248,12 +244,119 @@ export function RiwayatScan() {
           <button
             type="button"
             onClick={fetchAnggota}
-            className="col-span-2 sm:col-span-1 px-4 py-2.5 bg-[#06305d] hover:bg-[#0a4583] text-white rounded-xl text-xs font-bold cursor-pointer active:scale-95 transition"
+            className="px-4 py-2.5 bg-[#06305d] hover:bg-[#0a4583] text-white rounded-xl text-xs font-bold cursor-pointer active:scale-95 transition"
           >
             Terapkan
           </button>
         </div>
       </div>
+
+      {/* Modal Popup Filter Mobile */}
+      {showFilter && (
+        <div
+          className="sm:hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4"
+          onClick={() => setShowFilter(false)}
+        >
+          <div
+            className="bg-white rounded-3xl w-full max-w-sm p-5 shadow-2xl border border-slate-200 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-black text-slate-900">Filter Data Peserta</h3>
+              <button
+                type="button"
+                onClick={() => setShowFilter(false)}
+                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold flex items-center justify-center cursor-pointer"
+                aria-label="Tutup filter"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Kehadiran</label>
+                <select
+                  value={fHadir}
+                  onChange={(e) => setFHadir(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
+                >
+                  <option value="semua">Semua Kehadiran</option>
+                  <option value="hadir">Sudah Hadir</option>
+                  <option value="belum_hadir">Belum Hadir</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Kategori Usia</label>
+                <select
+                  value={fKategori}
+                  onChange={(e) => setFKategori(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
+                >
+                  <option value="semua">Semua Kategori</option>
+                  <option value="balita">Balita (0-5)</option>
+                  <option value="anak">Anak (6-10)</option>
+                  <option value="remaja">Remaja (11-17)</option>
+                  <option value="dewasa">Dewasa (18-50)</option>
+                  <option value="lansia">Lansia (51+)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Jenis Kelamin</label>
+                <select
+                  value={fGender}
+                  onChange={(e) => setFGender(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
+                >
+                  <option value="semua">Semua Gender</option>
+                  <option value="L">Ikhwan (L)</option>
+                  <option value="P">Akhwat (P)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">Status Pembayaran</label>
+                <select
+                  value={fStatus}
+                  onChange={(e) => setFStatus(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer"
+                >
+                  <option value="semua">Semua Status Bayar</option>
+                  <option value="menunggu_pembayaran">Menunggu Pembayaran</option>
+                  <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
+                  <option value="lunas">Lunas</option>
+                  <option value="ditolak">Ditolak</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setFHadir('semua');
+                  setFKategori('semua');
+                  setFGender('semua');
+                  setFStatus('semua');
+                  setShowFilter(false);
+                }}
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  fetchAnggota();
+                  setShowFilter(false);
+                }}
+                className="flex-1 py-2.5 bg-[#06305d] hover:bg-[#0a4583] text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Terapkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
@@ -275,40 +378,39 @@ export function RiwayatScan() {
               <div
                 key={d.id}
                 onClick={() => navigate(`/peserta/anggota/${d.id}`)}
-                className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs active:bg-slate-50 transition cursor-pointer"
+                className="bg-white rounded-2xl p-3.5 border border-slate-200 shadow-xs active:bg-slate-50 transition cursor-pointer"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <span className="inline-block text-[10px] font-mono font-black text-[#06305d] bg-[#06305d]/10 px-1.5 py-0.5 rounded">
-                      {d.nomor_peserta}
+                {/* Baris 1: ID Peserta - Nama/Nomor Grup (kiri) & Status Pembayaran (kanan) */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="inline-block text-[10px] font-mono font-black text-[#06305d] bg-[#06305d]/10 px-1.5 py-0.5 rounded truncate">
+                      {d.nomor_peserta}{d.nomor_grup ? ` - ${d.nomor_grup}` : d.pic_nama ? ` - ${d.pic_nama}` : ''}
                     </span>
-                    <h4 className="font-bold text-slate-900 text-sm truncate mt-1">{d.nama}</h4>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-                      {d.peran} • {d.jenis_kelamin} • {d.usia != null ? `${d.usia} th` : '-'} • {d.kategori_usia_label}
-                      {d.catatan_medis ? ' • ⚠ medis' : ''}
-                    </p>
-                    {d.nomor_grup && (
-                      <p className="text-[11px] text-slate-400 mt-0.5">Grup {d.nomor_grup} • PIC {d.pic_nama}</p>
+                    {d.catatan_medis && (
+                      <span className="shrink-0 inline-block text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                        ⚠ Medis
+                      </span>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        d.is_gratis ? 'bg-amber-100 text-amber-800' : statusBayarBadge(d.grup_status)
-                      }`}
-                    >
-                      {d.is_gratis ? 'Gratis' : statusBayarLabel(d.grup_status)}
-                    </span>
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        d.status_hadir === 'hadir' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'
-                      }`}
-                    >
-                      {d.status_hadir === 'hadir' ? '✓ Hadir' : 'Belum'}
-                    </span>
-                  </div>
+                  <span
+                    className={`shrink-0 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      d.is_gratis ? 'bg-amber-100 text-amber-800' : statusBayarBadge(d.grup_status)
+                    }`}
+                  >
+                    {d.is_gratis ? 'Gratis' : statusBayarLabel(d.grup_status)}
+                  </span>
                 </div>
-                <div className="grid grid-cols-4 gap-1.5 mt-3 pt-3 border-t border-slate-100">
+
+                {/* Baris 2: Nama Peserta (kiri) & Peran, JK, Usia, Kategori Usia (kanan) */}
+                <div className="flex items-baseline justify-between gap-3 mt-1.5">
+                  <h4 className="font-bold text-slate-900 text-sm truncate min-w-0 flex-1">{d.nama}</h4>
+                  <p className="text-[11px] text-slate-500 text-right shrink-0 max-w-[58%] leading-snug">
+                    {d.peran} • {d.jenis_kelamin} • {d.usia != null ? `${d.usia} th` : '-'} • {d.kategori_usia_label}
+                  </p>
+                </div>
+
+                {/* Baris 3: Status Check-in dan Makan (full kiri sampai kanan) */}
+                <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2.5 border-t border-slate-100">
                   {SESI_COLS.map((s) => (
                     <div
                       key={s.id}

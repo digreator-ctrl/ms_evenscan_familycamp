@@ -372,12 +372,45 @@ import Layout from '../layouts/Layout.astro';
         }
       }
 
-      // 2. Share WA Link
+      // 2. Share WA Link (menggunakan template wa_undangan_bayar dari backend/admin)
       const btnShareWA = document.getElementById('btnShareWA') as HTMLAnchorElement | null;
       if (btnShareWA) {
-        const cleanPhone = grup.pic_whatsapp.replace(/\D/g, '').replace(/^0/, '62');
+        let cleanPhone = (grup.pic_whatsapp || '').replace(/\D/g, '');
+        if (cleanPhone.startsWith('0')) cleanPhone = '62' + cleanPhone.slice(1);
+        else if (cleanPhone.startsWith('8')) cleanPhone = '62' + cleanPhone;
+
         const currentUrl = window.location.href;
-        const msg = `بسم الله\nBerikut adalah tautan konfirmasi pendaftaran & tiket Family Camp saya:\n🔗 ${currentUrl}\nTotal Tagihan: Rp ${grup.grand_total.toLocaleString('id-ID')}`;
+        const linkStatus = `${window.location.origin}/status?token=${encodeURIComponent(token)}`;
+        const namaAcara = data.nama_acara || 'Family Camp';
+        const defaultTpl = `بسم الله
+السلام عليكم ورحمة الله وبركاته
+Halo *{nama_pic}*,
+
+Terima kasih telah mendaftar *{nama_acara}*.
+
+Total tagihan kelompok Anda: *{total}* untuk {jumlah_anggota} peserta.
+
+Silakan lanjutkan pembayaran & simpan tautan berikut agar tidak hilang:
+🔗 {link_pembayaran}
+
+Setelah transfer, unggah bukti pembayaran pada tautan di atas.
+
+جزاكم الله خيرا
+_Panitia {nama_acara}_`;
+
+        const vars: Record<string, string> = {
+          nama_pic: grup.pic_nama || '',
+          nama_acara: namaAcara,
+          total: `Rp ${Number(grup.grand_total || 0).toLocaleString('id-ID')}`,
+          jumlah_anggota: String(anggota.length ?? grup.jumlah_anggota ?? ''),
+          nomor_grup: grup.nomor_grup || '',
+          link_pembayaran: currentUrl,
+          link_status: linkStatus,
+          kode_akses: grup.payment_token || token,
+        };
+
+        const bodyTpl = data.wa_undangan_body || defaultTpl;
+        const msg = bodyTpl.replace(/\{([a-zA-Z0-9_]+)\}/g, (_m: string, key: string) => vars[key] ?? '');
         btnShareWA.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
       }
 

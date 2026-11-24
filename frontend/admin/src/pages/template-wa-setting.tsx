@@ -32,6 +32,7 @@ function renderPreview(body: string): string {
 
 export function TemplateWaSetting({ onBack }: { onBack: () => void }) {
   const [templates, setTemplates] = useState<WaTemplate[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -48,7 +49,11 @@ export function TemplateWaSetting({ onBack }: { onBack: () => void }) {
         const res = await fetch(`${API_URL}/api/admin/wa-templates`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
         });
-        if (res.ok) setTemplates((await res.json()).data || []);
+        if (res.ok) {
+          const list: WaTemplate[] = (await res.json()).data || [];
+          setTemplates(list);
+          setActiveId((prev) => prev ?? list[0]?.id ?? null);
+        }
       } catch {
         setToast({ type: 'error', message: 'Gagal memuat template.' });
       } finally {
@@ -120,33 +125,55 @@ export function TemplateWaSetting({ onBack }: { onBack: () => void }) {
         </div>
       ) : (
         <div className="space-y-4">
-          {templates.map((tpl) => (
-            <div key={tpl.id} className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3">
-              <h2 className="text-sm font-black text-slate-900">{tpl.nama}</h2>
-              <textarea
-                rows={7}
-                value={tpl.body}
-                onChange={(e) => updateBody(tpl.id, e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d]"
-              />
-              <details className="text-xs text-slate-500">
-                <summary className="cursor-pointer font-bold text-[#06305d] select-none">Pratinjau</summary>
-                <div className="mt-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 whitespace-pre-wrap text-slate-700 leading-relaxed">
-                  {renderPreview(tpl.body)}
-                </div>
-              </details>
-              <div className="flex justify-end">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+            {templates.map((tpl) => {
+              const isActive = tpl.id === activeId;
+              return (
                 <button
+                  key={tpl.id}
                   type="button"
-                  onClick={() => save(tpl.id)}
-                  disabled={savingId === tpl.id}
-                  className="px-5 py-2 bg-[#06305d] hover:bg-[#0a4583] text-white rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  onClick={() => setActiveId(tpl.id)}
+                  className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer border ${
+                    isActive
+                      ? 'bg-[#06305d] text-white border-[#06305d]'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
                 >
-                  {savingId === tpl.id ? 'Menyimpan...' : 'Simpan Template'}
+                  {tpl.nama}
                 </button>
+              );
+            })}
+          </div>
+
+          {templates
+            .filter((tpl) => tpl.id === activeId)
+            .map((tpl) => (
+              <div key={tpl.id} className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3">
+                <h2 className="text-sm font-black text-slate-900">{tpl.nama}</h2>
+                <textarea
+                  rows={7}
+                  value={tpl.body}
+                  onChange={(e) => updateBody(tpl.id, e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d]"
+                />
+                <details className="text-xs text-slate-500">
+                  <summary className="cursor-pointer font-bold text-[#06305d] select-none">Pratinjau</summary>
+                  <div className="mt-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200 whitespace-pre-wrap text-slate-700 leading-relaxed">
+                    {renderPreview(tpl.body)}
+                  </div>
+                </details>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => save(tpl.id)}
+                    disabled={savingId === tpl.id}
+                    className="px-5 py-2 bg-[#06305d] hover:bg-[#0a4583] text-white rounded-xl text-xs font-bold transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                  >
+                    {savingId === tpl.id ? 'Menyimpan...' : 'Simpan Template'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
 

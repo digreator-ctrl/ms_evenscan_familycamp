@@ -489,11 +489,13 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
       return c.json({ error: 'Dompet tujuan tidak ditemukan' }, 400);
     }
 
-    const posPendaftaran = await db.prepare(`SELECT id FROM kas_pos WHERE id = 'pos_pendaftaran'`).first<{ id: string }>();
+    const posTujuan = await db
+      .prepare(`SELECT id, nama FROM kas_pos WHERE id = 'pos_pendaftaran'`)
+      .first<{ id: string; nama: string }>();
     const posKelebihan = await db.prepare(`SELECT id FROM kas_pos WHERE id = 'pos_kelebihan_bayar'`).first<{ id: string }>();
 
-    if (!posPendaftaran?.id || !posKelebihan?.id) {
-      return c.json({ error: 'Pos kas "Pendaftaran" / "Kelebihan Bayar" tidak ditemukan.' }, 500);
+    if (!posTujuan?.id || !posKelebihan?.id) {
+      return c.json({ error: 'Pos pemasukan "Pendaftaran" / "Kelebihan Bayar" tidak ditemukan.' }, 500);
     }
 
     const selisih = nominalDibayar - grandTotal;
@@ -538,7 +540,7 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
           )
           .bind(
             kasId,
-            posPendaftaran.id,
+            posTujuan.id,
             dompetTujuanId,
             nominalPendaftaran,
             `Pendaftaran ${grup.nomor_grup || ''} - ${kat}`.trim(),
@@ -592,14 +594,16 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
     const pesertaUrl = (c.env.PESERTA_BASE_URL || 'http://localhost:3001').replace(/\/+$/, '');
     const linkTiket = `${pesertaUrl}/status?token=${encodeURIComponent(grup.payment_token)}`;
     const kodeAkses = grup.payment_token || '';
+    const namaAcaraRow = await db.prepare(`SELECT value FROM app_settings WHERE key = 'nama_acara'`).first<{ value: string }>();
+    const namaAcara = namaAcaraRow?.value || 'Family Camp';
 
     let pesanWa: string;
     const tpl = await db.prepare(`SELECT body FROM wa_templates WHERE id = 'wa_lunas' AND aktif = 1`).first<{ body: string }>();
     if (tpl?.body) {
       pesanWa = renderWaTemplate(tpl.body, {
         nama_pic: grup.pic_nama || '',
-        nama_acara: 'Family Camp',
-        total: `Rp ${grandTotal.toLocaleString('id-ID')}`,
+        nama_acara: namaAcara,
+        total: `Rp ${nominalDibayar.toLocaleString('id-ID')}`,
         jumlah_anggota: String(grup.jumlah_anggota ?? anggotaList.length),
         nomor_grup: grup.nomor_grup || '',
         link_status: linkTiket,
@@ -611,10 +615,10 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
 السلام عليكم ورحمة الله وبركاته
 Halo *${grup.pic_nama}*,
 
-Alhamdulillah, pendaftaran *Family Camp* Anda telah *BERHASIL DIKONFIRMASI & LUNAS* ✅
+Alhamdulillah, pembayaran *${namaAcara}* Anda telah kami verifikasi *LUNAS* ✅
 
 Total Peserta: ${grup.jumlah_anggota} orang
-Total Pembayaran: Rp ${grandTotal.toLocaleString('id-ID')}
+Total Pembayaran: Rp ${nominalDibayar.toLocaleString('id-ID')}
 
 Silakan cek status pendaftaran dan unduh *ID/QR kehadiran* seluruh anggota melalui tautan berikut:
 🔗 ${linkTiket}
@@ -623,7 +627,8 @@ Silakan cek status pendaftaran dan unduh *ID/QR kehadiran* seluruh anggota melal
 
 Mohon tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
 
-جزاكم الله خيرا`;
+جزاكم الله خيرا
+_Panitia ${namaAcara}_`;
     }
 
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(pesanWa)}`;
@@ -632,9 +637,12 @@ Mohon tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di 
       success: true,
       message: 'Pendaftaran grup berhasil dikonfirmasi, kas tercatat, dan QR tiket telah diterbitkan',
       wa_url: waUrl,
+      kode_akses: kodeAkses,
+      link_status: linkTiket,
       nominal_dibayar: nominalDibayar,
       selisih_bayar: selisih,
       dompet: dompet.nama,
+      pos: posTujuan.nama,
     });
   } catch (err: any) {
     console.error('Error konfirmasi grup:', err);

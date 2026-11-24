@@ -863,6 +863,27 @@ pesertaRoutes.get('/pembayaran/:token', async (c) => {
       kontak_panitia_wa: settingsMap.get('kontak_panitia_wa') || '081234567890',
     };
 
+    const namaAcara = settingsMap.get('nama_acara') || 'Family Camp';
+    const tplUndangan = await db
+      .prepare(`SELECT body, aktif FROM wa_templates WHERE id = 'wa_undangan_bayar'`)
+      .first<{ body: string; aktif: number }>();
+
+    const fallbackUndangan = `بسم الله
+السلام عليكم ورحمة الله وبركاته
+Halo *{nama_pic}*,
+
+Terima kasih telah mendaftar *{nama_acara}*.
+
+Total tagihan kelompok Anda: *{total}* untuk {jumlah_anggota} peserta.
+
+Silakan lanjutkan pembayaran & simpan tautan berikut agar tidak hilang:
+🔗 {link_pembayaran}
+
+Setelah transfer, unggah bukti pembayaran pada tautan di atas.
+
+جزاكم الله خيرا
+_Panitia {nama_acara}_`;
+
     return c.json({
       success: true,
       data: {
@@ -870,6 +891,8 @@ pesertaRoutes.get('/pembayaran/:token', async (c) => {
         anggota: anggotaRes.results || [],
         addons: addonsRes.results || [],
         bank_info,
+        nama_acara: namaAcara,
+        wa_undangan_body: tplUndangan?.aktif ? tplUndangan.body : fallbackUndangan,
       },
     });
   } catch (err: any) {

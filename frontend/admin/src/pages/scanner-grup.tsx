@@ -323,17 +323,6 @@ export function ScannerGrup() {
       {/* Top Bar */}
       <header className="sticky top-0 z-30 bg-[#06305d] text-white px-4 py-3 shadow-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => navigate('/scanner')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-xs font-bold text-white transition active:scale-95 cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
-            </svg>
-            <span>Kamera</span>
-          </button>
-
           <h1 className="text-sm font-black tracking-tight truncate">Presensi & Konsumsi Grup</h1>
 
           <button

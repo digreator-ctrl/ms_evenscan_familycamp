@@ -387,7 +387,279 @@ import Layout from "../layouts/Layout.astro";
         // 3. Daftar Anggota & Tiket QR
         if (grupAnggota) {
           grupAnggota.innerHTML = renderAnggota(g);
+          if (g.status === "lunas") {
+            setupAccordionAndDownloads(g);
+          }
         }
+      }
+
+      function drawRoundRect(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        w: number,
+        h: number,
+        r: number
+      ) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+
+      function generateAndDownloadIdCard(
+        anggota: any,
+        kodeAkses: string,
+        qrUrl: string,
+        btn: HTMLElement
+      ) {
+        if (!qrUrl) {
+          showToast("QR Code belum tersedia atau sedang diproses panitia.");
+          return;
+        }
+
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `<span class="inline-block animate-spin mr-1">⏳</span><span>Mengunduh...</span>`;
+        btn.style.pointerEvents = "none";
+
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        const sep = qrUrl.includes("?") ? "&" : "?";
+        img.src = `${qrUrl}${sep}cb=${Date.now()}`;
+
+        img.onload = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = 600;
+            canvas.height = 920;
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("Canvas context tidak tersedia");
+
+            // 1. Background card putih
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, 600, 920);
+
+            // Card outer border
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(2, 2, 596, 916);
+
+            // 2. Banner Header Navy
+            ctx.fillStyle = "#06305d";
+            ctx.fillRect(0, 0, 600, 140);
+
+            // Badge Pill "FAMILY CAMP"
+            ctx.fillStyle = "#f59e0b";
+            drawRoundRect(ctx, 210, 24, 180, 28, 14);
+            ctx.fill();
+
+            ctx.fillStyle = "#0f172a";
+            ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("FAMILY CAMP", 300, 43);
+
+            // Judul ID Card
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "900 24px system-ui, -apple-system, sans-serif";
+            ctx.fillText("ID CARD PESERTA", 300, 95);
+
+            ctx.fillStyle = "#93c5fd";
+            ctx.font = "500 13px system-ui, -apple-system, sans-serif";
+            ctx.fillText("Muslim Scene EvenScan", 300, 120);
+
+            // 3. QR Code Box
+            ctx.fillStyle = "#f8fafc";
+            drawRoundRect(ctx, 160, 175, 280, 280, 20);
+            ctx.fill();
+            ctx.strokeStyle = "#cbd5e1";
+            ctx.lineWidth = 2;
+            drawRoundRect(ctx, 160, 175, 280, 280, 20);
+            ctx.stroke();
+
+            // Gambar QR
+            ctx.drawImage(img, 175, 190, 250, 250);
+
+            // 4. Nomor Peserta Pill
+            ctx.fillStyle = "#f0f9ff";
+            drawRoundRect(ctx, 190, 485, 220, 36, 10);
+            ctx.fill();
+            ctx.strokeStyle = "#bae6fd";
+            ctx.lineWidth = 1.5;
+            drawRoundRect(ctx, 190, 485, 220, 36, 10);
+            ctx.stroke();
+
+            ctx.fillStyle = "#0284c7";
+            ctx.font = "900 18px monospace, system-ui";
+            ctx.textAlign = "center";
+            ctx.fillText(anggota.nomor_peserta || "-", 300, 509);
+
+            // 5. Nama Peserta
+            ctx.fillStyle = "#0f172a";
+            const nama = anggota.nama || "Peserta";
+            if (nama.length > 25) {
+              ctx.font = "bold 20px system-ui, -apple-system, sans-serif";
+            } else {
+              ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
+            }
+            ctx.fillText(nama, 300, 560);
+
+            // 6. Detail Peran / Usia
+            const details = [
+              anggota.peran || "Peserta",
+              anggota.jenis_kelamin || "",
+              anggota.usia != null ? `${anggota.usia} th` : "",
+              anggota.kategori_usia_label || "",
+            ]
+              .filter(Boolean)
+              .join(" • ");
+
+            ctx.fillStyle = "#64748b";
+            ctx.font = "500 14px system-ui, -apple-system, sans-serif";
+            ctx.fillText(details, 300, 592);
+
+            // 7. Box Kode Akses (Highlighted Amber untuk Input Manual Panitia)
+            ctx.fillStyle = "#fef3c7";
+            drawRoundRect(ctx, 50, 630, 500, 130, 18);
+            ctx.fill();
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 2.5;
+            drawRoundRect(ctx, 50, 630, 500, 130, 18);
+            ctx.stroke();
+
+            ctx.fillStyle = "#92400e";
+            ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+            ctx.fillText("KODE AKSES MANUAL (PANITIA):", 300, 662);
+
+            ctx.fillStyle = "#78350f";
+            ctx.font = "900 32px monospace, system-ui";
+            ctx.fillText(kodeAkses || "-", 300, 706);
+
+            ctx.fillStyle = "#b45309";
+            ctx.font = "500 12px system-ui, -apple-system, sans-serif";
+            ctx.fillText(
+              "Sebutkan kode ini ke panitia jika QR scanner terkendala di lokasi",
+              300,
+              738
+            );
+
+            // 8. Footer Card
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(60, 790);
+            ctx.lineTo(540, 790);
+            ctx.stroke();
+
+            ctx.fillStyle = "#64748b";
+            ctx.font = "500 12px system-ui, -apple-system, sans-serif";
+            ctx.fillText(
+              "Tunjukkan ID Card ini saat check-in & pengambilan konsumsi",
+              300,
+              825
+            );
+
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
+            ctx.fillText("MUSLIM SCENE OFFICIAL • EVENT REGISTRATION", 300, 855);
+
+            // Trigger Download
+            const link = document.createElement("a");
+            const safeName = (anggota.nama || "peserta").replace(
+              /[^a-zA-Z0-9_-]/g,
+              "_"
+            );
+            const safeNo = (anggota.nomor_peserta || "ID").replace(
+              /[^a-zA-Z0-9_-]/g,
+              "_"
+            );
+            link.download = `IDCard-${safeNo}-${safeName}.png`;
+            link.href = canvas.toDataURL("image/png");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast(`ID Card ${anggota.nama} berhasil diunduh!`, "Berhasil");
+          } catch (e: any) {
+            console.error("Gagal generate ID card canvas:", e);
+            showToast("ID Card gagal dibuat. Silakan coba unduh kembali.", "Gagal Mengunduh");
+          } finally {
+            btn.innerHTML = originalHtml;
+            btn.style.pointerEvents = "";
+          }
+        };
+
+        img.onerror = () => {
+          btn.innerHTML = originalHtml;
+          btn.style.pointerEvents = "";
+          showToast(
+            "Gagal memuat QR Code. Silakan periksa koneksi internet.",
+            "Gagal Mengunduh"
+          );
+        };
+      }
+
+      function setupAccordionAndDownloads(g: any) {
+        const container = document.getElementById("grupAnggota");
+        if (!container) return;
+
+        const anggotaList = Array.isArray(g.anggota) ? g.anggota : [];
+        const kodeAkses = g.payment_token || "";
+
+        // 1. Accordion Toggle
+        container
+          .querySelectorAll(".anggota-accordion-card")
+          .forEach((card) => {
+            const header = card.querySelector(".accordion-header");
+            const body = card.querySelector(".accordion-body");
+            const chevron = card.querySelector(".chevron-icon");
+
+            if (header && body) {
+              header.addEventListener("click", (e) => {
+                // Abaikan jika user mengklik tombol unduh
+                if ((e.target as HTMLElement).closest(".btn-unduh-idcard")) return;
+
+                const isHidden = body.classList.contains("hidden");
+                if (isHidden) {
+                  body.classList.remove("hidden");
+                  chevron?.classList.add("rotate-180");
+                } else {
+                  body.classList.add("hidden");
+                  chevron?.classList.remove("rotate-180");
+                }
+              });
+            }
+          });
+
+        // 2. Tombol Unduh ID Card (Header & Inner Card)
+        const handleDownload = (btn: HTMLElement) => {
+          const idx = parseInt(btn.getAttribute("data-index") || "0", 10);
+          const anggota = anggotaList[idx];
+          if (!anggota) return;
+          const qrUrl = anggota.qr_token
+            ? `${API_URL}/api/peserta/qr/${anggota.qr_token}`
+            : "";
+          generateAndDownloadIdCard(anggota, kodeAkses, qrUrl, btn);
+        };
+
+        container.querySelectorAll(".btn-unduh-idcard").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            handleDownload(btn as HTMLElement);
+          });
+        });
+
+        container.querySelectorAll(".btn-unduh-idcard-inner").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            handleDownload(btn as HTMLElement);
+          });
+        });
       }
 
       function renderAnggota(g: any): string {
@@ -417,9 +689,11 @@ import Layout from "../layouts/Layout.astro";
           return heading + `<div class="space-y-2">${rows}</div>`;
         }
 
-        // Lunas: tampilkan QR code per anggota
+        const kodeAkses = g.payment_token || "";
+
+        // Lunas: tampilkan accordion card per anggota
         const rows = anggota
-          .map((a: any) => {
+          .map((a: any, idx: number) => {
             const scan = a.scan_sesi || {};
             const noJatah =
               (a.is_gratis === 1 || a.is_gratis === true) &&
@@ -436,39 +710,135 @@ import Layout from "../layouts/Layout.astro";
               return `<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold ${done ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}">${done ? "✓" : "○"} ${s.label}</span>`;
             }).join(" ");
 
+            const detailsText = [
+              a.peran || "Peserta",
+              a.jenis_kelamin || "",
+              a.usia != null ? `${a.usia} th` : "",
+              a.kategori_usia_label || "",
+            ]
+              .filter(Boolean)
+              .join(" • ");
+
             return `
-              <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                <div class="flex items-center justify-between gap-2">
-                  <div class="min-w-0">
-                    <p class="text-xs font-mono font-black text-primary-700">${a.nomor_peserta || "-"}</p>
-                    <p class="text-sm font-bold text-slate-900 truncate">${a.nama}</p>
-                    <p class="text-[11px] text-slate-500">${a.peran || ""} • ${a.jenis_kelamin || ""}${a.usia != null ? " • " + a.usia + " th" : ""}${a.kategori_usia_label ? " • " + a.kategori_usia_label : ""}</p>
+              <div class="anggota-accordion-card rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden transition" data-index="${idx}">
+                <!-- Header Ringkas (Accordion Toggle Bar) -->
+                <div class="accordion-header px-4 py-3 sm:py-3.5 flex items-center justify-between gap-3 cursor-pointer select-none hover:bg-slate-50/80 transition">
+                  <!-- Info Kiri: Nomor & Nama Peserta -->
+                  <div class="min-w-0 flex items-center gap-2.5 sm:gap-3 flex-1">
+                    <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-primary-100 text-primary-800 font-mono font-black text-xs flex items-center justify-center shrink-0">
+                      ${idx + 1}
+                    </span>
+                    <div class="min-w-0">
+                      <span class="text-xs font-mono font-black text-primary-700 block leading-tight">
+                        ${a.nomor_peserta || "-"}
+                      </span>
+                      <span class="text-sm font-bold text-slate-900 block truncate leading-tight mt-0.5">
+                        ${a.nama}
+                      </span>
+                    </div>
+                    ${a.status_hadir === "hadir" ? '<span class="hidden sm:inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold shrink-0">✓ Hadir</span>' : ""}
                   </div>
-                  ${a.status_hadir === "hadir" ? '<span class="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold shrink-0">✓ Hadir</span>' : ""}
+
+                  <!-- Tombol Kanan: Unduh ID Card & Panah Accordion -->
+                  <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button
+                      type="button"
+                      class="btn-unduh-idcard inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition shadow-2xs active:scale-95 cursor-pointer"
+                      data-index="${idx}"
+                      title="Unduh ID Card Lengkap (QR + Kode Akses)"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span class="hidden sm:inline">Unduh ID Card</span>
+                      <span class="sm:hidden">Unduh</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn-toggle-arrow w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
+                      aria-label="Tampilkan / Sembunyikan ID Card"
+                    >
+                      <svg class="w-4 h-4 transition-transform duration-200 chevron-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
 
-                ${
-                  qrUrl
-                    ? `
-                  <div class="flex items-center gap-4 mt-3">
-                    <div class="p-2 bg-white rounded-xl border border-slate-200 shrink-0">
-                      <img src="${qrUrl}" alt="QR ${a.nama}" class="w-28 h-28 object-contain" />
+                <!-- Accordion Body: Tampilan ID Card Fisik yang Persis dengan Hasil Unduhan -->
+                <div class="accordion-body hidden border-t border-slate-100 p-4 sm:p-5 bg-slate-50/70">
+                  ${
+                    qrUrl
+                      ? `
+                    <div class="idcard-box max-w-[320px] mx-auto bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-md text-center">
+                      <!-- Header Kartu -->
+                      <div class="bg-[#06305d] text-white py-3 px-4">
+                        <span class="inline-block px-2.5 py-0.5 bg-amber-400 text-slate-900 rounded-full text-[9px] font-black uppercase tracking-wider mb-1">
+                          FAMILY CAMP
+                        </span>
+                        <h3 class="text-xs font-black tracking-wider text-white">ID CARD PESERTA</h3>
+                        <p class="text-[9px] text-sky-200 font-medium">Muslim Scene EvenScan</p>
+                      </div>
+
+                      <!-- Konten Kartu -->
+                      <div class="p-4 space-y-3">
+                        <!-- QR Code Box -->
+                        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 inline-block shadow-2xs">
+                          <img src="${qrUrl}" alt="QR ${a.nama}" class="w-36 h-36 object-contain mx-auto" />
+                        </div>
+
+                        <!-- Data Peserta -->
+                        <div>
+                          <span class="inline-block px-2.5 py-0.5 bg-primary-50 text-primary-700 font-mono font-black text-xs rounded-md border border-primary-200">
+                            ${a.nomor_peserta || "-"}
+                          </span>
+                          <h4 class="text-base font-extrabold text-slate-900 mt-1.5 leading-tight">${a.nama}</h4>
+                          <p class="text-[11px] text-slate-500 mt-0.5 font-medium">${detailsText}</p>
+                        </div>
+
+                        <!-- Box Kode Akses (Untuk Input Manual Panitia) -->
+                        <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950">
+                          <span class="text-[9px] font-extrabold text-amber-800 uppercase tracking-wider block">
+                            KODE AKSES MANUAL (PANITIA)
+                          </span>
+                          <span class="text-base font-black font-mono text-amber-950 tracking-wider block mt-0.5">
+                            ${kodeAkses || "-"}
+                          </span>
+                          <span class="text-[9px] text-amber-800/80 block mt-0.5 leading-tight">
+                            Gunakan jika scan QR terkendala di lokasi
+                          </span>
+                        </div>
+
+                        <!-- Sesi Badges -->
+                        <div class="pt-2 border-t border-slate-100 space-y-1.5">
+                          <div class="flex flex-wrap justify-center gap-1">${sesiBadges}</div>
+                          ${noJatah ? '<p class="text-[10px] text-amber-700 font-medium">🍼 Anak usia 1-5 th gratis (tanpa jatah makan)</p>' : '<p class="text-[10px] text-slate-400">QR berlaku untuk check-in & jatah makan</p>'}
+                        </div>
+
+                        <!-- Tombol Unduh di dalam Card -->
+                        <div class="pt-1">
+                          <button
+                            type="button"
+                            class="btn-unduh-idcard-inner w-full py-2 px-3 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                            data-index="${idx}"
+                          >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Unduh ID Card Ini</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <div class="flex-1 min-w-0 space-y-2">
-                      <div class="flex flex-wrap gap-1">${sesiBadges}</div>
-                      ${noJatah ? '<p class="text-[10px] text-amber-700">🍼 Anak usia 1-5 th gratis — tanpa fasilitas/jatah makan.</p>' : '<p class="text-[10px] text-slate-400">QR yang sama dipakai untuk check-in & jatah makan.</p>'}
-                      <a href="${qrUrl}?format=png" download="Tiket-${String(a.nama || a.id).replace(/\s+/g, "_")}.png" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[11px] font-bold rounded-lg transition">
-                        <span>📥 Unduh QR</span>
-                      </a>
+                  `
+                      : `
+                    <div class="text-center py-6 text-slate-400 text-xs font-medium">
+                      QR Code sedang diproses panitia...
                     </div>
-                  </div>
-                `
-                    : `
-                  <div class="mt-3 p-3 bg-white rounded-xl border border-slate-200 text-slate-400 text-[11px] font-semibold">
-                    QR Code sedang diproses panitia...
-                  </div>
-                `
-                }
+                  `
+                  }
+                </div>
               </div>
             `;
           })

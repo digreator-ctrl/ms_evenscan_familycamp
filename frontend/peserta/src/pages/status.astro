@@ -208,7 +208,7 @@ import Layout from "../layouts/Layout.astro";
 
       function hideAll() {
         notFound?.classList.add("hidden");
-        resultGrup.classList.add("hidden");
+        resultGrup?.classList.add("hidden");
         resultList?.classList.add("hidden");
       }
 
@@ -262,7 +262,7 @@ import Layout from "../layouts/Layout.astro";
             if (g) {
               renderGroup(g);
               resultList?.classList.add("hidden");
-              resultGrup.classList.remove("hidden");
+              resultGrup?.classList.remove("hidden");
             }
           });
         });
@@ -284,7 +284,7 @@ import Layout from "../layouts/Layout.astro";
             resultList?.classList.remove("hidden");
           } else {
             renderGroup(json.data[0]);
-            resultGrup.classList.remove("hidden");
+            resultGrup?.classList.remove("hidden");
           }
         } catch (err: any) {
           notFound?.classList.remove("hidden");

@@ -110,7 +110,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
             <span class="block text-[10px] sm:text-[11px] text-primary-600 font-mono">
               1
             </span>
-            <span>Tipe & PIC</span>
+            <span>Tipe & Kontak</span>
           </div>
           <div
             id="stepTab2"
@@ -213,11 +213,11 @@ import { LIST_PROVINSI } from "../data/wilayah";
             </p>
           </div>
 
-          <!-- Data Kontak Penanggung Jawab (PIC) -->
+          <!-- Data Kontak Penanggung Jawab -->
           <div class="pt-4 border-t border-slate-100 space-y-4">
             <div>
               <h3 class="text-sm font-extrabold text-slate-900">
-                Kontak Penanggung Jawab (PIC)
+                Kontak Penanggung Jawab
               </h3>
               <p class="text-xs text-slate-500">
                 Nomor ini akan menerima invoice pembayaran & link tiket QR
@@ -230,7 +230,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 for="pic_nama"
                 class="block text-xs font-bold text-slate-700 mb-1"
               >
-                Nama Lengkap PIC <span class="text-rose-500">*</span>
+                Nama Lengkap <span class="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -247,7 +247,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 for="pic_whatsapp"
                 class="block text-xs font-bold text-slate-700 mb-1"
               >
-                Nomor WhatsApp Aktif PIC <span class="text-rose-500">*</span>
+                Nomor WhatsApp Aktif <span class="text-rose-500">*</span>
               </label>
               <input
                 type="tel"
@@ -342,22 +342,13 @@ import { LIST_PROVINSI } from "../data/wilayah";
         <!-- STEP 2: BIODATA DINAMIS SETIAP ANGGOTA                    -->
         <!-- ======================================================== -->
         <div id="stepContent2" class="step-content hidden space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 class="text-base font-extrabold text-slate-900 mb-0.5">
-                2. Biodata Seluruh Peserta
-              </h2>
-              <p class="text-xs text-slate-500">
-                Lengkapi data diri setiap anggota yang ikut dalam acara.
-              </p>
-            </div>
-            <button
-              type="button"
-              id="btnAddAnggota"
-              class="self-start sm:self-auto inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer"
-            >
-              <span>+ Tambah Anggota</span>
-            </button>
+          <div>
+            <h2 class="text-base font-extrabold text-slate-900 mb-0.5">
+              2. Biodata Seluruh Peserta
+            </h2>
+            <p class="text-xs text-slate-500">
+              Lengkapi data diri setiap anggota yang ikut dalam acara.
+            </p>
           </div>
 
           <!-- Container Kartu-kartu Anggota Dinamis -->
@@ -365,7 +356,21 @@ import { LIST_PROVINSI } from "../data/wilayah";
             <!-- Rendered via JS -->
           </div>
 
-          <!-- Alert Khusus Balita -->
+          <!-- Tombol Tambah Anggota (Selalu Berada di Bawah Peserta Terakhir) -->
+          <div class="pt-1">
+            <button
+              type="button"
+              id="btnAddAnggota"
+              class="w-full py-3.5 px-4 bg-primary-50 hover:bg-primary-100 text-primary-700 border-2 border-dashed border-primary-300 hover:border-primary-400 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition active:scale-[0.99] cursor-pointer shadow-xs"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>+ Tambah Anggota / Peserta Baru</span>
+            </button>
+          </div>
+
+          <!-- Alert Ketentuan Kategori Usia & Biaya -->
           <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-start gap-3">
             <svg
               class="w-5 h-5 shrink-0 text-emerald-600 mt-0.5"
@@ -380,14 +385,13 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <div>
-              <span class="font-bold block">Kebijakan Anak & Balita:</span>
-              <p class="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
-                Anak balita di bawah usia <b>3 tahun</b> mendapatkan tiket{" "}
-                <b>GRATIS</b> (tidak dikenakan biaya wajib). Anak usia 3 tahun
-                ke atas dikenakan paket penuh Rp 200.000 dengan fasilitas
-                lengkap.
-              </p>
+            <div class="space-y-1">
+              <span class="font-bold block">Ketentuan Kategori Usia &amp; Biaya:</span>
+              <ul class="text-[11px] text-emerald-900 space-y-1 leading-relaxed">
+                <li>• <b>Anak Usia 1 - 5 Tahun:</b> <span class="font-bold text-emerald-700">GRATIS</span> (tidak dikenakan biaya &amp; tidak mendapatkan fasilitas).</li>
+                <li>• <b>Anak Usia 6 - 10 Tahun:</b> <span class="font-bold text-slate-900">Rp 100.000 / anak</span> (tetap mendapatkan fasilitas sebagaimana peserta pada umumnya).</li>
+                <li>• <b>Usia 11 Tahun ke Atas / Dewasa:</b> <span class="font-bold text-slate-900">Rp 200.000 / orang</span> (fasilitas paket lengkap).</li>
+              </ul>
             </div>
           </div>
 
@@ -465,22 +469,18 @@ import { LIST_PROVINSI } from "../data/wilayah";
 
           <!-- Card Paket Wajib -->
           <div class="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-primary-900 to-slate-900 text-white space-y-4 shadow-sm">
-            <div class="flex items-start justify-between gap-3">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div>
                 <span class="inline-block px-2.5 py-0.5 bg-white/20 text-white rounded text-[10px] font-black uppercase tracking-wider mb-1">
                   Paket Pendaftaran Wajib
                 </span>
-                <h3 class="text-lg font-black text-amber-300">
-                  Rp 200.000{" "}
-                  <span class="text-xs text-white/70 font-normal">/ orang</span>
-                </h3>
               </div>
-              <div class="text-right">
+              <div class="text-left sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
                 <span class="text-[10px] text-slate-300 uppercase tracking-wider block">
-                  Peserta Berbayar
+                  Peserta Terdaftar
                 </span>
                 <span
-                  class="text-lg font-black text-white font-mono"
+                  class="text-sm font-black text-white font-mono"
                   id="txtTotalBerbayarBadge"
                 >
                   0 Orang
@@ -493,7 +493,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
               <span class="font-bold text-slate-200 block text-[11px] uppercase tracking-wider">
                 Fasilitas yang Didapatkan:
               </span>
-              <ul class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+              <ul class="grid grid-cols-2 gap-2 text-[11px] text-slate-300">
                 <li class="flex items-center gap-1.5">
                   <span class="text-emerald-400 font-bold">✓</span>
                   <span>Majelis Ilmu</span>
@@ -534,7 +534,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
                   <span class="text-emerald-400 font-bold">✓</span>
                   <span>Kamar Mandi</span>
                 </li>
-                <li class="flex items-center gap-1.5 sm:col-span-2">
+                <li class="flex items-center gap-1.5 col-span-2">
                   <span class="text-emerald-400 font-bold">✓</span>
                   <span>Area Parkir</span>
                 </li>
@@ -641,7 +641,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
 
           <!-- Katalog Add-on Dinamis (Tampil saat pilih "ya") -->
           <div id="containerAddons" class="hidden space-y-4 pt-2">
-            <!-- CARD 1: Paket Tenda Lengkap -->
+            <!-- Paket Tenda Lengkap -->
             <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
               <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
                 <div>
@@ -649,65 +649,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
                     Paket Tenda Lengkap
                   </h4>
                   <p class="text-[11px] text-slate-500">
-                    Paket terakit fasilitas tenda kapasitas 4 orang
-                  </p>
-                </div>
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-primary-50 text-primary-700">
-                  Maks. 1 Paket
-                </span>
-              </div>
-
-              <div>
-                <label class="block text-[11px] font-bold text-slate-700 mb-1.5">
-                  Pilih Paket Tenda:
-                </label>
-                <select
-                  id="selectPaketTenda"
-                  class="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-600 outline-none transition font-bold text-slate-800 cursor-pointer"
-                >
-                  <option value="">-- Tanpa Paket Tenda (Rp 0) --</option>
-                </select>
-              </div>
-
-              <!-- Rincian Fasilitas Paket yang Dipilih -->
-              <div
-                id="boxDetailPaket"
-                class="hidden p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2"
-              >
-                <div class="flex justify-between items-center">
-                  <span
-                    class="font-extrabold text-slate-900"
-                    id="detailPaketNama"
-                  >
-                    -
-                  </span>
-                  <span
-                    class="font-black text-primary-700 font-mono text-sm"
-                    id="detailPaketHarga"
-                  >
-                    Rp 0
-                  </span>
-                </div>
-                <div class="text-[11px] text-slate-600">
-                  <span class="font-bold block text-slate-700 mb-1">
-                    Fasilitas yang didapatkan:
-                  </span>
-                  <ul class="space-y-1 pl-1" id="detailPaketFasilitas">
-                    <!-- Dinamis via JS -->
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <!-- CARD 2: Paket Satuan -->
-            <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-3">
-              <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                <div>
-                  <h4 class="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-                    Paket Satuan
-                  </h4>
-                  <p class="text-[11px] text-slate-500">
-                    Bisa memilih lebih dari satu item
+                    Paket terakit fasilitas tenda kapasitas 4 orang — boleh lebih dari satu
                   </p>
                 </div>
               </div>
@@ -716,15 +658,15 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 <table class="w-full text-xs">
                   <thead class="bg-slate-50 text-slate-600">
                     <tr>
-                      <th class="text-left px-3 py-2 font-bold">Nama Unit</th>
+                      <th class="text-left px-3 py-2 font-bold">Paket</th>
                       <th class="text-right px-3 py-2 font-bold whitespace-nowrap">
-                        Harga / Unit
+                        Harga / Paket
                       </th>
                       <th class="text-center px-3 py-2 font-bold">Jumlah</th>
                     </tr>
                   </thead>
                   <tbody
-                    id="listAddonsSatuan"
+                    id="listPaketBundles"
                     class="divide-y divide-slate-100"
                   >
                     <!-- Rendered via JS -->
@@ -797,7 +739,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
               <span id="rekapTipe">-</span>
             </span>
             <span class="text-[10px] text-slate-400 block">
-              PIC: <b class="text-slate-200" id="rekapPicNama">-</b> &middot;
+              Penanggung Jawab: <b class="text-slate-200" id="rekapPicNama">-</b> &middot;
               <span class="font-mono" id="rekapPicWa">-</span> &middot;
               <span id="rekapPicDomisili">-</span>
             </span>
@@ -822,8 +764,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
             <div class="pt-2 border-t border-slate-200 space-y-2">
               <div class="flex justify-between text-slate-600">
                 <span>
-                  Biaya Paket Wajib (<span id="rekapHitungWajib">0</span> x Rp
-                  200.000):
+                  Biaya Paket Wajib (<span id="rekapHitungWajib">0</span> peserta berbayar):
                 </span>
                 <span class="font-bold text-slate-900" id="rekapBiayaWajib">
                   Rp 0
@@ -837,6 +778,28 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 <!-- Dinamis via JS -->
               </div>
             </div>
+          </div>
+
+          <!-- Info Pengenaan Biaya Berdasarkan Usia -->
+          <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
+            <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+              <span>ℹ️</span>
+              <span>Ketentuan Biaya Berdasarkan Usia</span>
+            </h4>
+            <ul class="text-[11px] text-amber-900 space-y-1.5 leading-relaxed">
+              <li class="flex items-start justify-between gap-2">
+                <span>• Anak usia <b>1 - 5 tahun</b></span>
+                <span class="font-black text-emerald-700 whitespace-nowrap">GRATIS</span>
+              </li>
+              <li class="flex items-start justify-between gap-2">
+                <span>• Anak usia <b>6 - 10 tahun</b></span>
+                <span class="font-black text-amber-800 whitespace-nowrap">Rp 100.000</span>
+              </li>
+              <li class="flex items-start justify-between gap-2">
+                <span>• Usia <b>11 tahun ke atas / Dewasa</b></span>
+                <span class="font-black text-slate-900 whitespace-nowrap">Rp 200.000</span>
+              </li>
+            </ul>
           </div>
 
           <!-- Informasi Rekening & Langkah Pembayaran -->
@@ -871,18 +834,18 @@ import { LIST_PROVINSI } from "../data/wilayah";
             class="hidden p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold"
           ></div>
 
-          <div class="pt-2 flex items-center justify-between">
+          <div class="pt-2 flex items-center justify-between gap-2">
             <button
               type="button"
               id="btnPrevStep4"
-              class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+              class="shrink-0 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
             >
               ← Kembali
             </button>
             <button
               type="submit"
               id="btnFinalSubmit"
-              class="px-7 py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-sm rounded-xl transition shadow-md active:scale-95 cursor-pointer"
+              class="flex-1 sm:flex-none text-center px-4 sm:px-7 py-2.5 sm:py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md active:scale-95 cursor-pointer"
             >
               Proses Pendaftaran &amp; Buat Invoice →
             </button>
@@ -914,13 +877,6 @@ import { LIST_PROVINSI } from "../data/wilayah";
       nama: string;
       harga: number;
       fasilitas: string[];
-    }
-
-    interface SatuanItem {
-      id: string;
-      nama: string;
-      deskripsi: string;
-      harga: number;
     }
 
     let currentStep = 1;
@@ -962,35 +918,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
       },
     ];
 
-    let SATUAN_ITEMS: SatuanItem[] = [
-      {
-        id: "addon_satuan_tenda",
-        nama: "Tenda",
-        deskripsi: "Sewa tenda dome (kapasitas 4 orang)",
-        harga: 70000,
-      },
-      {
-        id: "addon_satuan_matras",
-        nama: "Matras",
-        deskripsi: "Sewa matras spon camping tebal",
-        harga: 5000,
-      },
-      {
-        id: "addon_satuan_sleeping_bag",
-        nama: "Sleeping Bag",
-        deskripsi: "Sewa kantong tidur / sleeping bag hangat",
-        harga: 10000,
-      },
-      {
-        id: "addon_satuan_lampu_tenda",
-        nama: "Lampu Tenda",
-        deskripsi: "Sewa lampu tenda LED gantung",
-        harga: 7000,
-      },
-    ];
-
-    let selectedPaketId = "";
-    let selectedSatuanQty: { [addonId: string]: number } = {};
+    let selectedPaketQty: { [addonId: string]: number } = {};
 
     let anggotaData: AnggotaItem[] = [
       {
@@ -1174,20 +1102,9 @@ import { LIST_PROVINSI } from "../data/wilayah";
               harga: item.harga,
               fasilitas: Array.isArray(item.fasilitas) ? item.fasilitas : [],
             }));
-          const satuan = json.data
-            .filter((item: any) => item.kategori !== "paket")
-            .map((item: any) => ({
-              id: item.id,
-              nama: item.nama,
-              deskripsi: item.deskripsi || "",
-              harga: item.harga,
-            }));
 
           // Gunakan katalog dari API bila tersedia (paket dipertahankan jika API tak mengirim paket).
           if (paket.length > 0) PAKET_BUNDLES = paket;
-          SATUAN_ITEMS = satuan;
-
-          renderPaketSelect();
         }
       } catch (err) {
         console.warn("Gagal load addon items:", err);
@@ -1195,20 +1112,83 @@ import { LIST_PROVINSI } from "../data/wilayah";
       renderAddonsCatalog();
     }
 
-    function renderPaketSelect() {
-      const select = document.getElementById(
-        "selectPaketTenda",
-      ) as HTMLSelectElement | null;
-      if (!select) return;
-      const current = select.value;
-      select.innerHTML =
-        `<option value="">-- Tanpa Paket Tenda (Rp 0) --</option>` +
-        PAKET_BUNDLES.map(
-          (p) =>
-            `<option value="${p.id}">${p.nama} — Rp ${Number(p.harga).toLocaleString("id-ID")}</option>`,
-        ).join("");
-      if (current && PAKET_BUNDLES.some((p) => p.id === current)) {
-        select.value = current;
+    function renderAddonsCatalog() {
+      const list = document.getElementById("listPaketBundles");
+      if (!list) return;
+
+      if (PAKET_BUNDLES.length === 0) {
+        list.innerHTML = `<tr><td colspan="3" class="px-3 py-4 text-center text-slate-400 text-xs italic">Belum ada paket tenda tersedia.</td></tr>`;
+        return;
+      }
+
+      list.innerHTML = PAKET_BUNDLES.map((item) => {
+        const qty = selectedPaketQty[item.id] || 0;
+        const fasilitasHtml =
+          item.fasilitas && item.fasilitas.length > 0
+            ? `<div class="text-[10px] text-slate-500 mt-1">${item.fasilitas.join(" • ")}</div>`
+            : "";
+        return `
+          <tr class="bg-white">
+            <td class="px-3 py-2.5">
+              <span class="font-extrabold text-slate-900 text-xs">${item.nama}</span>
+              ${fasilitasHtml}
+            </td>
+            <td class="px-3 py-2.5 text-right whitespace-nowrap align-top">
+              <span class="font-black text-primary-700 font-mono text-xs">Rp ${item.harga.toLocaleString("id-ID")}</span>
+            </td>
+            <td class="px-3 py-2.5 align-top">
+              <div class="flex items-center justify-center gap-1.5">
+                <button
+                  type="button"
+                  class="btn-paket-dec w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center transition active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  data-id="${item.id}"
+                  ${qty === 0 ? "disabled" : ""}
+                >-</button>
+                <span class="w-6 text-center font-bold text-xs font-mono paket-qty-text" data-id="${item.id}">${qty}</span>
+                <button
+                  type="button"
+                  class="btn-paket-inc w-7 h-7 rounded-lg bg-primary-600 text-white font-bold hover:bg-primary-700 flex items-center justify-center transition active:scale-95 cursor-pointer"
+                  data-id="${item.id}"
+                >+</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      list.querySelectorAll(".btn-paket-dec").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const id = (e.currentTarget as HTMLElement).getAttribute("data-id");
+          if (!id) return;
+          const current = selectedPaketQty[id] || 0;
+          if (current > 0) {
+            selectedPaketQty[id] = current - 1;
+            updatePaketQtyDisplay(id);
+            calcTotalSementara();
+          }
+        });
+      });
+
+      list.querySelectorAll(".btn-paket-inc").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const id = (e.currentTarget as HTMLElement).getAttribute("data-id");
+          if (!id) return;
+          const current = selectedPaketQty[id] || 0;
+          selectedPaketQty[id] = current + 1;
+          updatePaketQtyDisplay(id);
+          calcTotalSementara();
+        });
+      });
+    }
+
+    function updatePaketQtyDisplay(id: string) {
+      const el = document.querySelector(`.paket-qty-text[data-id="${id}"]`);
+      if (el) el.textContent = String(selectedPaketQty[id] || 0);
+      const decBtn = document.querySelector(
+        `.btn-paket-dec[data-id="${id}"]`,
+      ) as HTMLButtonElement | null;
+      if (decBtn) {
+        decBtn.disabled = (selectedPaketQty[id] || 0) <= 0;
       }
     }
 
@@ -1389,7 +1369,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
             ) {
               showFloatingToast("Mohon lengkapi kolom yang ditandai merah.");
             } else if (!picNama || picNama.length < 2) {
-              showFloatingToast("Mohon lengkapi Nama Lengkap PIC.");
+              showFloatingToast("Mohon lengkapi Nama Lengkap Penanggung Jawab.");
             } else if (cleanWa.length < 10) {
               showFloatingToast("Nomor WhatsApp minimal 10 digit angka.");
             } else if (cleanWa.length > 15) {
@@ -1771,7 +1751,6 @@ import { LIST_PROVINSI } from "../data/wilayah";
 
       container.innerHTML = anggotaData
         .map((a, idx) => {
-          const isBalita = a.usia !== null && a.usia < 3;
           const lockedGender =
             tipe === "keluarga" ? getLockedGenderForPeran(a.peran) : null;
           if (lockedGender) {
@@ -1788,11 +1767,10 @@ import { LIST_PROVINSI } from "../data/wilayah";
           return `
           <div class="anggota-card bg-slate-50/80 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4" data-index="${idx}">
             <div class="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div class="card-header-left flex items-center gap-2">
+              <div class="card-header-left flex items-center gap-2 flex-wrap">
                 <span class="w-6 h-6 rounded-lg bg-primary-100 text-primary-800 font-mono font-bold text-xs flex items-center justify-center">${idx + 1}</span>
                 <span class="font-extrabold text-xs sm:text-sm text-slate-800">Peserta #${idx + 1}</span>
-                ${idx === 0 && tipe === "non_keluarga" && anggotaData.length > 1 ? `<span class="px-2 py-0.5 bg-primary-100 text-primary-800 rounded text-[10px] font-bold">Ketua Rombongan (PIC)</span>` : ""}
-                ${isBalita ? `<span class="badge-balita px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">Balita (Gratis)</span>` : ""}
+                ${idx === 0 && tipe === "non_keluarga" && anggotaData.length > 1 ? `<span class="px-2 py-0.5 bg-primary-100 text-primary-800 rounded text-[10px] font-bold">Ketua Rombongan</span>` : ""}
               </div>
               ${
                 idx > 0
@@ -1802,7 +1780,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 </button>
               `
                   : `
-                <span class="text-[10px] text-slate-400 font-semibold italic" title="Peserta #1 adalah PIC pendaftaran">PIC (tetap)</span>
+                <span class="text-[10px] text-slate-400 font-semibold italic" title="Peserta #1 adalah penanggung jawab pendaftaran">Penanggung Jawab</span>
               `
               }
             </div>
@@ -1812,7 +1790,6 @@ import { LIST_PROVINSI } from "../data/wilayah";
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
                   Nama Lengkap <span class="text-rose-500">*</span>
-                  ${idx === 0 ? '<span class="text-[10px] text-primary-600 font-semibold ml-1">(dari data PIC, tidak bisa diubah)</span>' : ""}
                 </label>
                 ${
                   idx === 0
@@ -1910,7 +1887,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
               <!-- Usia: Angka Besar, Jelas & Tidak Samar -->
               <div>
                 <label class="block text-[11px] font-bold text-slate-700 mb-1">
-                  Usia (Tahun) <span class="text-rose-500">*</span> <span class="text-[10px] text-slate-400 font-normal">(Balita &lt; 3 th gratis)</span>
+                  Usia (Tahun) <span class="text-rose-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -1948,8 +1925,8 @@ import { LIST_PROVINSI } from "../data/wilayah";
                       ${a.beda_domisili ? "checked" : ""}
                     />
                     <div>
-                      <span class="text-xs font-bold text-slate-800 block">Asal kota / domisili berbeda dengan PIC?</span>
-                      <span class="text-[10px] text-slate-400 block">Default: mengikuti domisili PIC.</span>
+                      <span class="text-xs font-bold text-slate-800 block">Asal kota / domisili berbeda dengan Penanggung Jawab?</span>
+                      <span class="text-[10px] text-slate-400 block">Default: mengikuti domisili Penanggung Jawab.</span>
                     </div>
                   </label>
 
@@ -2036,29 +2013,10 @@ import { LIST_PROVINSI } from "../data/wilayah";
         });
       });
 
-      // Event listener input usia: update preview & badge balita secara realtime
+      // Event listener input usia: hanya bersihkan status invalid saat mengetik
       container.querySelectorAll(".input-usia").forEach((inputEl) => {
         inputEl.addEventListener("input", () => {
           clearInvalid(inputEl as HTMLElement);
-          syncAnggotaFromDOM();
-          const card = (inputEl as HTMLElement).closest(".anggota-card");
-          const idx = parseInt(card?.getAttribute("data-index") || "0", 10);
-          const usiaVal = anggotaData[idx]?.usia;
-          const badgeEl = card?.querySelector(".badge-balita");
-          if (usiaVal !== null && usiaVal < 3) {
-            if (!badgeEl) {
-              const headerLeft = card?.querySelector(".card-header-left");
-              if (headerLeft) {
-                const span = document.createElement("span");
-                span.className =
-                  "badge-balita px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold";
-                span.textContent = "Balita (Gratis)";
-                headerLeft.appendChild(span);
-              }
-            }
-          } else {
-            if (badgeEl) badgeEl.remove();
-          }
         });
       });
 
@@ -2157,13 +2115,6 @@ import { LIST_PROVINSI } from "../data/wilayah";
     function setupAddonInteractions() {
       const radioSewa = document.querySelectorAll('input[name="opt_sewa"]');
       const containerAddons = document.getElementById("containerAddons");
-      const selectPaket = document.getElementById(
-        "selectPaketTenda",
-      ) as HTMLSelectElement | null;
-      const boxDetail = document.getElementById("boxDetailPaket");
-      const detailNama = document.getElementById("detailPaketNama");
-      const detailHarga = document.getElementById("detailPaketHarga");
-      const detailFasilitas = document.getElementById("detailPaketFasilitas");
 
       radioSewa.forEach((r) => {
         r.addEventListener("change", () => {
@@ -2178,142 +2129,73 @@ import { LIST_PROVINSI } from "../data/wilayah";
               containerAddons.classList.remove("hidden");
             } else {
               containerAddons.classList.add("hidden");
-              selectedPaketId = "";
-              selectedSatuanQty = {};
-              if (selectPaket) selectPaket.value = "";
-              if (boxDetail) boxDetail.classList.add("hidden");
+              selectedPaketQty = {};
               renderAddonsCatalog();
             }
           }
           calcTotalSementara();
         });
       });
-
-      if (selectPaket) {
-        selectPaket.addEventListener("change", () => {
-          selectedPaketId = selectPaket.value;
-          if (selectedPaketId) {
-            const paket = PAKET_BUNDLES.find((b) => b.id === selectedPaketId);
-            if (paket) {
-              if (boxDetail) boxDetail.classList.remove("hidden");
-              if (detailNama)
-                detailNama.textContent = `${paket.nama} — Tenda Lengkap`;
-              if (detailHarga)
-                detailHarga.textContent = `Rp ${paket.harga.toLocaleString("id-ID")}`;
-              if (detailFasilitas) {
-                detailFasilitas.innerHTML = paket.fasilitas
-                  .map(
-                    (f) => `
-                    <li class="flex items-center gap-1.5 text-slate-700">
-                      <svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>${f}</span>
-                    </li>
-                  `,
-                  )
-                  .join("");
-              }
-            }
-          } else {
-            if (boxDetail) boxDetail.classList.add("hidden");
-          }
-          calcTotalSementara();
-        });
-      }
     }
 
-    function renderAddonsCatalog() {
-      const list = document.getElementById("listAddonsSatuan");
-      if (!list) return;
+    function hitungRincianBiayaWajib() {
+      let dewasaCount = 0;
+      let anakCount = 0;
+      let balitaGratisCount = 0;
+      let subtotalWajib = 0;
 
-      list.innerHTML = SATUAN_ITEMS.map((item) => {
-        const qty = selectedSatuanQty[item.id] || 0;
-        return `
-          <tr class="bg-white">
-            <td class="px-3 py-2.5">
-              <span class="font-extrabold text-slate-900 text-xs">${item.nama}</span>
-            </td>
-            <td class="px-3 py-2.5 text-right whitespace-nowrap">
-              <span class="font-black text-primary-700 font-mono text-xs">Rp ${item.harga.toLocaleString("id-ID")}</span>
-            </td>
-            <td class="px-3 py-2.5">
-              <div class="flex items-center justify-center gap-1.5">
-                <button
-                  type="button"
-                  class="btn-satuan-dec w-7 h-7 rounded-lg bg-white border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 flex items-center justify-center transition active:scale-95 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                  data-id="${item.id}"
-                  ${qty === 0 ? "disabled" : ""}
-                >-</button>
-                <span class="w-6 text-center font-bold text-xs font-mono satuan-qty-text" data-id="${item.id}">${qty}</span>
-                <button
-                  type="button"
-                  class="btn-satuan-inc w-7 h-7 rounded-lg bg-primary-600 text-white font-bold hover:bg-primary-700 flex items-center justify-center transition active:scale-95 cursor-pointer"
-                  data-id="${item.id}"
-                >+</button>
-              </div>
-            </td>
-          </tr>
-        `;
-      }).join("");
-
-      list.querySelectorAll(".btn-satuan-dec").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          const id = (e.currentTarget as HTMLElement).getAttribute("data-id");
-          if (!id) return;
-          const current = selectedSatuanQty[id] || 0;
-          if (current > 0) {
-            selectedSatuanQty[id] = current - 1;
-            updateSatuanQtyDisplay(id);
-            calcTotalSementara();
-          }
-        });
-      });
-
-      list.querySelectorAll(".btn-satuan-inc").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-          const id = (e.currentTarget as HTMLElement).getAttribute("data-id");
-          if (!id) return;
-          const current = selectedSatuanQty[id] || 0;
-          selectedSatuanQty[id] = current + 1;
-          updateSatuanQtyDisplay(id);
-          calcTotalSementara();
-        });
-      });
-    }
-
-    function updateSatuanQtyDisplay(id: string) {
-      const el = document.querySelector(`.satuan-qty-text[data-id="${id}"]`);
-      if (el) el.textContent = String(selectedSatuanQty[id] || 0);
-      const decBtn = document.querySelector(
-        `.btn-satuan-dec[data-id="${id}"]`,
-      ) as HTMLButtonElement | null;
-      if (decBtn) {
-        decBtn.disabled = (selectedSatuanQty[id] || 0) <= 0;
+      for (const a of anggotaData) {
+        const u =
+          a.usia !== null && a.usia !== undefined && !isNaN(Number(a.usia))
+            ? Number(a.usia)
+            : null;
+        if (u === null || u >= 11) {
+          dewasaCount++;
+          subtotalWajib += 200000;
+        } else if (u >= 6 && u <= 10) {
+          anakCount++;
+          subtotalWajib += 100000;
+        } else {
+          // u <= 5 th (1-5 th): gratis tanpa fasilitas
+          balitaGratisCount++;
+        }
       }
+
+      return {
+        dewasaCount,
+        anakCount,
+        balitaGratisCount,
+        totalBerbayar: dewasaCount + anakCount,
+        subtotalWajib,
+      };
     }
 
     function getAnggotaBerbayarCount(): number {
-      return anggotaData.filter((a) => a.usia === null || a.usia >= 3).length;
+      return hitungRincianBiayaWajib().totalBerbayar;
     }
 
     function updateStep3Summary() {
-      const berbayar = getAnggotaBerbayarCount();
-      const subtotalWajib = berbayar * 200000;
+      const rincian = hitungRincianBiayaWajib();
 
       const txtBadge = document.getElementById("txtTotalBerbayarBadge");
-      if (txtBadge) txtBadge.textContent = `${berbayar} Orang`;
+      if (txtBadge) {
+        const parts: string[] = [];
+        if (rincian.dewasaCount > 0) parts.push(`${rincian.dewasaCount} Dewasa`);
+        if (rincian.anakCount > 0) parts.push(`${rincian.anakCount} Anak`);
+        if (rincian.balitaGratisCount > 0) parts.push(`${rincian.balitaGratisCount} Balita (Gratis)`);
+        txtBadge.textContent = parts.length > 0 ? parts.join(" • ") : "0 Peserta";
+      }
 
       const txtSubtotalWajib = document.getElementById("txtSubtotalWajibStep3");
       if (txtSubtotalWajib)
-        txtSubtotalWajib.textContent = `Rp ${subtotalWajib.toLocaleString("id-ID")}`;
+        txtSubtotalWajib.textContent = `Rp ${rincian.subtotalWajib.toLocaleString("id-ID")}`;
 
       calcTotalSementara();
     }
 
     function calcTotalSementara(): number {
-      const berbayar = getAnggotaBerbayarCount();
-      const subtotalWajib = berbayar * 200000;
+      const rincian = hitungRincianBiayaWajib();
+      const subtotalWajib = rincian.subtotalWajib;
 
       let subtotalAddon = 0;
       const isYa =
@@ -2324,15 +2206,10 @@ import { LIST_PROVINSI } from "../data/wilayah";
         )?.value === "ya";
 
       if (isYa) {
-        if (selectedPaketId) {
-          const paket = PAKET_BUNDLES.find((b) => b.id === selectedPaketId);
-          if (paket) subtotalAddon += paket.harga;
-        }
-
-        for (const item of SATUAN_ITEMS) {
-          const qty = selectedSatuanQty[item.id] || 0;
+        for (const paket of PAKET_BUNDLES) {
+          const qty = selectedPaketQty[paket.id] || 0;
           if (qty > 0) {
-            subtotalAddon += item.harga * qty;
+            subtotalAddon += paket.harga * qty;
           }
         }
       }
@@ -2387,7 +2264,19 @@ import { LIST_PROVINSI } from "../data/wilayah";
       if (rekapAnggotaList) {
         rekapAnggotaList.innerHTML = anggotaData
           .map((a, idx) => {
-            const isBalita = a.usia !== null && a.usia < 3;
+            const u =
+              a.usia !== null && a.usia !== undefined && !isNaN(Number(a.usia))
+                ? Number(a.usia)
+                : null;
+            let statusBiayaText = "Rp 200.000";
+            let statusBiayaClass = "text-slate-700";
+            if (u !== null && u <= 5) {
+              statusBiayaText = "Rp 0";
+              statusBiayaClass = "text-emerald-600";
+            } else if (u !== null && u >= 6 && u <= 10) {
+              statusBiayaText = "Rp 100.000";
+              statusBiayaClass = "text-amber-700";
+            }
             const customDomisili =
               a.beda_domisili && a.kota && a.provinsi
                 ? `📍 Asal: ${a.kota}, ${a.provinsi}`
@@ -2399,8 +2288,8 @@ import { LIST_PROVINSI } from "../data/wilayah";
                 <span class="text-[10px] text-slate-500">(${a.peran || "-"} • ${a.jenis_kelamin}${a.usia !== null && a.usia !== undefined ? " • " + a.usia + " th" : ""})</span>
                 ${customDomisili ? `<span class="block text-[10px] text-primary-700 font-semibold mt-0.5">${customDomisili}</span>` : ""}
               </div>
-              <span class="font-bold font-mono ${isBalita ? "text-emerald-600" : "text-slate-700"}">
-                ${isBalita ? "GRATIS (Balita)" : "Rp 200.000"}
+              <span class="font-bold font-mono ${statusBiayaClass}">
+                ${statusBiayaText}
               </span>
             </li>
           `;
@@ -2408,15 +2297,13 @@ import { LIST_PROVINSI } from "../data/wilayah";
           .join("");
       }
 
-      const berbayar = getAnggotaBerbayarCount();
-      const biayaWajib = berbayar * 200000;
-
+      const rincian = hitungRincianBiayaWajib();
       const rekapHitungWajib = document.getElementById("rekapHitungWajib");
-      if (rekapHitungWajib) rekapHitungWajib.textContent = String(berbayar);
+      if (rekapHitungWajib) rekapHitungWajib.textContent = String(rincian.totalBerbayar);
 
       const rekapBiayaWajib = document.getElementById("rekapBiayaWajib");
       if (rekapBiayaWajib)
-        rekapBiayaWajib.textContent = `Rp ${biayaWajib.toLocaleString("id-ID")}`;
+        rekapBiayaWajib.textContent = `Rp ${rincian.subtotalWajib.toLocaleString("id-ID")}`;
 
       const rekapGrandTotal = document.getElementById("rekapGrandTotal");
       if (rekapGrandTotal)
@@ -2434,24 +2321,13 @@ import { LIST_PROVINSI } from "../data/wilayah";
           [];
 
         if (isYa) {
-          if (selectedPaketId) {
-            const paket = PAKET_BUNDLES.find((b) => b.id === selectedPaketId);
-            if (paket) {
-              itemsToReview.push({
-                nama: `${paket.nama} (${paket.fasilitas.join(", ")})`,
-                qty: 1,
-                subtotal: paket.harga,
-              });
-            }
-          }
-
-          for (const item of SATUAN_ITEMS) {
-            const qty = selectedSatuanQty[item.id] || 0;
+          for (const paket of PAKET_BUNDLES) {
+            const qty = selectedPaketQty[paket.id] || 0;
             if (qty > 0) {
               itemsToReview.push({
-                nama: `Sewa ${item.nama}`,
+                nama: `${paket.nama}${paket.fasilitas && paket.fasilitas.length > 0 ? ` (${paket.fasilitas.join(", ")})` : ""}`,
                 qty,
-                subtotal: item.harga * qty,
+                subtotal: paket.harga * qty,
               });
             }
           }
@@ -2575,7 +2451,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
           btnFinalSubmit.disabled = true;
           btnFinalSubmit.textContent = "Memproses Pendaftaran...";
           btnFinalSubmit.className =
-            "px-7 py-3.5 bg-slate-400 text-white font-extrabold text-sm rounded-xl transition cursor-wait";
+            "flex-1 sm:flex-none text-center px-4 sm:px-7 py-2.5 sm:py-3.5 bg-slate-400 text-white font-bold text-xs sm:text-sm rounded-xl transition cursor-wait";
         }
 
         // Siapkan array addon
@@ -2588,13 +2464,10 @@ import { LIST_PROVINSI } from "../data/wilayah";
           )?.value === "ya";
 
         if (isYa) {
-          if (selectedPaketId) {
-            addonsPayload.push({ addon_id: selectedPaketId, qty: 1 });
-          }
-          for (const item of SATUAN_ITEMS) {
-            const qty = selectedSatuanQty[item.id] || 0;
+          for (const paket of PAKET_BUNDLES) {
+            const qty = selectedPaketQty[paket.id] || 0;
             if (qty > 0) {
-              addonsPayload.push({ addon_id: item.id, qty });
+              addonsPayload.push({ addon_id: paket.id, qty });
             }
           }
         }
@@ -2645,7 +2518,7 @@ import { LIST_PROVINSI } from "../data/wilayah";
             btnFinalSubmit.disabled = false;
             btnFinalSubmit.textContent = "Proses Pendaftaran & Buat Invoice →";
             btnFinalSubmit.className =
-              "px-7 py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-extrabold text-sm rounded-xl transition shadow-md active:scale-95 cursor-pointer";
+              "flex-1 sm:flex-none text-center px-4 sm:px-7 py-2.5 sm:py-3.5 bg-primary-600 hover:bg-primary-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md active:scale-95 cursor-pointer";
           }
         }
       };

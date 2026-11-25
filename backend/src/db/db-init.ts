@@ -497,14 +497,12 @@ _Panitia {nama_acara}_', 1)`),
       .run();
 
     // Migrasi ringan: pastikan template undangan & pengingat memuat kode akses (cek status mandiri).
-    await db.batch([
-      db
-        .prepare(
-          `UPDATE wa_templates SET body = body || char(10) || char(10) || 'Simpan pula *Kode Akses* Anda untuk mengecek status pendaftaran kapan saja:' || char(10) || '🔎 {link_status}' || char(10) || '*Kode Akses:* {kode_akses}'
-           WHERE id IN ('wa_undangan_bayar', 'wa_pengingat_bayar') AND (body IS NULL OR body NOT LIKE '%{kode_akses}%')`
-        )
-        .run(),
-    ]);
+    await db
+      .prepare(
+        `UPDATE wa_templates SET body = body || char(10) || char(10) || 'Simpan pula *Kode Akses* Anda untuk mengecek status pendaftaran kapan saja:' || char(10) || '🔎 {link_status}' || char(10) || '*Kode Akses:* {kode_akses}'
+         WHERE id IN ('wa_undangan_bayar', 'wa_pengingat_bayar') AND (body IS NULL OR body NOT LIKE '%{kode_akses}%')`
+      )
+      .run();
 
     initialized = true;
     console.log('[DB] Family Camp tables initialized successfully.');

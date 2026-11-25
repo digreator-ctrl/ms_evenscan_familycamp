@@ -20,3 +20,15 @@ body {
 .toast-enter {
   animation: toast-slide-in 0.2s ease-out;
 }
+
+.qr-fullscreen-reader,
+.qr-fullscreen-reader > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.qr-fullscreen-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}

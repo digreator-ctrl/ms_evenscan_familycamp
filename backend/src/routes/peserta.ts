@@ -3,8 +3,10 @@ import { nanoid } from 'nanoid';
 import { validatePendaftaran } from '../middlewares/validator';
 import { StorageService } from '../services/storage';
 import { QRGeneratorService } from '../services/qr-generator';
+import { getPhoneVariants } from '../services/wa-link';
 import {
   BIAYA_PER_ORANG_DEFAULT,
+  BIAYA_ANAK_DEFAULT,
   formatNomorPeserta,
   ambilNomorUrutGrup,
   hitungBiayaWajib,
@@ -19,20 +21,6 @@ type Bindings = {
 };
 
 export const pesertaRoutes = new Hono<{ Bindings: Bindings }>();
-
-/**
- * Helper untuk normalisasi nomor telepon
- */
-function getPhoneVariants(phone: string): [string, string] {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('62')) {
-    return [digits, '0' + digits.slice(2)];
-  }
-  if (digits.startsWith('0')) {
-    return ['62' + digits.slice(1), digits];
-  }
-  return ['62' + digits, '0' + digits];
-}
 
 /**
  * Membuat kode akses sederhana & mudah diingat:
@@ -636,6 +624,15 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
     if (!isNaN(parsed) && parsed > 0) hargaPerOrang = parsed;
   } catch (err) {}
 
+  let hargaAnak = BIAYA_ANAK_DEFAULT;
+  try {
+    const hargaAnakRow = await db
+      .prepare(`SELECT value FROM app_settings WHERE key = 'harga_anak'`)
+      .first<{ value: string }>();
+    const parsed = parseInt(hargaAnakRow?.value || '', 10);
+    if (!isNaN(parsed) && parsed > 0) hargaAnak = parsed;
+  } catch (err) {}
+
   const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan'];
 
   // Nomor urut grup (K/N) untuk nomor peserta
@@ -663,8 +660,8 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
   }[] = anggotaList.map((m: any, idx: number) => {
     const parsedUsia = typeof m.usia === 'number' ? m.usia : parseInt(m.usia, 10);
     const usiaNum = isNaN(parsedUsia) ? null : parsedUsia;
-    // Opsi cover panitia hanya berlaku untuk usia di bawah 3 tahun
-    const makanDicover = usiaNum !== null && usiaNum < 3 && Boolean(m.makan_dicover);
+    // Opsi cover panitia hanya berlaku untuk usia di bawah 6 tahun (anak 1-5 th)
+    const makanDicover = usiaNum !== null && usiaNum <= 5 && Boolean(m.makan_dicover);
     const berbayar = isBerbayar(usiaNum, makanDicover);
 
     let defaultPeran = 'Peserta';
@@ -695,7 +692,8 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
 
   const ringkasanBiaya = hitungBiayaWajib(
     sanitizedAnggota.map((a) => ({ usia: a.usia, makan_dicover: a.makan_dicover })),
-    hargaPerOrang
+    hargaPerOrang,
+    hargaAnak
   );
   const jumlahAnggotaBerbayar = ringkasanBiaya.jumlah_berbayar;
   const jumlahBalitaGratis = ringkasanBiaya.jumlah_gratis;

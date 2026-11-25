@@ -94,6 +94,28 @@ import Layout from '../layouts/Layout.astro';
             </div>
           </div>
 
+          <!-- Info Pengenaan Biaya Berdasarkan Usia -->
+          <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 space-y-2">
+            <h4 class="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+              <span>ℹ️</span>
+              <span>Ketentuan Biaya Berdasarkan Usia</span>
+            </h4>
+            <ul class="text-[11px] text-amber-900 space-y-1.5 leading-relaxed">
+              <li class="flex items-start justify-between gap-2">
+                <span>• Anak usia <b>1 - 5 tahun</b></span>
+                <span class="font-black text-emerald-700 whitespace-nowrap">GRATIS</span>
+              </li>
+              <li class="flex items-start justify-between gap-2">
+                <span>• Anak usia <b>6 - 10 tahun</b></span>
+                <span class="font-black text-amber-800 whitespace-nowrap">Rp 100.000</span>
+              </li>
+              <li class="flex items-start justify-between gap-2">
+                <span>• Usia <b>11 tahun ke atas / Dewasa</b></span>
+                <span class="font-black text-slate-900 whitespace-nowrap">Rp 200.000</span>
+              </li>
+            </ul>
+          </div>
+
           <!-- Rincian Biaya Wajib & Add-on -->
           <div class="pt-4 border-t border-slate-100 space-y-2.5 text-xs">
             <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -102,7 +124,7 @@ import Layout from '../layouts/Layout.astro';
             </h4>
 
             <div class="flex justify-between text-slate-600">
-              <span>Paket Wajib Family Camp (<span id="txtHitungWajib">0</span> x Rp 200.000)</span>
+              <span>Paket Wajib Family Camp (<span id="txtHitungWajib">0</span> peserta berbayar)</span>
               <span class="font-bold text-slate-800" id="txtSubtotalWajib">Rp 0</span>
             </div>
 
@@ -445,7 +467,12 @@ _Panitia {nama_acara}_`;
               <td class="py-2.5 px-3 text-slate-600">${a.jenis_kelamin}</td>
               <td class="py-2.5 px-3 text-slate-600">${a.usia ? a.usia + ' th' : '-'}</td>
               <td class="py-2.5 px-3 text-right font-bold ${isGratis ? 'text-emerald-600' : 'text-slate-800'}">
-                ${isGratis ? 'GRATIS (Balita)' : 'Rp 200.000'}
+                ${(() => {
+                  const u = a.usia != null ? Number(a.usia) : null;
+                  if (isGratis) return 'Rp 0';
+                  if (u !== null && u >= 6 && u <= 10) return 'Rp 100.000';
+                  return 'Rp 200.000';
+                })()}
               </td>
             </tr>
           `;

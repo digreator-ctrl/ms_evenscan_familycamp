@@ -1018,7 +1018,7 @@ function DetailGrupView(props: {
                       <span className="font-bold text-slate-900 text-sm">{a.nama}</span>
                       <span className="inline-block px-2 py-0.5 rounded-full bg-[#06305d]/10 text-[#06305d] text-[10px] font-bold">{a.peran}</span>
                       {a.is_gratis === 1 && (
-                        <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">GRATIS (balita)</span>
+                        <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">GRATIS (1-5 th)</span>
                       )}
                       {a.status_hadir === 'hadir' && (
                         <span className="inline-block px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold">✓ Hadir</span>

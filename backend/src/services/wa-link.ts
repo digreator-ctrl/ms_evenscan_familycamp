@@ -67,6 +67,20 @@ _Panitia ${namaAcara}_`;
 }
 
 /**
+ * Normalisasi nomor WhatsApp menjadi dua varian pencarian ('62...' dan '0...').
+ */
+export function getPhoneVariants(phone: string): [string, string] {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('62')) {
+    return [digits, '0' + digits.slice(2)];
+  }
+  if (digits.startsWith('0')) {
+    return ['62' + digits.slice(1), digits];
+  }
+  return ['62' + digits, '0' + digits];
+}
+
+/**
  * Mengisi template pesan WA dengan variabel {nama_variabel}.
  * Variabel yang tidak tersedia akan diganti string kosong.
  */

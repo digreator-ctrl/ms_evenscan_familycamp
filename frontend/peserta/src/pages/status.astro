@@ -456,7 +456,7 @@ import Layout from "../layouts/Layout.astro";
                     </div>
                     <div class="flex-1 min-w-0 space-y-2">
                       <div class="flex flex-wrap gap-1">${sesiBadges}</div>
-                      ${noJatah ? '<p class="text-[10px] text-amber-700">🍼 Balita gratis — jatah makan dicover orang tua.</p>' : '<p class="text-[10px] text-slate-400">QR yang sama dipakai untuk check-in & jatah makan.</p>'}
+                      ${noJatah ? '<p class="text-[10px] text-amber-700">🍼 Anak usia 1-5 th gratis — tanpa fasilitas/jatah makan.</p>' : '<p class="text-[10px] text-slate-400">QR yang sama dipakai untuk check-in & jatah makan.</p>'}
                       <a href="${qrUrl}?format=png" download="Tiket-${String(a.nama || a.id).replace(/\s+/g, "_")}.png" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-700 text-white text-[11px] font-bold rounded-lg transition">
                         <span>📥 Unduh QR</span>
                       </a>

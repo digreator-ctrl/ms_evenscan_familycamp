@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { authMiddleware, AdminJwtPayload } from '../middlewares/auth';
+import { getPhoneVariants } from '../services/wa-link';
 import {
   getKategoriUsia,
   getKategoriUsiaLabel,
@@ -458,16 +459,105 @@ absensiRoutes.get('/dashboard', async (c) => {
   }
 });
 
+async function fetchGrupScanPayload(
+  db: D1Database,
+  grupId: string,
+  scannedAnggotaId: string | null = null
+) {
+  const grup = await db
+    .prepare(
+      `SELECT id, nomor_grup, tipe, pic_nama, pic_whatsapp, status, jumlah_anggota
+       FROM pendaftaran_grup
+       WHERE id = ?`
+    )
+    .bind(grupId)
+    .first<any>();
+
+  if (!grup) return null;
+
+  const [anggotaRes, scanLogRes] = await Promise.all([
+    db
+      .prepare(
+        `SELECT id, nomor_peserta, nama, peran, jenis_kelamin, usia, ukuran_kaos,
+                catatan_medis, is_gratis, makan_dicover, status_hadir, attended_at, qr_token
+         FROM anggota
+         WHERE grup_id = ?
+         ORDER BY nomor_peserta ASC, created_at ASC`
+      )
+      .bind(grup.id)
+      .all<any>(),
+    db
+      .prepare(`SELECT anggota_id, sesi, scanned_at, scanned_by FROM scan_log WHERE grup_id = ? ORDER BY scanned_at ASC`)
+      .bind(grup.id)
+      .all<any>(),
+  ]);
+
+  const scanByAnggota = new Map<string, Map<string, { scanned_at: string; scanned_by?: string }>>();
+  for (const row of scanLogRes.results || []) {
+    let map = scanByAnggota.get(row.anggota_id);
+    if (!map) {
+      map = new Map();
+      scanByAnggota.set(row.anggota_id, map);
+    }
+    map.set(row.sesi, { scanned_at: row.scanned_at, scanned_by: row.scanned_by });
+  }
+
+  const anggotaList = (anggotaRes.results || []).map((m: any) => {
+    const memberLogs = scanByAnggota.get(m.id);
+    const scanHistory: Record<string, { scanned: boolean; scanned_at?: string; scanned_by?: string }> = {};
+    for (const s of SESI_MAKAN) {
+      const log = memberLogs?.get(s.id);
+      scanHistory[s.id] = log
+        ? { scanned: true, scanned_at: log.scanned_at, scanned_by: log.scanned_by }
+        : { scanned: false };
+    }
+
+    return {
+      id: m.id,
+      nomor_peserta: m.nomor_peserta,
+      nama: m.nama,
+      peran: m.peran,
+      jenis_kelamin: m.jenis_kelamin,
+      usia: m.usia,
+      kategori_usia: getKategoriUsia(m.usia),
+      kategori_usia_label: getKategoriUsiaLabel(m.usia),
+      ukuran_kaos: m.ukuran_kaos,
+      catatan_medis: m.catatan_medis,
+      is_gratis: Boolean(m.is_gratis),
+      makan_dicover: Boolean(m.makan_dicover),
+      dapat_jatah_makan: isBerbayar(m.usia, m.makan_dicover),
+      status_hadir: m.status_hadir || 'belum',
+      attended_at: m.attended_at,
+      qr_token: m.qr_token,
+      scan_history: scanHistory,
+    };
+  });
+
+  const namaGrup = `${grup.tipe === 'keluarga' ? 'Keluarga' : 'Grup'} ${grup.pic_nama}`;
+  return {
+    grup: {
+      id: grup.id,
+      nomor_grup: grup.nomor_grup,
+      tipe: grup.tipe,
+      nama_grup: namaGrup,
+      pic_nama: grup.pic_nama,
+      pic_whatsapp: grup.pic_whatsapp,
+      status: grup.status,
+      jumlah_anggota: anggotaList.length,
+    },
+    scanned_anggota_id: scannedAnggotaId,
+    anggota: anggotaList,
+    sesi_tersedia: SESI_MAKAN.map((s) => ({ id: s.id, label: s.label })),
+  };
+}
+
 /**
  * POST /api/absensi/lookup
- * Mencari dan menampilkan preview data peserta berdasarkan token QR tanpa mengubah statusnya
- *
- * Response menyertakan:
- * - Informasi peserta lengkap (nomor_peserta, nama, peran, usia, kategori_usia, jenis_kelamin)
- * - Info grup (nomor_grup, PIC, status)
- * - Catatan medis (jika ada)
- * - Status jatah makan
- * - Riwayat scan per sesi
+ * Mencari data grup & seluruh anggotanya berdasarkan:
+ * - token QR anggota (`token` / `query`)
+ * - kode akses grup (`payment_token`)
+ * - nomor WA penanggung jawab grup (`pic_whatsapp`)
+ * - atau `grup_id` (+ opsional `anggota_id`) untuk muat ulang halaman
  */
 absensiRoutes.post('/lookup', async (c) => {
   const db = c.env.DB;
@@ -476,84 +566,274 @@ absensiRoutes.post('/lookup', async (c) => {
   }
 
   const body = await c.req.json().catch(() => ({}));
-  const token = (body.token as string)?.trim();
+  const grupIdParam = typeof body.grup_id === 'string' ? body.grup_id.trim() : '';
+  const anggotaIdParam = typeof body.anggota_id === 'string' ? body.anggota_id.trim() : '';
+  const rawInput = String(body.query ?? body.token ?? '').trim();
 
-  if (!token) {
-    return c.json({ error: 'Kode token QR wajib dikirim' }, 400);
+  if (!grupIdParam && !rawInput) {
+    return c.json({ error: 'QR Code, kode akses, atau nomor WA PIC wajib diisi' }, 400);
   }
 
   try {
-    // 1. Cek tabel Anggota Family Camp
-    const member = await db
-      .prepare(
-        `SELECT a.id, a.nama, a.nomor_peserta, a.peran, a.jenis_kelamin, a.usia, a.ukuran_kaos,
-                a.catatan_medis, a.is_gratis, a.makan_dicover, a.status_hadir, a.qr_token, a.attended_at,
-                g.id as grup_id, g.nomor_grup, g.tipe as grup_tipe, g.pic_nama, g.pic_whatsapp, g.status as grup_status
-         FROM anggota a
-         JOIN pendaftaran_grup g ON a.grup_id = g.id
-         WHERE a.qr_token = ?`
-      )
-      .bind(token)
-      .first<any>();
+    let targetGrupId: string | null = grupIdParam || null;
+    let scannedAnggotaId: string | null = anggotaIdParam || null;
 
-    if (member) {
-      // Ambil riwayat scan per sesi
-      const scanLogRes = await db
-        .prepare(`SELECT sesi, scanned_at, scanned_by FROM scan_log WHERE anggota_id = ? ORDER BY scanned_at ASC`)
-        .bind(member.id)
-        .all<any>();
+    if (!targetGrupId && rawInput) {
+      // 1. Cek berdasarkan QR token anggota
+      const byQr = await db
+        .prepare(`SELECT id, grup_id FROM anggota WHERE qr_token = ? LIMIT 1`)
+        .bind(rawInput)
+        .first<{ id: string; grup_id: string }>();
 
-      const scanHistory: Record<string, { scanned: boolean; scanned_at?: string; scanned_by?: string }> = {};
-      for (const sesi of SESI_MAKAN) {
-        const log = (scanLogRes.results || []).find((s: any) => s.sesi === sesi.id);
-        scanHistory[sesi.id] = log
-          ? { scanned: true, scanned_at: log.scanned_at, scanned_by: log.scanned_by }
-          : { scanned: false };
+      if (byQr) {
+        targetGrupId = byQr.grup_id;
+        scannedAnggotaId = byQr.id;
       }
 
-      const kategoriUsia = getKategoriUsia(member.usia);
-      const kategoriUsiaLabel = getKategoriUsiaLabel(member.usia);
-      const dapatMakan = isBerbayar(member.usia, member.makan_dicover);
+      // 2. Cek berdasarkan Kode Akses grup (payment_token)
+      if (!targetGrupId) {
+        const byKode = await db
+          .prepare(`SELECT id FROM pendaftaran_grup WHERE LOWER(payment_token) = LOWER(?) AND status != 'draft' LIMIT 1`)
+          .bind(rawInput)
+          .first<{ id: string }>();
+        if (byKode) {
+          targetGrupId = byKode.id;
+        }
+      }
 
-      return c.json({
-        success: true,
-        data: {
-          id: member.id,
-          nomor_peserta: member.nomor_peserta,
-          nama: member.nama,
-          peran: member.peran,
-          jenis_kelamin: member.jenis_kelamin,
-          usia: member.usia,
-          kategori_usia: kategoriUsia,
-          kategori_usia_label: kategoriUsiaLabel,
-          ukuran_kaos: member.ukuran_kaos,
-          catatan_medis: member.catatan_medis,
-          is_gratis: Boolean(member.is_gratis),
-          makan_dicover: Boolean(member.makan_dicover),
-          dapat_jatah_makan: dapatMakan,
-          status_hadir: member.status_hadir || 'belum_hadir',
-          attended_at: member.attended_at,
-          qr_token: member.qr_token,
-          // Info grup
-          grup_id: member.grup_id,
-          nomor_grup: member.nomor_grup,
-          grup_tipe: member.grup_tipe,
-          grup: `${member.grup_tipe === 'keluarga' ? 'Keluarga' : 'Grup'} ${member.pic_nama} (${member.nomor_grup})`,
-          pic_nama: member.pic_nama,
-          pic_whatsapp: member.pic_whatsapp,
-          grup_status: member.grup_status,
-          // Riwayat scan
-          scan_history: scanHistory,
-          sesi_tersedia: SESI_MAKAN.map((s) => ({ id: s.id, label: s.label })),
-          tipe: 'familycamp_anggota',
-        },
-      });
+      // 3. Cek berdasarkan Nomor WhatsApp PIC grup
+      if (!targetGrupId) {
+        const digits = rawInput.replace(/\D/g, '');
+        if (!rawInput.toLowerCase().startsWith('qr_') && digits.length >= 9) {
+          const [phone62, phone08] = getPhoneVariants(rawInput);
+          const byWa = await db
+            .prepare(
+              `SELECT id FROM pendaftaran_grup
+               WHERE (
+                 replace(replace(replace(pic_whatsapp, ' ', ''), '-', ''), '+', '') IN (?, ?)
+                 OR pic_whatsapp IN (?, ?)
+               )
+               AND status != 'draft'
+               ORDER BY CASE
+                 WHEN status = 'lunas' THEN 0
+                 WHEN status != 'ditolak' THEN 1
+                 ELSE 2
+               END, created_at DESC
+               LIMIT 1`
+            )
+            .bind(phone62, phone08, phone62, phone08)
+            .first<{ id: string }>();
+          if (byWa) {
+            targetGrupId = byWa.id;
+          }
+        }
+      }
     }
 
-    // 2. QR tidak terdaftar pada tabel anggota Family Camp
-    return c.json({ error: 'QR Code tidak terdaftar / tidak valid!' }, 404);
+    if (!targetGrupId) {
+      return c.json(
+        { error: 'Data tidak ditemukan. Periksa kembali QR Code, kode akses, atau nomor WA PIC grup.' },
+        404
+      );
+    }
+
+    const payload = await fetchGrupScanPayload(db, targetGrupId, scannedAnggotaId);
+    if (!payload) {
+      return c.json({ error: 'Data grup peserta tidak ditemukan.' }, 404);
+    }
+
+    return c.json({ success: true, data: payload });
   } catch (err: any) {
-    return c.json({ error: 'Gagal mencari data QR: ' + err.message }, 500);
+    return c.json({ error: 'Gagal mencari data grup: ' + err.message }, 500);
+  }
+});
+
+/**
+ * POST /api/absensi/scan-batch
+ * Mencatat check-in atau konsumsi makan untuk satu, sebagian, atau seluruh anggota dalam 1 grup sekaligus.
+ */
+absensiRoutes.post('/scan-batch', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database D1 tidak terhubung' }, 500);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const grupId = typeof body.grup_id === 'string' ? body.grup_id.trim() : '';
+  const sesi = typeof body.sesi === 'string' ? body.sesi.trim() : '';
+  const rawIds: unknown[] = Array.isArray(body.anggota_ids) ? body.anggota_ids : [];
+  const anggotaIds = Array.from(
+    new Set(rawIds.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim()))
+  );
+  const scannedAnggotaId = typeof body.scanned_anggota_id === 'string' ? body.scanned_anggota_id.trim() : null;
+
+  const user = c.get('user');
+  const scannedBy = user?.nama || user?.username || 'Panitia';
+
+  if (!grupId) {
+    return c.json({ error: 'ID grup wajib dikirim.' }, 400);
+  }
+  if (!isSesiScanValid(sesi)) {
+    return c.json(
+      { error: `Sesi "${sesi}" tidak valid. Pilih: ${SESI_MAKAN.map((s) => s.id).join(', ')}` },
+      400
+    );
+  }
+  if (anggotaIds.length === 0) {
+    return c.json({ error: 'Pilih minimal 1 peserta untuk dicatat.' }, 400);
+  }
+
+  try {
+    const grup = await db
+      .prepare(`SELECT id, status, pic_nama FROM pendaftaran_grup WHERE id = ?`)
+      .bind(grupId)
+      .first<{ id: string; status: string; pic_nama: string }>();
+
+    if (!grup) {
+      return c.json({ error: 'Grup peserta tidak ditemukan.' }, 404);
+    }
+    if (grup.status !== 'lunas') {
+      return c.json(
+        { error: `Status pendaftaran grup belum lunas (${grup.status}). Tidak dapat mencatat presensi.` },
+        400
+      );
+    }
+
+    const placeholders = anggotaIds.map(() => '?').join(',');
+    const [membersRes, existingRes] = await Promise.all([
+      db
+        .prepare(
+          `SELECT id, nama, usia, is_gratis, makan_dicover, status_hadir
+           FROM anggota
+           WHERE grup_id = ? AND id IN (${placeholders})`
+        )
+        .bind(grupId, ...anggotaIds)
+        .all<any>(),
+      db
+        .prepare(
+          `SELECT anggota_id FROM scan_log
+           WHERE sesi = ? AND anggota_id IN (${placeholders})`
+        )
+        .bind(sesi, ...anggotaIds)
+        .all<{ anggota_id: string }>(),
+    ]);
+
+    const existingSet = new Set((existingRes.results || []).map((r) => r.anggota_id));
+    const statements: D1PreparedStatement[] = [];
+    const recorded: string[] = [];
+    const skipped: { id: string; nama: string; reason: 'sudah_scan' | 'tanpa_jatah' }[] = [];
+
+    for (const m of membersRes.results || []) {
+      if (sesi !== 'checkin' && m.is_gratis && !m.makan_dicover) {
+        skipped.push({ id: m.id, nama: m.nama, reason: 'tanpa_jatah' });
+        continue;
+      }
+      if (existingSet.has(m.id)) {
+        skipped.push({ id: m.id, nama: m.nama, reason: 'sudah_scan' });
+        continue;
+      }
+
+      const scanLogId = 'scan_' + crypto.randomUUID().slice(0, 12);
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO scan_log (id, anggota_id, grup_id, sesi, scanned_at, scanned_by)
+             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`
+          )
+          .bind(scanLogId, m.id, grupId, sesi, scannedBy)
+      );
+
+      if (sesi === 'checkin' && m.status_hadir !== 'hadir') {
+        statements.push(
+          db
+            .prepare(`UPDATE anggota SET status_hadir = 'hadir', attended_at = CURRENT_TIMESTAMP WHERE id = ?`)
+            .bind(m.id)
+        );
+      }
+      recorded.push(m.nama);
+    }
+
+    if (statements.length === 0) {
+      return c.json(
+        {
+          error: 'Peserta yang dipilih sudah tercatat atau tidak berhak pada sesi ini.',
+          skipped,
+        },
+        409
+      );
+    }
+
+    await db.batch(statements);
+
+    const payload = await fetchGrupScanPayload(db, grupId, scannedAnggotaId);
+    const sesiLabel = getSesiLabel(sesi);
+
+    return c.json({
+      success: true,
+      message: `${sesiLabel} berhasil dicatat untuk ${recorded.length} peserta (${recorded.join(', ')}).`,
+      recorded_count: recorded.length,
+      skipped,
+      data: payload,
+    });
+  } catch (err: any) {
+    console.error('Error scan batch:', err);
+    return c.json({ error: 'Gagal menyimpan presensi batch: ' + err.message }, 500);
+  }
+});
+
+/**
+ * POST /api/absensi/scan-undo
+ * Membatalkan catatan check-in atau sesi makan untuk 1 anggota (koreksi salah centang).
+ */
+absensiRoutes.post('/scan-undo', async (c) => {
+  const db = c.env.DB;
+  if (!db) {
+    return c.json({ error: 'Database D1 tidak terhubung' }, 500);
+  }
+
+  const body = await c.req.json().catch(() => ({}));
+  const anggotaId = typeof body.anggota_id === 'string' ? body.anggota_id.trim() : '';
+  const sesi = typeof body.sesi === 'string' ? body.sesi.trim() : '';
+  const scannedAnggotaId = typeof body.scanned_anggota_id === 'string' ? body.scanned_anggota_id.trim() : null;
+
+  if (!anggotaId) {
+    return c.json({ error: 'ID peserta wajib dikirim.' }, 400);
+  }
+  if (!isSesiScanValid(sesi)) {
+    return c.json({ error: `Sesi "${sesi}" tidak valid.` }, 400);
+  }
+
+  try {
+    const member = await db
+      .prepare(`SELECT id, grup_id, nama FROM anggota WHERE id = ?`)
+      .bind(anggotaId)
+      .first<{ id: string; grup_id: string; nama: string }>();
+
+    if (!member) {
+      return c.json({ error: 'Data peserta tidak ditemukan.' }, 404);
+    }
+
+    const statements: D1PreparedStatement[] = [
+      db.prepare(`DELETE FROM scan_log WHERE anggota_id = ? AND sesi = ?`).bind(member.id, sesi),
+    ];
+
+    if (sesi === 'checkin') {
+      statements.push(
+        db.prepare(`UPDATE anggota SET status_hadir = 'belum', attended_at = NULL WHERE id = ?`).bind(member.id)
+      );
+    }
+
+    await db.batch(statements);
+
+    const payload = await fetchGrupScanPayload(db, member.grup_id, scannedAnggotaId);
+    return c.json({
+      success: true,
+      message: `${getSesiLabel(sesi)} untuk ${member.nama} berhasil dibatalkan.`,
+      data: payload,
+    });
+  } catch (err: any) {
+    console.error('Error undo scan:', err);
+    return c.json({ error: 'Gagal membatalkan catatan: ' + err.message }, 500);
   }
 });
 

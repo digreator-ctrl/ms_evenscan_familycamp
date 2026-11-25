@@ -1,630 +1,577 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { GrupScanPayload, playScannerBeep } from '../types/scanner';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
-type SesiId = 'checkin' | 'makan_sabtu_siang' | 'makan_sabtu_malam' | 'makan_ahad_pagi';
-
-const SESI_LIST: { id: SesiId; label: string; short: string; icon: string }[] = [
-  { id: 'checkin', label: 'Check-in Kehadiran', short: 'Check-in', icon: '🚪' },
-  { id: 'makan_sabtu_siang', label: 'Makan Sabtu Siang', short: 'Mkn Sbt Siang', icon: '🍽️' },
-  { id: 'makan_sabtu_malam', label: 'Makan Sabtu Malam', short: 'Mkn Sbt Malam', icon: '🍲' },
-  { id: 'makan_ahad_pagi', label: 'Makan Ahad Pagi', short: 'Mkn Ahad Pagi', icon: '🥣' },
-];
-
-interface ScanHistoryItem {
-  scanned: boolean;
-  scanned_at?: string;
-  scanned_by?: string;
-}
-
-interface AnggotaData {
-  tipe: string;
-  id: string;
-  nomor_peserta: string;
-  nama: string;
-  peran: string;
-  jenis_kelamin: string;
-  usia: number | null;
-  kategori_usia_label: string;
-  ukuran_kaos?: string | null;
-  catatan_medis?: string | null;
-  is_gratis: boolean;
-  makan_dicover: boolean;
-  dapat_jatah_makan: boolean;
-  status_hadir: string;
-  attended_at: string | null;
-  qr_token: string;
-  grup: string;
-  nomor_grup?: string;
-  pic_nama?: string;
-  pic_whatsapp?: string;
-  grup_status?: string;
-  scan_history?: Record<string, ScanHistoryItem>;
-  sesi_tersedia?: { id: string; label: string }[];
-}
-
 export function Scanner() {
+  const navigate = useNavigate();
+
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(true);
   const [cameraError, setCameraError] = useState('');
-  const [manualToken, setManualToken] = useState('');
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
-  const [sesi, setSesi] = useState<SesiId>('checkin');
-
-  const [scanned, setScanned] = useState<AnggotaData | null>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [confirmLoading, setConfirmLoading] = useState(false);
-  const [confirmResult, setConfirmResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [scanError, setScanError] = useState('');
+
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualQuery, setManualQuery] = useState('');
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualError, setManualError] = useState('');
 
   const scannerRef = useRef<any>(null);
-  const isProcessingRef = useRef<boolean>(false);
+  const isMountedRef = useRef(true);
+  const isProcessingRef = useRef(false);
+  const manualOpenRef = useRef(false);
+  const manualInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-    const initCamera = async () => {
-      await new Promise((r) => setTimeout(r, 250));
-      if (isMounted) await startScanner();
-    };
-    initCamera();
+    manualOpenRef.current = manualModalOpen;
+    if (manualModalOpen) {
+      setTimeout(() => manualInputRef.current?.focus(), 80);
+    }
+  }, [manualModalOpen]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) startScanner('environment');
+    }, 180);
+
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
+      clearTimeout(timer);
       stopScanner();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startScanner = async () => {
+  const stopScanner = async () => {
+    const inst = scannerRef.current;
+    scannerRef.current = null;
+    if (inst) {
+      try {
+        if (inst.isScanning) await inst.stop();
+      } catch {
+        /* ignore stop errors */
+      }
+      try {
+        inst.clear();
+      } catch {
+        /* ignore clear errors */
+      }
+    }
+    if (isMountedRef.current) {
+      setCameraActive(false);
+      setTorchOn(false);
+      setTorchSupported(false);
+    }
+  };
+
+  const startScanner = async (targetMode: 'environment' | 'user' = facingMode) => {
+    if (!isMountedRef.current) return;
     setCameraLoading(true);
     setCameraError('');
+    setTorchOn(false);
+    setTorchSupported(false);
+
+    await stopScanner();
+    if (!isMountedRef.current) return;
+
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
-      if (scannerRef.current) {
-        try {
-          await scannerRef.current.stop();
-        } catch {}
-      }
       const scanner = new Html5Qrcode('qr-reader');
       scannerRef.current = scanner;
-      await scanner.start(
-        { facingMode: 'environment' },
-        { fps: 12, qrbox: { width: 260, height: 260 }, aspectRatio: 1.0 },
-        (decodedText: string) => handleDetectedCode(decodedText),
-        () => {}
-      );
+
+      const scanConfig = {
+        fps: 12,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.max(170, Math.min(280, Math.floor(minEdge * 0.68)));
+          return { width: size, height: size };
+        },
+      };
+
+      try {
+        await scanner.start(
+          { facingMode: targetMode },
+          scanConfig,
+          (decodedText: string) => handleDetectedCode(decodedText),
+          () => {}
+        );
+      } catch (firstErr) {
+        if (targetMode === 'environment') {
+          await scanner.start(
+            { facingMode: 'user' },
+            scanConfig,
+            (decodedText: string) => handleDetectedCode(decodedText),
+            () => {}
+          );
+          if (isMountedRef.current) setFacingMode('user');
+        } else {
+          throw firstErr;
+        }
+      }
+
+      if (!isMountedRef.current) {
+        await stopScanner();
+        return;
+      }
+
       setCameraActive(true);
       setCameraLoading(false);
+
+      // Deteksi dukungan senter / torch pada kamera yang aktif
+      try {
+        const caps = scanner.getRunningTrackCameraCapabilities();
+        const torch = caps?.torchFeature?.();
+        if (torch && torch.isSupported()) {
+          setTorchSupported(true);
+        }
+      } catch {
+        setTorchSupported(false);
+      }
     } catch (err: any) {
       console.error('Kamera error:', err);
+      if (!isMountedRef.current) return;
       setCameraActive(false);
       setCameraLoading(false);
       setCameraError(
-        'Tidak dapat mengakses kamera. Pastikan browser memiliki izin akses kamera atau masukkan kode token secara manual.'
+        'Tidak dapat mengakses kamera perangkat. Pastikan izin kamera aktif atau gunakan input manual kode akses / nomor WA PIC.'
       );
     }
   };
 
-  const stopScanner = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-      } catch {}
-      scannerRef.current = null;
-    }
-    setCameraActive(false);
+  const handleExitToDashboard = async () => {
+    await stopScanner();
+    navigate('/');
   };
 
-  const playBeep = (type: 'scan' | 'success' | 'warning' | 'error') => {
+  const handleSwitchCamera = async () => {
+    const nextMode: 'environment' | 'user' = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextMode);
+    await startScanner(nextMode);
+  };
+
+  const handleToggleTorch = async () => {
+    const inst = scannerRef.current;
+    if (!inst || !torchSupported) return;
     try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      if (type === 'scan') {
-        osc.frequency.value = 850;
-        gain.gain.value = 0.25;
-        osc.start();
-        osc.stop(ctx.currentTime + 0.1);
-      } else if (type === 'success') {
-        osc.frequency.setValueAtTime(523.25, ctx.currentTime);
-        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1);
-        osc.frequency.setValueAtTime(783.99, ctx.currentTime + 0.2);
-        gain.gain.value = 0.35;
-        osc.start();
-        osc.stop(ctx.currentTime + 0.35);
-      } else if (type === 'warning') {
-        osc.frequency.value = 350;
-        gain.gain.value = 0.3;
-        osc.start();
-        osc.stop(ctx.currentTime + 0.3);
-      } else {
-        osc.frequency.value = 220;
-        gain.gain.value = 0.4;
-        osc.start();
-        osc.stop(ctx.currentTime + 0.4);
-      }
-    } catch {}
-  };
-
-  const handleDetectedCode = async (rawCode: string) => {
-    if (isProcessingRef.current || scanned || lookupLoading) return;
-    isProcessingRef.current = true;
-    playBeep('scan');
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.pause();
-      } catch {}
-    }
-    await lookupParticipant(rawCode.trim());
-  };
-
-  const lookupParticipant = async (token: string) => {
-    setLookupLoading(true);
-    setErrorMessage('');
-    setConfirmResult(null);
-    try {
-      const authToken = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/absensi/lookup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ token }),
-      });
-      const json = await res.json();
-      if (res.ok && json.data) {
-        const data = json.data as AnggotaData;
-        setScanned(data);
-        const alreadyScanned = data.scan_history?.[sesi]?.scanned;
-        if (alreadyScanned) playBeep('warning');
-      } else {
-        playBeep('error');
-        setErrorMessage(json.error || 'QR Code tidak terdaftar di sistem');
-      }
-    } catch (err: any) {
-      playBeep('error');
-      setErrorMessage('Terjadi gangguan saat memvalidasi QR: ' + err.message);
-    } finally {
-      setLookupLoading(false);
+      const torch = inst.getRunningTrackCameraCapabilities()?.torchFeature?.();
+      if (!torch || !torch.isSupported()) return;
+      const next = !torchOn;
+      await torch.apply(next);
+      setTorchOn(next);
+    } catch (err) {
+      console.warn('Gagal mengubah status flash:', err);
     }
   };
 
-  const handleConfirmScan = async () => {
-    if (!scanned) return;
-    setConfirmLoading(true);
-    setConfirmResult(null);
-    try {
-      const authToken = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/absensi/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ token: scanned.qr_token, sesi }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (res.ok) {
-        playBeep('success');
-        setConfirmResult({ ok: true, message: json.message || 'Presensi berhasil dicatat.' });
-        // Update riwayat lokal
-        setScanned({
-          ...scanned,
-          status_hadir: sesi === 'checkin' ? 'hadir' : scanned.status_hadir,
-          scan_history: {
-            ...(scanned.scan_history || {}),
-            [sesi]: { scanned: true, scanned_at: json.scanned_at || new Date().toISOString() },
-          },
-        });
-      } else {
-        playBeep('error');
-        setConfirmResult({ ok: false, message: json.error || 'Gagal mencatat presensi.' });
-      }
-    } catch {
-      playBeep('error');
-      setConfirmResult({ ok: false, message: 'Terjadi kesalahan koneksi saat konfirmasi.' });
-    } finally {
-      setConfirmLoading(false);
-    }
-  };
-
-  const handleNextScan = async () => {
-    setScanned(null);
-    setConfirmResult(null);
-    setErrorMessage('');
+  const resumeCameraAfterError = async () => {
+    setScanError('');
     isProcessingRef.current = false;
     if (scannerRef.current) {
       try {
         await scannerRef.current.resume();
+        return;
       } catch {
-        await startScanner();
+        /* fallback restart */
       }
-    } else {
-      await startScanner();
     }
+    await startScanner(facingMode);
   };
 
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualToken.trim()) {
-      handleDetectedCode(manualToken.trim());
-      setManualToken('');
+  const navigateToGroup = async (payload: GrupScanPayload) => {
+    await stopScanner();
+    const params = new URLSearchParams({ grup: payload.grup.id });
+    if (payload.scanned_anggota_id) {
+      params.set('anggota', payload.scanned_anggota_id);
     }
+    navigate(`/scanner/grup?${params.toString()}`, {
+      state: { initialData: payload },
+    });
   };
 
-  const formatDateTime = (dateStr?: string | null) => {
-    if (!dateStr) return '-';
+  const handleDetectedCode = async (rawCode: string) => {
+    if (isProcessingRef.current || manualOpenRef.current) return;
+    const clean = rawCode.trim();
+    if (!clean) return;
+
+    isProcessingRef.current = true;
+    playScannerBeep('scan');
+    setScanError('');
+    setLookupLoading(true);
+
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.pause();
+      } catch {
+        /* ignore pause failure */
+      }
+    }
+
     try {
-      let s = String(dateStr).trim();
-      if (!/(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)) s = s.replace(' ', 'T') + 'Z';
-      const d = new Date(s);
-      if (isNaN(d.getTime())) return dateStr!;
-      return new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZone: 'Asia/Jakarta',
-      }).format(d);
-    } catch {
-      return dateStr!;
+      const authToken = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/absensi/lookup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ token: clean }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.data) {
+        await navigateToGroup(json.data as GrupScanPayload);
+      } else {
+        playScannerBeep('error');
+        setScanError(json.error || 'QR Code tidak terdaftar di sistem.');
+      }
+    } catch (err: any) {
+      playScannerBeep('error');
+      setScanError('Gagal terhubung ke server: ' + err.message);
+    } finally {
+      if (isMountedRef.current) setLookupLoading(false);
     }
   };
 
-  const sesiLabel = SESI_LIST.find((s) => s.id === sesi)?.label || sesi;
-  const sudahScanSesiIni = scanned?.scan_history?.[sesi]?.scanned || false;
-  const isGrupLunas = scanned?.grup_status ? scanned.grup_status === 'lunas' : true;
-  const tanpaJatahMakan = sesi !== 'checkin' && scanned ? scanned.is_gratis && !scanned.makan_dicover : false;
-  const bisaKonfirmasi = !!scanned && isGrupLunas && !sudahScanSesiIni && !tanpaJatahMakan && !confirmResult?.ok;
+  const handleOpenManualModal = async () => {
+    setManualError('');
+    setManualModalOpen(true);
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.pause();
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const handleCloseManualModal = async () => {
+    setManualModalOpen(false);
+    setManualError('');
+    if (!scanError && scannerRef.current) {
+      try {
+        await scannerRef.current.resume();
+      } catch {
+        await startScanner(facingMode);
+      }
+    }
+  };
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const query = manualQuery.trim();
+    if (!query) {
+      setManualError('Masukkan kode akses grup atau nomor WA penanggung jawab.');
+      return;
+    }
+
+    setManualLoading(true);
+    setManualError('');
+    try {
+      const authToken = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/absensi/lookup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ query }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.data) {
+        playScannerBeep('scan');
+        await navigateToGroup(json.data as GrupScanPayload);
+      } else {
+        playScannerBeep('error');
+        setManualError(json.error || 'Data grup tidak ditemukan.');
+      }
+    } catch (err: any) {
+      playScannerBeep('error');
+      setManualError('Terjadi gangguan koneksi: ' + err.message);
+    } finally {
+      if (isMountedRef.current) setManualLoading(false);
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold mb-1 border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Scanner Presensi & Makan
+    <div className="fixed inset-0 z-50 bg-black text-white overflow-hidden select-none flex flex-col">
+      {/* Layer 1: Video Kamera Penuh Layar */}
+      <div className="absolute inset-0 bg-slate-950">
+        <div id="qr-reader" className="qr-fullscreen-reader w-full h-full" />
+      </div>
+
+      {/* Layer 2: Frame Bidik QR di Tengah (saat kamera aktif) */}
+      {cameraActive && !lookupLoading && !scanError && !manualModalOpen && (
+        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center z-10 px-6">
+          <div className="w-64 h-64 sm:w-72 sm:h-72 relative rounded-3xl shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
+            <div className="absolute -top-0.5 -left-0.5 w-8 h-8 border-t-4 border-l-4 border-sky-400 rounded-tl-2xl" />
+            <div className="absolute -top-0.5 -right-0.5 w-8 h-8 border-t-4 border-r-4 border-sky-400 rounded-tr-2xl" />
+            <div className="absolute -bottom-0.5 -left-0.5 w-8 h-8 border-b-4 border-l-4 border-sky-400 rounded-bl-2xl" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-8 h-8 border-b-4 border-r-4 border-sky-400 rounded-br-2xl" />
+            <div className="absolute inset-x-3 top-1/2 -translate-y-1/2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_14px_#34d399] animate-pulse" />
           </div>
-          <h1 className="text-2xl font-black text-slate-800 tracking-tight">Scanner QR Peserta</h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Pilih sesi, arahkan kamera ke QR peserta. Data akan muncul untuk diverifikasi sebelum dicatat.
+          <p className="mt-6 px-4 py-1.5 rounded-full bg-black/55 backdrop-blur-md border border-white/15 text-xs font-medium text-white/95 text-center">
+            Arahkan kamera ke QR Code tiket peserta
           </p>
         </div>
-        <Link
-          to="/peserta?tab=individu"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-xs transition active:scale-95 shrink-0"
-        >
-          <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span>Data Peserta</span>
-        </Link>
-      </div>
+      )}
 
-      {/* Pemilih Sesi */}
-      <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-xs">
-        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-2 px-1">Pilih Sesi Scan</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {SESI_LIST.map((s) => (
+      {/* Layer 3: Header Kontrol Atas (Pojok Kiri X + Kontrol Kamera Kanan) */}
+      <header className="relative z-20 flex items-center justify-between px-4 pt-4 pb-6 bg-gradient-to-b from-black/75 via-black/35 to-transparent">
+        <button
+          type="button"
+          onClick={handleExitToDashboard}
+          aria-label="Keluar dari scanner"
+          title="Kembali ke Dashboard"
+          className="w-11 h-11 rounded-full bg-black/50 hover:bg-black/75 border border-white/25 text-white flex items-center justify-center backdrop-blur-md active:scale-95 transition cursor-pointer"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 border border-white/15 backdrop-blur-md text-[11px] font-bold">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              cameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+            }`}
+          />
+          <span>{cameraActive ? 'Siap Memindai QR' : cameraLoading ? 'Menyiapkan Kamera...' : 'Kamera Nonaktif'}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {cameraActive && torchSupported && (
             <button
-              key={s.id}
               type="button"
-              onClick={() => {
-                setSesi(s.id);
-                setConfirmResult(null);
-              }}
-              className={`flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer border ${
-                sesi === s.id
-                  ? 'bg-[#06305d] text-white border-[#06305d] shadow-xs'
-                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              onClick={handleToggleTorch}
+              aria-label="Lampu senter"
+              title={torchOn ? 'Matikan Senter' : 'Nyalakan Senter'}
+              className={`w-11 h-11 rounded-full border flex items-center justify-center backdrop-blur-md active:scale-95 transition cursor-pointer ${
+                torchOn
+                  ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/30'
+                  : 'bg-black/50 hover:bg-black/75 text-white border-white/25'
               }`}
             >
-              <span className="text-base leading-none">{s.icon}</span>
-              <span className="leading-tight text-center">{s.short}</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
             </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-        {/* Kamera */}
-        <div className="md:col-span-7 bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-xs font-bold text-slate-800">
-                  {cameraActive ? 'Kamera Aktif & Siap Memindai' : 'Kamera Menghubungkan...'}
-                </span>
-              </div>
-              {cameraActive && (
-                <button
-                  onClick={startScanner}
-                  className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
-                  title="Mulai Ulang Kamera"
-                >
-                  Reset Kamera
-                </button>
-              )}
-            </div>
-
-            <div className="relative w-full rounded-2xl overflow-hidden bg-slate-950 aspect-square flex items-center justify-center border-2 border-slate-800">
-              <div id="qr-reader" className="w-full h-full object-cover"></div>
-
-              {cameraActive && !scanned && !lookupLoading && (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <div className="w-56 h-56 border-2 border-dashed border-white/60 rounded-3xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
-                    <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-sky-400 rounded-tl-xl" />
-                    <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-sky-400 rounded-tr-xl" />
-                    <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-sky-400 rounded-bl-xl" />
-                    <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-sky-400 rounded-br-xl" />
-                    <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399] animate-pulse top-1/2 -translate-y-1/2" />
-                  </div>
-                </div>
-              )}
-
-              {cameraLoading && (
-                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xs flex flex-col items-center justify-center text-white p-4 text-center z-10">
-                  <div className="w-8 h-8 border-3 border-sky-400 border-t-transparent rounded-full animate-spin mb-3" />
-                  <p className="text-xs font-semibold">Mengaktifkan kamera perangkat...</p>
-                </div>
-              )}
-
-              {cameraError && (
-                <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center text-white p-6 text-center z-10">
-                  <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-3">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
-                  <p className="text-xs font-medium text-slate-300 mb-4 max-w-xs">{cameraError}</p>
-                  <button
-                    onClick={startScanner}
-                    className="px-4 py-2 bg-[#06305d] hover:bg-[#0a4583] text-white text-xs font-bold rounded-xl transition active:scale-95 shadow-md cursor-pointer"
-                  >
-                    Coba Akses Kamera Lagi
-                  </button>
-                </div>
-              )}
-
-              {lookupLoading && (
-                <div className="absolute inset-0 bg-slate-900/75 backdrop-blur-xs flex flex-col items-center justify-center text-white z-20">
-                  <div className="w-9 h-9 border-3 border-emerald-400 border-t-transparent rounded-full animate-spin mb-2" />
-                  <p className="text-xs font-bold tracking-wide">Membaca Data Tiket...</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <p className="text-[11px] font-semibold text-slate-500 mb-1.5">Atau input kode QR token secara manual:</p>
-            <form onSubmit={handleManualSubmit} className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Contoh: qr_12345678"
-                value={manualToken}
-                onChange={(e) => setManualToken(e.target.value)}
-                className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d]"
+          )}
+          <button
+            type="button"
+            onClick={handleSwitchCamera}
+            aria-label="Ganti kamera"
+            title="Ganti Kamera Depan / Belakang"
+            className="w-11 h-11 rounded-full bg-black/50 hover:bg-black/75 border border-white/25 text-white flex items-center justify-center backdrop-blur-md active:scale-95 transition cursor-pointer"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
-              <button
-                type="submit"
-                disabled={!manualToken.trim() || lookupLoading}
-                className="px-4 py-2 bg-[#06305d] hover:bg-[#0a4583] text-white text-xs font-bold rounded-xl transition active:scale-95 disabled:opacity-50 cursor-pointer"
-              >
-                Cek Data
-              </button>
-            </form>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {/* Spacer Tengah */}
+      <div className="flex-1" />
+
+      {/* Loading Kamera */}
+      {cameraLoading && (
+        <div className="absolute inset-0 z-15 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-10 h-10 border-3 border-sky-400 border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-sm font-bold">Mengaktifkan Kamera...</p>
+          <p className="text-xs text-slate-400 mt-1">Izinkan akses kamera pada browser bila diminta.</p>
+        </div>
+      )}
+
+      {/* Loading Lookup Setelah Scan */}
+      {lookupLoading && (
+        <div className="absolute inset-0 z-30 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-11 h-11 border-3 border-emerald-400 border-t-transparent rounded-full animate-spin mb-3" />
+          <p className="text-sm font-bold tracking-wide">Membaca Data Grup Peserta...</p>
+        </div>
+      )}
+
+      {/* Error Kamera */}
+      {cameraError && !cameraLoading && (
+        <div className="absolute inset-0 z-15 bg-slate-950/95 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center mb-4">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-base font-black text-white mb-1.5">Kamera Tidak Tersedia</h2>
+          <p className="text-xs text-slate-300 max-w-xs leading-relaxed mb-5">{cameraError}</p>
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full max-w-xs">
+            <button
+              type="button"
+              onClick={() => startScanner(facingMode)}
+              className="flex-1 py-3 px-4 rounded-xl bg-white text-slate-900 font-bold text-xs shadow-md active:scale-95 transition cursor-pointer"
+            >
+              Coba Lagi
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenManualModal}
+              className="flex-1 py-3 px-4 rounded-xl bg-[#06305d] border border-sky-400/30 text-white font-bold text-xs shadow-md active:scale-95 transition cursor-pointer"
+            >
+              Input Manual
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Panel Hasil */}
-        <div className="md:col-span-5 flex flex-col">
-          {!scanned && !errorMessage ? (
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex-1 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 rounded-3xl bg-slate-100 text-slate-400 flex items-center justify-center mb-4">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                </svg>
-              </div>
-              <h3 className="text-base font-black text-slate-800 mb-1">Siap Memindai</h3>
-              <p className="text-xs text-slate-500 max-w-xs leading-relaxed mb-4">
-                Posisikan QR Code peserta di dalam kotak kamera. Sesi aktif:{' '}
-                <strong className="text-[#06305d]">{sesiLabel}</strong>.
-              </p>
-              <div className="p-3 bg-sky-50 rounded-2xl border border-sky-100 text-[11px] text-sky-800 max-w-xs text-left space-y-1">
-                <p className="font-bold flex items-center gap-1"><span>💡</span> Alur:</p>
-                <p>1. Pilih sesi (Check-in / Makan)</p>
-                <p>2. Scan QR peserta</p>
-                <p>3. Verifikasi data lalu konfirmasi</p>
-              </div>
+      {/* Error QR Tidak Dikenal */}
+      {scanError && !lookupLoading && (
+        <div className="absolute inset-0 z-30 bg-black/75 backdrop-blur-sm flex items-center justify-center p-5">
+          <div className="w-full max-w-sm bg-slate-900 border border-rose-500/40 rounded-3xl p-6 text-center shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </div>
-          ) : errorMessage ? (
-            <div className="bg-white rounded-3xl p-6 border border-rose-200 shadow-xs flex-1 flex flex-col items-center justify-center text-center">
-              <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-3 border border-rose-200">
-                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <h3 className="text-base font-black text-slate-800 mb-1">QR Tidak Valid</h3>
-              <p className="text-xs text-rose-600 font-medium mb-5 max-w-xs">{errorMessage}</p>
+            <h3 className="text-base font-black text-white mb-1">QR Tidak Valid</h3>
+            <p className="text-xs text-rose-300 leading-relaxed mb-5">{scanError}</p>
+            <div className="flex flex-col gap-2">
               <button
-                onClick={handleNextScan}
-                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-md transition active:scale-95 cursor-pointer"
+                type="button"
+                onClick={resumeCameraAfterError}
+                className="w-full py-3 rounded-xl bg-white text-slate-900 text-xs font-black active:scale-95 transition cursor-pointer"
               >
                 Scan Ulang
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setScanError('');
+                  isProcessingRef.current = false;
+                  handleOpenManualModal();
+                }}
+                className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition cursor-pointer"
+              >
+                Cari via Kode Akses / No. WA PIC
+              </button>
             </div>
-          ) : (
-            <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-lg flex-1 flex flex-col justify-between animate-in fade-in zoom-in-95 duration-150">
-              <div>
-                {/* Badge status */}
-                <div className="mb-3 space-y-2">
-                  {!isGrupLunas ? (
-                    <div className="p-3 bg-rose-50 rounded-2xl border border-rose-200 text-rose-900 flex items-center gap-2">
-                      <span className="text-base shrink-0">✕</span>
-                      <div>
-                        <p className="text-xs font-bold leading-tight">Grup Belum Lunas</p>
-                        <p className="text-[10px] text-rose-700">Status: {scanned?.grup_status}. Tidak dapat dicatat.</p>
-                      </div>
-                    </div>
-                  ) : sudahScanSesiIni ? (
-                    <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 flex items-center gap-2">
-                      <span className="text-base shrink-0">⚠️</span>
-                      <div>
-                        <p className="text-xs font-black leading-tight">SUDAH SCAN {sesiLabel.toUpperCase()}</p>
-                        <p className="text-[10px] text-amber-800 mt-0.5">
-                          Pada: {formatDateTime(scanned?.scan_history?.[sesi]?.scanned_at)}
-                        </p>
-                      </div>
-                    </div>
-                  ) : tanpaJatahMakan ? (
-                    <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-900 flex items-center gap-2">
-                      <span className="text-base shrink-0">🍼</span>
-                      <div>
-                        <p className="text-xs font-black leading-tight">TANPA JATAH MAKAN PANITIA</p>
-                        <p className="text-[10px] text-amber-800 mt-0.5">Balita gratis, makan dicover orang tua.</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200 text-emerald-800 flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block shrink-0" />
-                      <div>
-                        <p className="text-xs font-bold leading-tight">✓ Tiket Valid — Sesi: {sesiLabel}</p>
-                        <p className="text-[10px] text-emerald-700">Verifikasi identitas sebelum konfirmasi.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {confirmResult && (
-                    <div
-                      className={`p-3 rounded-2xl text-xs font-bold flex items-center gap-2 ${
-                        confirmResult.ok ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                      }`}
-                    >
-                      <span className="text-lg">{confirmResult.ok ? '🎉' : '⚠️'}</span>
-                      <p className="leading-snug">{confirmResult.message}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Profil */}
-                <div className="space-y-3">
-                  <div className="border-b border-slate-100 pb-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nomor Peserta</p>
-                    <p className="text-sm font-mono font-black text-[#06305d]">{scanned?.nomor_peserta}</p>
-                    <h3 className="text-lg font-black text-slate-900 mt-1 leading-tight">{scanned?.nama}</h3>
-                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-[#06305d]/10 text-[#06305d] text-[10px] font-bold">
-                        {scanned?.peran}
-                      </span>
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold">
-                        {scanned?.jenis_kelamin} • {scanned?.usia != null ? `${scanned.usia} th` : '-'}
-                      </span>
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 text-[10px] font-semibold">
-                        {scanned?.kategori_usia_label}
-                      </span>
-                      {scanned?.is_gratis && (
-                        <span className="inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
-                          {scanned?.makan_dicover ? 'Balita (cover)' : 'Gratis'}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 bg-slate-50 rounded-xl text-xs">
-                    <p className="text-[10px] text-slate-400 font-medium">Grup / PIC</p>
-                    <p className="font-semibold text-slate-800 mt-0.5">{scanned?.grup}</p>
-                    {scanned?.pic_whatsapp && (
-                      <a
-                        href={`https://wa.me/${scanned.pic_whatsapp.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[10px] text-emerald-600 hover:underline font-semibold"
-                      >
-                        {scanned.pic_whatsapp} ↗
-                      </a>
-                    )}
-                  </div>
-
-                  {scanned?.catatan_medis && (
-                    <div className="p-2.5 bg-rose-50 rounded-xl border border-rose-200 text-xs">
-                      <p className="text-[10px] text-rose-500 font-bold uppercase">⚠ Catatan Medis</p>
-                      <p className="font-semibold text-rose-800 mt-0.5">{scanned.catatan_medis}</p>
-                    </div>
-                  )}
-
-                  {/* Riwayat sesi */}
-                  <div className="pt-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Status Sesi</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {SESI_LIST.map((s) => {
-                        const item = scanned?.scan_history?.[s.id];
-                        return (
-                          <div
-                            key={s.id}
-                            className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[10px] font-semibold border ${
-                              item?.scanned
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-slate-50 text-slate-400 border-slate-200'
-                            }`}
-                          >
-                            <span>{item?.scanned ? '✓' : '○'}</span>
-                            <span className="truncate">{s.short}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="mt-5 pt-4 border-t border-slate-100 space-y-2">
-                {bisaKonfirmasi ? (
-                  <>
-                    <button
-                      onClick={handleConfirmScan}
-                      disabled={confirmLoading}
-                      className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black tracking-wide shadow-md hover:shadow-lg transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                    >
-                      {confirmLoading ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Menyimpan...</span>
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>CATAT {sesiLabel.toUpperCase()}</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={handleNextScan}
-                      disabled={confirmLoading}
-                      className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
-                    >
-                      Batal & Scan Ulang
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleNextScan}
-                    className="w-full py-3 rounded-2xl bg-[#06305d] hover:bg-[#0a4583] text-white text-xs font-bold shadow-md transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                    <span>Scan Peserta Berikutnya</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Footer: Tombol Input Manual Kode Akses / Nomor WA PIC */}
+      <footer className="relative z-20 px-4 pb-6 pt-8 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex justify-center">
+        <button
+          type="button"
+          onClick={handleOpenManualModal}
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 backdrop-blur-md text-xs font-bold text-white shadow-xl active:scale-95 transition cursor-pointer"
+        >
+          <svg className="w-4 h-4 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+          <span>Input Kode Akses / No. WA PIC</span>
+        </button>
+      </footer>
+
+      {/* Modal Input Manual */}
+      {manualModalOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={handleCloseManualModal}
+        >
+          <div
+            className="w-full sm:max-w-md bg-white text-slate-900 rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-slate-900">Cari Grup Secara Manual</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Masukkan <strong>Kode Akses</strong> atau <strong>Nomor WA Penanggung Jawab</strong> grup.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseManualModal}
+                aria-label="Tutup popup"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleManualSubmit} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                  Kode Akses / No. WA PIC
+                </label>
+                <input
+                  ref={manualInputRef}
+                  type="text"
+                  value={manualQuery}
+                  onChange={(e) => setManualQuery(e.target.value)}
+                  placeholder="Contoh: ahmad1234 atau 081234567890"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d]"
+                />
+              </div>
+
+              {manualError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs font-medium text-rose-700">
+                  {manualError}
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCloseManualModal}
+                  disabled={manualLoading}
+                  className="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={manualLoading || !manualQuery.trim()}
+                  className="flex-[2] py-3 rounded-xl bg-[#06305d] hover:bg-[#0a4583] text-white text-xs font-black shadow-md transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {manualLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Mencari...</span>
+                    </>
+                  ) : (
+                    <span>Buka Data Grup</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

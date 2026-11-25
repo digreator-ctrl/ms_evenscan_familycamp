@@ -636,7 +636,7 @@ import Layout from "../layouts/Layout.astro";
             }
           });
 
-        // 2. Tombol Unduh ID Card (Header & Inner Card)
+        // 2. Tombol Unduh ID Card (Header Accordion)
         const handleDownload = (btn: HTMLElement) => {
           const idx = parseInt(btn.getAttribute("data-index") || "0", 10);
           const anggota = anggotaList[idx];
@@ -648,13 +648,6 @@ import Layout from "../layouts/Layout.astro";
         };
 
         container.querySelectorAll(".btn-unduh-idcard").forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            handleDownload(btn as HTMLElement);
-          });
-        });
-
-        container.querySelectorAll(".btn-unduh-idcard-inner").forEach((btn) => {
           btn.addEventListener("click", (e) => {
             e.stopPropagation();
             handleDownload(btn as HTMLElement);
@@ -813,21 +806,7 @@ import Layout from "../layouts/Layout.astro";
                         <!-- Sesi Badges -->
                         <div class="pt-2 border-t border-slate-100 space-y-1.5">
                           <div class="flex flex-wrap justify-center gap-1">${sesiBadges}</div>
-                          ${noJatah ? '<p class="text-[10px] text-amber-700 font-medium">🍼 Anak usia 1-5 th gratis (tanpa jatah makan)</p>' : '<p class="text-[10px] text-slate-400">QR berlaku untuk check-in & jatah makan</p>'}
-                        </div>
-
-                        <!-- Tombol Unduh di dalam Card -->
-                        <div class="pt-1">
-                          <button
-                            type="button"
-                            class="btn-unduh-idcard-inner w-full py-2 px-3 bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
-                            data-index="${idx}"
-                          >
-                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            <span>Unduh ID Card Ini</span>
-                          </button>
+                          ${noJatah ? '<p class="text-[10px] text-amber-700 font-medium">🍼 Anak usia 1-5 th gratis (tanpa jatah makan)</p>' : '<p class="text-[10px] text-slate-400">QR berlaku untuk check-in & pengambilan konsumsi</p>'}
                         </div>
                       </div>
                     </div>

@@ -1,17 +1,17 @@
-name = "ms-evenscan-api"
+name = "ms-evenscan-familycamp-api"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 account_id = "d36c92886485e286195dee9406901c37"
 
 [vars]
-ENVIRONMENT = "development"
-JWT_SECRET = "change-this-in-production"
+ENVIRONMENT = "production"
+PESERTA_BASE_URL = "https://ms-evenscan-familycamp-peserta.pages.dev"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "evenscan-db"
-database_id = "a6c9a62f-eeb7-4947-b1ae-8a2b26042331"
+database_name = "evenscan-familycamp-db"
+database_id = "b315787f-a996-4e90-a648-427e23b93607"
 
 [[r2_buckets]]
 binding = "STORAGE"
-bucket_name = "evenscan-files"
+bucket_name = "evenscan-familycamp-files"

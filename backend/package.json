@@ -7,8 +7,8 @@
     "build": "wrangler deploy --dry-run",
     "deploy": "wrangler deploy",
     "test": "tsx test-routes.ts",
-    "db:migrate": "wrangler d1 execute evenscan-db --local --file=./src/db/schema.sql",
-    "seed:admin": "wrangler d1 execute evenscan-db --local --file=./src/db/seed-admin.sql"
+    "db:migrate": "wrangler d1 execute evenscan-familycamp-db --local --file=./src/db/schema.sql",
+    "seed:admin": "wrangler d1 execute evenscan-familycamp-db --local --file=./src/db/seed-admin.sql"
   },
   "dependencies": {
     "hono": "^4.6.0",

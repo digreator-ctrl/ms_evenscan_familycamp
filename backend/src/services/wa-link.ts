@@ -50,7 +50,7 @@ export class WALinkService {
 Pendaftaran Anda untuk acara *${namaAcara}* telah *BERHASIL DIKONFIRMASI* ✅
 
 Silakan akses & unduh QR code kehadiran Anda melalui tautan berikut:
-🔗 https://ms-evenscan-peserta.pages.dev/status
+🔗 ${(siteUrl || 'https://ms-evenscan-familycamp-peserta.pages.dev').replace(/\/+$/, '')}/status
 
 *KODE AKSES:*
 *${kodeAkses}*

@@ -1536,8 +1536,9 @@ import { LIST_PROVINSI } from "../data/wilayah";
 
           if (hasError) {
             if (firstInvalid) {
-              firstInvalid.focus();
-              firstInvalid.scrollIntoView({
+              const el = firstInvalid as HTMLElement;
+              el.focus();
+              el.scrollIntoView({
                 behavior: "smooth",
                 block: "center",
               });

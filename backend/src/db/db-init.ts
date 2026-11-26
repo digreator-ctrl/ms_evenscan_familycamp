@@ -229,51 +229,51 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
     for (const sql of indexes) {
       try {
         await db.prepare(sql).run();
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Migration: pastikan kolom provinsi dan kota ada di pendaftaran_grup
     try {
       await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN provinsi TEXT`).run();
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN kota TEXT`).run();
-    } catch (e) {}
+    } catch (e) { }
 
     // Migration: pastikan kolom provinsi dan kota ada di anggota
     try {
       await db.prepare(`ALTER TABLE anggota ADD COLUMN provinsi TEXT`).run();
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.prepare(`ALTER TABLE anggota ADD COLUMN kota TEXT`).run();
-    } catch (e) {}
+    } catch (e) { }
 
     // Migration: nomor peserta & opsi cover makan untuk usia < 3 tahun
     try {
       await db.prepare(`ALTER TABLE anggota ADD COLUMN nomor_peserta TEXT`).run();
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.prepare(`ALTER TABLE anggota ADD COLUMN makan_dicover INTEGER NOT NULL DEFAULT 0`).run();
-    } catch (e) {}
+    } catch (e) { }
 
     // Migration: nominal yang benar-benar diterima & selisih tagihan
     try {
       await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN nominal_dibayar INTEGER`).run();
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN selisih_bayar INTEGER NOT NULL DEFAULT 0`).run();
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.prepare(`ALTER TABLE pendaftaran_grup ADD COLUMN nomor_grup TEXT`).run();
-    } catch (e) {}
+    } catch (e) { }
 
     // Migration: kategori & fasilitas add-on (paket vs satuan)
     try {
       await db.prepare(`ALTER TABLE addon_items ADD COLUMN kategori TEXT NOT NULL DEFAULT 'satuan'`).run();
-    } catch (e) {}
+    } catch (e) { }
     try {
       await db.prepare(`ALTER TABLE addon_items ADD COLUMN fasilitas TEXT`).run();
-    } catch (e) {}
+    } catch (e) { }
     // Backfill kategori paket dari id lama (addon_paket_*)
     try {
       await db
@@ -281,7 +281,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           `UPDATE addon_items SET kategori = 'paket', fasilitas = COALESCE(fasilitas, '1 Tenda Dome|Matras Spon|Sleeping Bag Hangat|1 Lampu Tenda LED') WHERE id LIKE 'addon_paket_%' AND (kategori IS NULL OR kategori = 'satuan')`
         )
         .run();
-    } catch (e) {}
+    } catch (e) { }
 
     // Backfill nomor_peserta untuk anggota lama yang belum punya nomor
     try {

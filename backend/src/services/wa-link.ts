@@ -62,8 +62,16 @@ Mohon simpan dan tunjukkan QR code ini kepada panitia di meja registrasi pada ha
 جزاكم الله خيرا
 _Panitia ${namaAcara}_`;
 
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(pesan)}`;
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(ensureWaLtr(pesan))}`;
   }
+}
+
+/**
+ * Menyisipkan Left-to-Right Mark (U+200E) di awal baris yang diawali huruf Arab
+ * agar WhatsApp tetap meratakan paragraf ke kiri (tidak menarik seluruh pesan ke kanan).
+ */
+export function ensureWaLtr(text: string): string {
+  return text.replace(/(^|\n)([ \t]*)([\u0600-\u06FF])/g, '$1$2\u200E$3');
 }
 
 /**
@@ -85,8 +93,9 @@ export function getPhoneVariants(phone: string): [string, string] {
  * Variabel yang tidak tersedia akan diganti string kosong.
  */
 export function renderWaTemplate(body: string, vars: Record<string, string | number | null | undefined>): string {
-  return body.replace(/\{([a-zA-Z0-9_]+)\}/g, (_m, key: string) => {
+  const rendered = body.replace(/\{([a-zA-Z0-9_]+)\}/g, (_m, key: string) => {
     const val = vars[key];
     return val === null || val === undefined ? '' : String(val);
   });
+  return ensureWaLtr(rendered);
 }

@@ -432,7 +432,8 @@ _Panitia {nama_acara}_`;
         };
 
         const bodyTpl = data.wa_undangan_body || defaultTpl;
-        const msg = bodyTpl.replace(/\{([a-zA-Z0-9_]+)\}/g, (_m: string, key: string) => vars[key] ?? '');
+        const rawMsg = bodyTpl.replace(/\{([a-zA-Z0-9_]+)\}/g, (_m: string, key: string) => vars[key] ?? '');
+        const msg = rawMsg.replace(/(^|\n)([ \t]*)([\u0600-\u06FF])/g, '$1$2\u200E$3');
         btnShareWA.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
       }
 

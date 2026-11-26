@@ -17,7 +17,7 @@ interface AddonItem {
 }
 
 type StatusFilter = 'all' | 'aktif' | 'nonaktif';
-type SortOption = 'urutan' | 'harga_asc' | 'harga_desc' | 'nama_asc';
+type SortOption = 'nama_asc' | 'nama_desc' | 'harga_asc' | 'harga_desc';
 
 const formatRupiah = (n: number): string => {
   return 'Rp ' + (n || 0).toLocaleString('id-ID');
@@ -39,12 +39,9 @@ const formatKelengkapanText = (item: AddonItem): string => {
 
 const emptyForm = {
   nama: '',
-  deskripsi: '',
+  items: [''],
   harga: '',
-  stok: '-1',
   aktif: '1',
-  urutan: '0',
-  fasilitas: '',
 };
 
 export function KelolaAddon() {
@@ -55,14 +52,14 @@ export function KelolaAddon() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  // Filter & Sort (via popup modal agar layout tidak bergeser)
+  // Filter & Sort (via popup modal agar layout tidak bergeser; default urut abjad)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('urutan');
+  const [sortBy, setSortBy] = useState<SortOption>('nama_asc');
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [draftStatus, setDraftStatus] = useState<StatusFilter>('all');
-  const [draftSort, setDraftSort] = useState<SortOption>('urutan');
+  const [draftSort, setDraftSort] = useState<SortOption>('nama_asc');
 
-  const [form, setForm] = useState({ ...emptyForm });
+  const [form, setForm] = useState({ ...emptyForm, items: [''] });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -102,7 +99,7 @@ export function KelolaAddon() {
   }, []);
 
   const resetForm = () => {
-    setForm({ ...emptyForm });
+    setForm({ nama: '', items: [''], harga: '', aktif: '1' });
     setEditingId(null);
     setFormError('');
   };
@@ -118,18 +115,36 @@ export function KelolaAddon() {
   };
 
   const startEdit = (item: AddonItem) => {
+    const parsedItems = parseFasilitasList(item.fasilitas);
+    const initialItems =
+      parsedItems.length > 0 ? parsedItems : item.deskripsi ? [item.deskripsi] : [''];
     setEditingId(item.id);
     setForm({
       nama: item.nama,
-      deskripsi: item.deskripsi || '',
+      items: initialItems,
       harga: String(item.harga),
-      stok: String(item.stok),
       aktif: String(item.aktif),
-      urutan: String(item.urutan || 0),
-      fasilitas: item.fasilitas || '',
     });
     setFormError('');
     setShowForm(true);
+  };
+
+  const updateFormItem = (index: number, value: string) => {
+    setForm((f) => ({
+      ...f,
+      items: f.items.map((val, idx) => (idx === index ? value : val)),
+    }));
+  };
+
+  const addFormItemField = () => {
+    setForm((f) => ({ ...f, items: [...f.items, ''] }));
+  };
+
+  const removeFormItemField = (index: number) => {
+    setForm((f) => {
+      if (f.items.length <= 1) return { ...f, items: [''] };
+      return { ...f, items: f.items.filter((_, idx) => idx !== index) };
+    });
   };
 
   const openFilterModal = () => {
@@ -146,9 +161,9 @@ export function KelolaAddon() {
 
   const resetFilterModal = () => {
     setDraftStatus('all');
-    setDraftSort('urutan');
+    setDraftSort('nama_asc');
     setStatusFilter('all');
-    setSortBy('urutan');
+    setSortBy('nama_asc');
     setFilterModalOpen(false);
   };
 
@@ -158,16 +173,19 @@ export function KelolaAddon() {
 
     const nama = form.nama.trim();
     const harga = parseInt(form.harga, 10);
-    const stok = parseInt(form.stok, 10);
     const aktif = parseInt(form.aktif, 10);
-    const urutan = parseInt(form.urutan, 10);
+    const cleanItems = form.items.map((x) => x.trim()).filter(Boolean);
 
     if (!nama) {
       setFormError('Nama paket wajib diisi.');
       return;
     }
+    if (cleanItems.length === 0) {
+      setFormError('Minimal isi 1 nama item perlengkapan.');
+      return;
+    }
     if (isNaN(harga) || harga < 0) {
-      setFormError('Harga wajib berupa angka positif.');
+      setFormError('Harga paket wajib berupa angka positif.');
       return;
     }
 
@@ -176,13 +194,13 @@ export function KelolaAddon() {
       const token = localStorage.getItem('token');
       const payload = {
         nama,
-        deskripsi: form.deskripsi.trim(),
+        deskripsi: cleanItems.join(' • '),
         harga,
-        stok: isNaN(stok) ? -1 : stok,
+        stok: -1,
         aktif: aktif === 0 ? 0 : 1,
-        urutan: isNaN(urutan) ? 0 : urutan,
+        urutan: 0,
         kategori: 'paket',
-        fasilitas: form.fasilitas.trim(),
+        fasilitas: cleanItems.join('|'),
       };
 
       const url = editingId
@@ -289,8 +307,8 @@ export function KelolaAddon() {
     return [...list].sort((a, b) => {
       if (sortBy === 'harga_asc') return a.harga - b.harga;
       if (sortBy === 'harga_desc') return b.harga - a.harga;
-      if (sortBy === 'nama_asc') return a.nama.localeCompare(b.nama, 'id');
-      return (a.urutan || 0) - (b.urutan || 0);
+      if (sortBy === 'nama_desc') return b.nama.localeCompare(a.nama, 'id');
+      return a.nama.localeCompare(b.nama, 'id');
     });
   }, [paketItems, statusFilter, search, sortBy]);
 
@@ -299,7 +317,7 @@ export function KelolaAddon() {
     return paketItems.find((it) => it.id === detailId) || null;
   }, [paketItems, detailId]);
 
-  const hasActiveFilter = statusFilter !== 'all' || sortBy !== 'urutan';
+  const hasActiveFilter = statusFilter !== 'all' || sortBy !== 'nama_asc';
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -346,9 +364,6 @@ export function KelolaAddon() {
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 mt-1.5 leading-snug">
                     {detailItem.nama}
                   </h1>
-                  {detailItem.deskripsi && (
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{detailItem.deskripsi}</p>
-                  )}
                 </div>
                 <span
                   className={`shrink-0 inline-block px-2.5 py-1 rounded-full text-[11px] font-bold border ${
@@ -361,22 +376,10 @@ export function KelolaAddon() {
                 </span>
               </div>
 
-              {/* Ringkasan Harga, Stok, Urutan */}
-              <div className="grid grid-cols-12 gap-2.5">
-                <div className="col-span-6 sm:col-span-4 bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Harga Paket</p>
-                  <p className="text-base font-black text-[#06305d] mt-0.5">{formatRupiah(detailItem.harga)}</p>
-                </div>
-                <div className="col-span-3 sm:col-span-4 bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Stok</p>
-                  <p className="text-base font-black text-slate-800 mt-0.5">
-                    {detailItem.stok === -1 ? 'Unlimited' : detailItem.stok}
-                  </p>
-                </div>
-                <div className="col-span-3 sm:col-span-4 bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Urutan</p>
-                  <p className="text-base font-black text-slate-800 mt-0.5">#{detailItem.urutan}</p>
-                </div>
+              {/* Harga Paket */}
+              <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Harga Paket</p>
+                <p className="text-lg font-black text-[#06305d] mt-0.5">{formatRupiah(detailItem.harga)}</p>
               </div>
 
               {/* Kelengkapan Paket */}
@@ -399,14 +402,6 @@ export function KelolaAddon() {
                 ) : (
                   <p className="text-xs text-slate-400 italic">Belum ada rincian kelengkapan yang ditambahkan.</p>
                 )}
-              </div>
-
-              {/* Status Tampil di FE Peserta */}
-              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600">
-                Status di form pendaftaran peserta:{' '}
-                <strong className={detailItem.aktif === 1 ? 'text-emerald-700' : 'text-slate-600'}>
-                  {detailItem.aktif === 1 ? 'Ditampilkan & dapat dipilih peserta' : 'Disembunyikan dari peserta'}
-                </strong>
               </div>
 
               {/* Tombol Aksi */}
@@ -623,10 +618,10 @@ export function KelolaAddon() {
                   onChange={(e) => setDraftSort(e.target.value as SortOption)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d]"
                 >
-                  <option value="urutan">Urutan Tampil (Default)</option>
+                  <option value="nama_asc">Nama Paket (A - Z)</option>
+                  <option value="nama_desc">Nama Paket (Z - A)</option>
                   <option value="harga_asc">Harga Termurah</option>
                   <option value="harga_desc">Harga Termahal</option>
-                  <option value="nama_asc">Nama Paket (A - Z)</option>
                 </select>
               </div>
             </div>
@@ -651,7 +646,7 @@ export function KelolaAddon() {
         </div>
       )}
 
-      {/* MODAL FORM TAMBAH / EDIT */}
+      {/* MODAL FORM TAMBAH / EDIT PAKET */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-xs p-0 sm:p-4">
           <div className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-lg max-h-[92vh] flex flex-col shadow-2xl border border-slate-100">
@@ -690,66 +685,60 @@ export function KelolaAddon() {
                 />
               </div>
 
+              {/* Daftar Nama Item Dinamis */}
+              <div className="space-y-2">
+                <label className="block font-bold text-slate-700">
+                  Nama Item <span className="text-rose-500">*</span>
+                </label>
+                <div className="space-y-2">
+                  {form.items.map((itemVal, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        placeholder={`Nama item #${idx + 1} (misal: 1 Tenda Dome)`}
+                        value={itemVal}
+                        onChange={(e) => updateFormItem(idx, e.target.value)}
+                        className="flex-1 min-w-0 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
+                      />
+                      {form.items.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeFormItemField(idx)}
+                          aria-label={`Hapus item #${idx + 1}`}
+                          className="w-9 h-9 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center shrink-0 transition cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={addFormItemField}
+                  className="w-full py-2 px-3 rounded-xl border border-dashed border-[#06305d]/40 bg-[#06305d]/5 hover:bg-[#06305d]/10 text-[#06305d] text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <span className="text-sm leading-none">+</span>
+                  <span>Tambah Nama Item</span>
+                </button>
+              </div>
+
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Keterangan Kelengkapan / Fasilitas</label>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Harga Paket (Rp) <span className="text-rose-500">*</span>
+                </label>
                 <input
-                  type="text"
-                  placeholder="Pisahkan dengan | contoh: 1 Tenda|4 Matras|4 Sleeping Bag"
-                  value={form.fasilitas}
-                  onChange={(e) => setForm((f) => ({ ...f, fasilitas: e.target.value }))}
+                  type="number"
+                  min="0"
+                  placeholder="120000"
+                  value={form.harga}
+                  onChange={(e) => setForm((f) => ({ ...f, harga: e.target.value }))}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Deskripsi Singkat</label>
-                <textarea
-                  rows={2}
-                  placeholder="Catatan tambahan paket (opsional)"
-                  value={form.deskripsi}
-                  onChange={(e) => setForm((f) => ({ ...f, deskripsi: e.target.value }))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition resize-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="block font-bold text-slate-700 mb-1.5">
-                    Harga (Rp) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="120000"
-                    value={form.harga}
-                    onChange={(e) => setForm((f) => ({ ...f, harga: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Stok</label>
-                  <input
-                    type="number"
-                    placeholder="-1 = unlimited"
-                    value={form.stok}
-                    onChange={(e) => setForm((f) => ({ ...f, stok: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1.5">Urutan Tampil</label>
-                  <input
-                    type="number"
-                    placeholder="0"
-                    value={form.urutan}
-                    onChange={(e) => setForm((f) => ({ ...f, urutan: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#06305d]/20 focus:border-[#06305d] transition"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1.5">Status di Form Pendaftaran</label>
+                <label className="block font-bold text-slate-700 mb-1.5">Status</label>
                 <div className="flex flex-wrap items-center gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -789,7 +778,7 @@ export function KelolaAddon() {
                 disabled={saving}
                 className="flex-1 sm:flex-none px-5 py-2.5 bg-[#06305d] hover:bg-[#0a4583] text-white rounded-xl text-xs font-bold transition shadow-xs active:scale-95 disabled:opacity-50 cursor-pointer"
               >
-                {saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : '+ Tambah Item'}
+                {saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Paket'}
               </button>
             </div>
           </div>

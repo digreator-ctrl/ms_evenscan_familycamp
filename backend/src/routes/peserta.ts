@@ -32,8 +32,7 @@ async function generateKodeAkses(db: D1Database, picNama: string, picWhatsapp: s
     (picNama || '')
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(/\s+/)
+      .split(/[^a-z0-9]+/)
       .filter(Boolean)[0] || 'peserta';
   const slug = namaDepan.slice(0, 15);
   const digits = (picWhatsapp || '').replace(/\D/g, '');

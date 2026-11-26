@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { nanoid } from 'nanoid';
 import { authMiddleware, createAdminToken, getJwtSecret, requireRole, AdminJwtPayload } from '../middlewares/auth';
-import { WALinkService, renderWaTemplate } from '../services/wa-link';
+import { WALinkService, renderWaTemplate, ensureWaLtr } from '../services/wa-link';
 import { verifyPassword, hashPassword } from '../services/auth-helper';
 import { StorageService } from '../services/storage';
 import { getKategoriUsia, getKategoriUsiaLabel, isBerbayar, KATEGORI_USIA } from '../services/peserta-rules';
@@ -611,7 +611,7 @@ adminRoutes.patch('/grup/:id/konfirmasi', async (c) => {
         kode_akses: kodeAkses,
       });
     } else {
-      pesanWa = `بسم الله
+      pesanWa = ensureWaLtr(`بسم الله
 السلام عليكم ورحمة الله وبركاته
 Halo *${grup.pic_nama}*,
 
@@ -628,7 +628,7 @@ Silakan cek status pendaftaran dan unduh *ID/QR kehadiran* seluruh anggota melal
 Mohon tunjukkan QR Code masing-masing anggota kepada panitia saat registrasi di lokasi acara.
 
 جزاكم الله خيرا
-_Panitia ${namaAcara}_`;
+_Panitia ${namaAcara}_`);
     }
 
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(pesanWa)}`;

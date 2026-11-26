@@ -937,8 +937,8 @@ import { LIST_PROVINSI } from "../data/wilayah";
     function getLockedGenderForPeran(
       peran: string,
     ): "Ikhwan" | "Akhwat" | null {
-      if (["Ayah", "Kakek", "Paman"].includes(peran)) return "Ikhwan";
-      if (["Ibu", "Nenek", "Bibi"].includes(peran)) return "Akhwat";
+      if (["Ayah", "Suami", "Kakek", "Paman"].includes(peran)) return "Ikhwan";
+      if (["Ibu", "Istri", "Nenek", "Bibi"].includes(peran)) return "Akhwat";
       return null; // Anak, Saudara Kandung, Sepupu, Peserta -> bebas pilih
     }
 
@@ -1826,6 +1826,8 @@ import { LIST_PROVINSI } from "../data/wilayah";
                     <option value="" disabled ${!a.peran ? "selected" : ""}>-</option>
                     <option value="Ayah" ${a.peran === "Ayah" ? "selected" : ""}>Ayah</option>
                     <option value="Ibu" ${a.peran === "Ibu" ? "selected" : ""}>Ibu</option>
+                    <option value="Suami" ${a.peran === "Suami" ? "selected" : ""}>Suami</option>
+                    <option value="Istri" ${a.peran === "Istri" ? "selected" : ""}>Istri</option>
                     <option value="Anak" ${a.peran === "Anak" ? "selected" : ""}>Anak</option>
                     <option value="Kakek" ${a.peran === "Kakek" ? "selected" : ""}>Kakek</option>
                     <option value="Nenek" ${a.peran === "Nenek" ? "selected" : ""}>Nenek</option>

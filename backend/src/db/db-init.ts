@@ -46,7 +46,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           nomor_peserta TEXT,
           nama TEXT NOT NULL,
           jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
-          peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
+          peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Suami', 'Istri', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
           usia INTEGER,
           ukuran_kaos TEXT,
           catatan_medis TEXT,
@@ -314,6 +314,8 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
       const needsRebuild =
         !!tableInfo?.sql &&
         (!tableInfo.sql.includes('Kakek') ||
+          !tableInfo.sql.includes('Suami') ||
+          !tableInfo.sql.includes('Istri') ||
           !tableInfo.sql.includes('Ketua Rombongan') ||
           !tableInfo.sql.includes('nomor_peserta') ||
           !tableInfo.sql.includes('makan_dicover'));
@@ -328,7 +330,7 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
               nomor_peserta TEXT,
               nama TEXT NOT NULL,
               jenis_kelamin TEXT NOT NULL CHECK(jenis_kelamin IN ('Ikhwan', 'Akhwat')),
-              peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
+              peran TEXT NOT NULL DEFAULT 'Peserta' CHECK(peran IN ('Ayah', 'Ibu', 'Suami', 'Istri', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan')),
               usia INTEGER,
               ukuran_kaos TEXT,
               catatan_medis TEXT,
@@ -346,11 +348,11 @@ export async function ensureFamilyCampTables(db: D1Database): Promise<void> {
           `),
           db.prepare(`
             INSERT INTO anggota_temp (
-              id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis,
-              provinsi, kota, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at
+              id, grup_id, nomor_peserta, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis,
+              provinsi, kota, is_gratis, makan_dicover, qr_token, qr_code_url, status_hadir, attended_at, created_at
             )
-            SELECT id, grup_id, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis,
-              provinsi, kota, is_gratis, qr_token, qr_code_url, status_hadir, attended_at, created_at
+            SELECT id, grup_id, nomor_peserta, nama, jenis_kelamin, peran, usia, ukuran_kaos, catatan_medis,
+              provinsi, kota, is_gratis, makan_dicover, qr_token, qr_code_url, status_hadir, attended_at, created_at
             FROM anggota
           `),
           db.prepare(`DROP TABLE anggota`),

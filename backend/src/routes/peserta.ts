@@ -632,7 +632,7 @@ pesertaRoutes.post('/daftar-grup', async (c) => {
     if (!isNaN(parsed) && parsed > 0) hargaAnak = parsed;
   } catch (err) {}
 
-  const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan'];
+  const DAFTAR_PERAN_VALID = ['Ayah', 'Ibu', 'Suami', 'Istri', 'Anak', 'Kakek', 'Nenek', 'Paman', 'Bibi', 'Saudara Kandung', 'Sepupu', 'Peserta', 'Ketua Rombongan'];
 
   // Nomor urut grup (K/N) untuk nomor peserta
   let urutGrup = 1;
